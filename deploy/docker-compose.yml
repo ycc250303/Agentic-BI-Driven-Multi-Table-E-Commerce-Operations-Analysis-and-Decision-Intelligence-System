@@ -1,0 +1,23 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql8
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "agentic_bi"
+      MYSQL_DATABASE: "agentic_bi"
+      MYSQL_USER: "agentic_bi"
+      MYSQL_PASSWORD: "agentic_bi"
+      TZ: "Asia/Shanghai"
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./data:/var/lib/mysql
+      - ./conf:/etc/mysql/conf.d
+      - ./init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-agentic_bi!"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
