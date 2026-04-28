@@ -1,0 +1,365 @@
+{
+  "views": {
+    "mv_monthly_sales": {
+      "name": "mv_monthly_sales",
+      "description": "月度销售趋势视图",
+      "granularity": "年-月",
+      "business_purpose": "月度销售趋势、GMV环比增长分析",
+      "fields": [
+        {
+          "name": "year_month",
+          "type": "VARCHAR(7)",
+          "description": "年月，格式YYYY-MM",
+          "example": "2017-12"
+        },
+        {
+          "name": "total_gmv",
+          "type": "DECIMAL",
+          "description": "总成交额（商品价格+运费）",
+          "unit": "巴西雷亚尔（BRL）"
+        },
+        {
+          "name": "total_orders",
+          "type": "BIGINT",
+          "description": "订单总数",
+          "unit": "订单数"
+        },
+        {
+          "name": "avg_basket",
+          "type": "DECIMAL",
+          "description": "平均客单价（GMV/订单数）",
+          "unit": "巴西雷亚尔（BRL）"
+        },
+        {
+          "name": "total_freight",
+          "type": "DECIMAL",
+          "description": "总运费金额",
+          "unit": "巴西雷亚尔（BRL）"
+        }
+      ],
+      "use_cases": [
+        "月度销售趋势分析",
+        "GMV环比增长计算",
+        "年度销售对比",
+        "平均客单价变化趋势",
+        "运费成本分析"
+      ],
+      "example_questions": [
+        "2017年每个月的销售额是多少？",
+        "去年GMV的月度增长趋势如何？",
+        "哪个季度的销售额最高？",
+        "平均客单价有什么变化趋势？"
+      ],
+      "sql_example": "SELECT * FROM mv_monthly_sales WHERE year_month >= '2017-01' ORDER BY year_month"
+    },
+    "mv_state_sales": {
+      "name": "mv_state_sales",
+      "description": "各州销售情况视图",
+      "granularity": "年-月-州",
+      "business_purpose": "各州销售额排名、区域市场对比",
+      "fields": [
+        {
+          "name": "year_month",
+          "type": "VARCHAR(7)",
+          "description": "年月，格式YYYY-MM",
+          "example": "2017-12"
+        },
+        {
+          "name": "customer_state",
+          "type": "VARCHAR(2)",
+          "description": "客户所在州（巴西州简称）",
+          "example": "SP（圣保罗）"
+        },
+        {
+          "name": "total_gmv",
+          "type": "DECIMAL",
+          "description": "该州的总成交额",
+          "unit": "巴西雷亚尔（BRL）"
+        },
+        {
+          "name": "total_orders",
+          "type": "BIGINT",
+          "description": "该州的订单总数",
+          "unit": "订单数"
+        },
+        {
+          "name": "unique_customers",
+          "type": "BIGINT",
+          "description": "该州的独立客户数",
+          "unit": "客户数"
+        }
+      ],
+      "use_cases": [
+        "各州销售额排名",
+        "区域市场对比",
+        "重点市场识别",
+        "州级市场渗透分析"
+      ],
+      "example_questions": [
+        "2017年哪个州的销售额最高？",
+        "圣保罗州（SP）的月度销售趋势如何？",
+        "各州的订单量排名是什么？",
+        "哪个州的客户最多？"
+      ],
+      "sql_example": "SELECT * FROM mv_state_sales WHERE year_month = '2017-12' ORDER BY total_gmv DESC LIMIT 10"
+    },
+    "mv_category_sales": {
+      "name": "mv_category_sales",
+      "description": "品类销售情况视图",
+      "granularity": "年-月-品类",
+      "business_purpose": "品类表现分析、识别下降品类",
+      "fields": [
+        {
+          "name": "year_month",
+          "type": "VARCHAR(7)",
+          "description": "年月，格式YYYY-MM",
+          "example": "2017-12"
+        },
+        {
+          "name": "product_category_english",
+          "type": "VARCHAR(255)",
+          "description": "产品品类名称（英文）",
+          "example": "electronics"
+        },
+        {
+          "name": "total_gmv",
+          "type": "DECIMAL",
+          "description": "该品类的总销售额",
+          "unit": "巴西雷亚尔（BRL）"
+        },
+        {
+          "name": "total_orders",
+          "type": "BIGINT",
+          "description": "该品类的订单总数",
+          "unit": "订单数"
+        },
+        {
+          "name": "avg_price",
+          "type": "DECIMAL",
+          "description": "该品类的平均商品价格",
+          "unit": "巴西雷亚尔（BRL）"
+        }
+      ],
+      "use_cases": [
+        "品类销售表现分析",
+        "识别下降品类",
+        "热门品类排名",
+        "品类定价策略分析"
+      ],
+      "example_questions": [
+        "哪些品类的销售额最高？",
+        "2017年哪个品类的增长最快？",
+        "哪些品类在下降？",
+        "电子产品品类的平均价格是多少？"
+      ],
+      "sql_example": "SELECT * FROM mv_category_sales WHERE year_month >= '2017-01' ORDER BY year_month, total_gmv DESC"
+    },
+    "mv_delivery_perf": {
+      "name": "mv_delivery_perf",
+      "description": "配送绩效视图",
+      "granularity": "年-月-州",
+      "business_purpose": "配送延迟诊断、准时率分析",
+      "fields": [
+        {
+          "name": "year_month",
+          "type": "VARCHAR(7)",
+          "description": "年月，格式YYYY-MM",
+          "example": "2017-12"
+        },
+        {
+          "name": "customer_state",
+          "type": "VARCHAR(2)",
+          "description": "客户所在州",
+          "example": "SP"
+        },
+        {
+          "name": "avg_delivery_days",
+          "type": "DECIMAL",
+          "description": "平均配送时长（从下单到签收）",
+          "unit": "天"
+        },
+        {
+          "name": "on_time_rate",
+          "type": "DECIMAL",
+          "description": "准时交付率（实际送达时间<=预计时间）",
+          "unit": "比率（0-1）"
+        },
+        {
+          "name": "delayed_orders",
+          "type": "BIGINT",
+          "description": "延迟订单数量",
+          "unit": "订单数"
+        }
+      ],
+      "use_cases": [
+        "配送延迟诊断",
+        "准时率分析",
+        "区域配送质量对比",
+        "物流供应商绩效评估"
+      ],
+      "example_questions": [
+        "平台整体准时交付率是多少？",
+        "哪些州延迟最严重？",
+        "2017年各州的平均配送时长是多少？",
+        "巴西东北部地区的配送准时率如何？"
+      ],
+      "sql_example": "SELECT * FROM mv_delivery_perf WHERE year_month = '2017-12' ORDER BY avg_delivery_days DESC"
+    },
+    "mv_seller_perf": {
+      "name": "mv_seller_perf",
+      "description": "卖家绩效视图",
+      "granularity": "年-月-卖家",
+      "business_purpose": "卖家绩效监控、高差评卖家定位",
+      "fields": [
+        {
+          "name": "year_month",
+          "type": "VARCHAR(7)",
+          "description": "年月，格式YYYY-MM",
+          "example": "2017-12"
+        },
+        {
+          "name": "seller_id",
+          "type": "VARCHAR(32)",
+          "description": "卖家ID",
+          "example": "seller_uuid"
+        },
+        {
+          "name": "seller_state",
+          "type": "VARCHAR(2)",
+          "description": "卖家所在州",
+          "example": "SP"
+        },
+        {
+          "name": "total_gmv",
+          "type": "DECIMAL",
+          "description": "该卖家的总成交额",
+          "unit": "巴西雷亚尔（BRL）"
+        },
+        {
+          "name": "total_orders",
+          "type": "BIGINT",
+          "description": "该卖家的订单总数",
+          "unit": "订单数"
+        },
+        {
+          "name": "avg_review_score",
+          "type": "DECIMAL",
+          "description": "平均评分（1-5分）",
+          "unit": "分数"
+        }
+      ],
+      "use_cases": [
+        "卖家绩效监控",
+        "高差评卖家定位",
+        "优秀卖家识别",
+        "卖家分级管理"
+      ],
+      "example_questions": [
+        "哪些卖家的差评率最高？",
+        "Top 10卖家的销售额排名是什么？",
+        "哪个州的卖家平均评分最高？",
+        "找出销售额高但评分低的卖家"
+      ],
+      "sql_example": "SELECT * FROM mv_seller_perf WHERE year_month = '2017-12' ORDER BY total_gmv DESC LIMIT 20"
+    },
+    "mv_payment_dist": {
+      "name": "mv_payment_dist",
+      "description": "支付分布视图",
+      "granularity": "年-月-支付类型",
+      "business_purpose": "支付偏好分析、分期率对比",
+      "fields": [
+        {
+          "name": "year_month",
+          "type": "VARCHAR(7)",
+          "description": "年月，格式YYYY-MM",
+          "example": "2017-12"
+        },
+        {
+          "name": "payment_type",
+          "type": "VARCHAR(255)",
+          "description": "支付方式",
+          "example": "credit_card, boleto, voucher, debit_card"
+        },
+        {
+          "name": "total_transactions",
+          "type": "BIGINT",
+          "description": "该支付方式的交易总数",
+          "unit": "订单数"
+        },
+        {
+          "name": "avg_installments",
+          "type": "DECIMAL",
+          "description": "平均分期数",
+          "unit": "期数"
+        },
+        {
+          "name": "total_value",
+          "type": "DECIMAL",
+          "description": "该支付方式的交易总金额",
+          "unit": "巴西雷亚尔（BRL）"
+        }
+      ],
+      "use_cases": [
+        "支付偏好分析",
+        "分期率对比",
+        "支付方式市场份额",
+        "支付渠道优化"
+      ],
+      "example_questions": [
+        "哪种支付方式最受欢迎？",
+        "信用卡支付的平均分期数是多少？",
+        "各支付方式的市场份额如何？",
+        "boleto支付的使用趋势是什么？"
+      ],
+      "sql_example": "SELECT * FROM mv_payment_dist WHERE year_month = '2017-12' ORDER BY total_transactions DESC"
+    }
+  },
+  "agent_usage_guide": {
+    "description": "供数据分析Agent使用的视图查询指南",
+    "strategy": "当用户问题匹配到以下预聚合维度时，优先使用对应视图；若维度不匹配，则回退到基础表查询",
+    "matching_rules": [
+      {
+        "dimension": "时间维度（月度）",
+        "keywords": ["月", "月份", "月度", "monthly", "month"],
+        "recommended_views": ["mv_monthly_sales", "mv_state_sales", "mv_category_sales", "mv_delivery_perf", "mv_seller_perf", "mv_payment_dist"]
+      },
+      {
+        "dimension": "地理维度（州）",
+        "keywords": ["州", "地区", "区域", "state", "region", "SP", "RJ", "MG"],
+        "recommended_views": ["mv_state_sales", "mv_delivery_perf"]
+      },
+      {
+        "dimension": "品类维度",
+        "keywords": ["品类", "类别", "产品", "商品", "category", "product"],
+        "recommended_views": ["mv_category_sales"]
+      },
+      {
+        "dimension": "配送维度",
+        "keywords": ["配送", "物流", "送达", "准时", "延迟", "delivery", "shipping", "late"],
+        "recommended_views": ["mv_delivery_perf"]
+      },
+      {
+        "dimension": "卖家维度",
+        "keywords": ["卖家", "商家", "seller", "merchant"],
+        "recommended_views": ["mv_seller_perf"]
+      },
+      {
+        "dimension": "支付维度",
+        "keywords": ["支付", "付款", "分期", "payment", "credit_card", "boleto"],
+        "recommended_views": ["mv_payment_dist"]
+      },
+      {
+        "dimension": "销售/GMV维度",
+        "keywords": ["销售", "销售额", "GMV", "成交额", "revenue", "sales"],
+        "recommended_views": ["mv_monthly_sales", "mv_state_sales", "mv_category_sales", "mv_seller_perf"]
+      }
+    ],
+    "fallback_strategy": "当问题维度不在任何预聚合视图中时（如查询具体订单详情、客户行为路径等），Agent应回退到基础表进行JOIN查询"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "created_date": "2026-04-28",
+    "description": "预聚合视图元数据配置文件，供Agentic BI系统中的数据分析Agent使用",
+    "contact": "tpc - 负责预聚合视图开发"
+  }
+}
