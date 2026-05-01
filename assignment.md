@@ -9,14 +9,14 @@
 - 理解自然语言业务问题  
 - 自动完成跨表数据查询与多维度统计分析  
 - 生成预测结果与可视化图表  
-- 输出具备决策价值的规范性建议  
+- 输出具备决策价值的规范性建议
 
 通过本项目，你将深入理解：
 
 - Agentic BI  
 - 决策智能（Decision Intelligence）  
 - AI 原生 BI 架构  
-- 多智能体系统开发方法  
+- 多智能体系统开发方法
 
 ---
 
@@ -30,21 +30,23 @@
 - 约 11.2 万条订单  
 - 时间范围：2016 年 9 月 - 2018 年 10 月  
 - 共 9 张业务表（多表关联）  
-- 合并后约 11.5 万行、44 个字段  
+- 合并后约 11.5 万行、44 个字段
 
 ### 核心数据表
 
-| 表名 | 关键字段 |
-|------|--------|
-| orders | order_id, customer_id, order_status, order_purchase_timestamp, order_delivered_customer_date |
-| order_items | order_id, product_id, seller_id, price, freight_value |
-| products | product_category_name, product_weight_g, product_length_cm, product_height_cm, product_width_cm |
-| customers | customer_city, customer_state |
-| sellers | seller_city, seller_state |
-| payments | payment_type, payment_installments, payment_value |
-| order_reviews | review_score, review_comment_message |
-| geolocation | geolocation_lat, geolocation_lng |
-| product_category_name_translation | product_category_name, product_category_name_english |
+
+| 表名                                | 关键字段                                                                                            |
+| --------------------------------- | ----------------------------------------------------------------------------------------------- |
+| orders                            | order_id, customer_id, order_status, order_purchase_timestamp, order_delivered_customer_date    |
+| order_items                       | order_id, product_id, seller_id, price, freight_value                                           |
+| products                          | product_category_name, product_weight_g, product_length_cm, product_height_cm, product_width_cm |
+| customers                         | customer_city, customer_state                                                                   |
+| sellers                           | seller_city, seller_state                                                                       |
+| payments                          | payment_type, payment_installments, payment_value                                               |
+| order_reviews                     | review_score, review_comment_message                                                            |
+| geolocation                       | geolocation_lat, geolocation_lng                                                                |
+| product_category_name_translation | product_category_name, product_category_name_english                                            |
+
 
 ### 数据特点
 
@@ -64,14 +66,16 @@
 
 ### 必建视图
 
-| 视图名称 | 粒度 | 核心字段 | 用途 |
-|---------|------|--------|------|
-| mv_monthly_sales | 年-月 | year_month, total_gmv, total_orders, avg_basket, total_freight | 月度销售趋势、GMV 环比增长 |
-| mv_state_sales | 年-月-州 | year_month, customer_state, total_gmv, total_orders, unique_customers | 各州销售额排名、区域市场对比 |
-| mv_category_sales | 年-月-品类 | year_month, product_category_english, total_gmv, total_orders, avg_price | 品类表现分析、哪些品类在下降 |
-| mv_delivery_perf | 年-月-州 | year_month, customer_state, avg_delivery_days, on_time_rate, delayed_orders | 配送延迟诊断、准时率分析 |
-| mv_seller_perf（推荐） | 年-月-卖家 | year_month, seller_id, seller_state, total_gmv, total_orders, avg_review_score | 卖家绩效监控、高差评卖家定位 |
-| mv_payment_dist（推荐） | 年-月-支付类型 | year_month, payment_type, total_transactions, avg_installments, total_value | 支付偏好分析、分期率对比 |
+
+| 视图名称                | 粒度       | 核心字段                                                                           | 用途              |
+| ------------------- | -------- | ------------------------------------------------------------------------------ | --------------- |
+| mv_monthly_sales    | 年-月      | year_month, total_gmv, total_orders, avg_basket, total_freight                 | 月度销售趋势、GMV 环比增长 |
+| mv_state_sales      | 年-月-州    | year_month, customer_state, total_gmv, total_orders, unique_customers          | 各州销售额排名、区域市场对比  |
+| mv_category_sales   | 年-月-品类   | year_month, product_category_english, total_gmv, total_orders, avg_price       | 品类表现分析、哪些品类在下降  |
+| mv_delivery_perf    | 年-月-州    | year_month, customer_state, avg_delivery_days, on_time_rate, delayed_orders    | 配送延迟诊断、准时率分析    |
+| mv_seller_perf（推荐）  | 年-月-卖家   | year_month, seller_id, seller_state, total_gmv, total_orders, avg_review_score | 卖家绩效监控、高差评卖家定位  |
+| mv_payment_dist（推荐） | 年-月-支付类型 | year_month, payment_type, total_transactions, avg_installments, total_value    | 支付偏好分析、分期率对比    |
+
 
 ### 实现要求
 
@@ -90,12 +94,14 @@
 
 至少需要覆盖以下四类分析要求：
 
-| 分析类型                   | 示例问题                                                     | 技术要求                                                     |
-| -------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| **描述性分析**             | “2017年哪个州的销售额最高？交付准时率是多少？哪种支付方式最受欢迎？” | 跨表聚合统计、KPI 计算（GMV、客单价、平均配送时长等），**必须利用预聚合视图加速** |
-| **诊断性分析**             | “为什么某些州的平均配送时长显著高于全国均值？哪些卖家的差评率最高？” | 关联 sellers、orders、reviews 表做下钻分析；定位差评率高的卖家与品类；分析配送延迟与客户地理位置/卖家地理位置的关系 |
-| **预测性分析**             | “根据历史订单趋势，预测未来6周的销售额”                      | 使用适当的时间序列预测模型（Prophet、ARIMA、LSTM或XGBoost），基于预聚合视图 mv_monthly_sales 提供的历史序列进行建模，生成预测值及置信区间 |
-| **规范性分析（决策智能）** | “如何降低巴西东北部地区的高退货率？请给出具体的运营改进方案。” | 结合前三层分析结果，Agent 调用 LLM 推理；融合 review 文本情感分析结果；给出**可行动的分段策略建议**（如调整物流、筛选卖家、优化定价） |
+
+| 分析类型            | 示例问题                                  | 技术要求                                                                                      |
+| --------------- | ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **描述性分析**       | “2017年哪个州的销售额最高？交付准时率是多少？哪种支付方式最受欢迎？” | 跨表聚合统计、KPI 计算（GMV、客单价、平均配送时长等），**必须利用预聚合视图加速**                                            |
+| **诊断性分析**       | “为什么某些州的平均配送时长显著高于全国均值？哪些卖家的差评率最高？”   | 关联 sellers、orders、reviews 表做下钻分析；定位差评率高的卖家与品类；分析配送延迟与客户地理位置/卖家地理位置的关系                     |
+| **预测性分析**       | “根据历史订单趋势，预测未来6周的销售额”                 | 使用适当的时间序列预测模型（Prophet、ARIMA、LSTM或XGBoost），基于预聚合视图 mv_monthly_sales 提供的历史序列进行建模，生成预测值及置信区间 |
+| **规范性分析（决策智能）** | “如何降低巴西东北部地区的高退货率？请给出具体的运营改进方案。”      | 结合前三层分析结果，Agent 调用 LLM 推理；融合 review 文本情感分析结果；给出**可行动的分段策略建议**（如调整物流、筛选卖家、优化定价）            |
+
 
 **加分场景**：
 
@@ -119,13 +125,15 @@
 
 ### 智能体设计
 
-| Agent 角色 | 核心职责                                                     |
-|------|--------|
+
+| Agent 角色                | 核心职责                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- |
 | **数据分析Agent**           | 将自然语言问题转换为 SQL。**首要动作：根据问题维度，判断能否命中预聚合视图**；若能，则对视图查询；若不能，则对基础表进行 SQL 查询。输出统计表与数据摘要。需维护数据字典（基础表 + 预聚合视图） |
-| **可视化Agent**             | 根据分析结果，自动选择合适图表类型（折线图、柱状图、热力图、地理图、词云等），生成并保存图片文件 |
-| **NLP /** **评论洞察Agent** | 对评论文本进行情感分析（极性+主观性），输出关键词/主题摘要，将文本洞察转化为结构化指标 |
-| **决策智能Agent**           | 以分析摘要+预测结果+NLP洞察为输入，结合电商业务知识推理，输出商业建议与What-if答案 |
-| **协调器Agent**             | 解析用户问题，规划多步分析流程，将子任务分派给相应Agent，汇总最终回答 |
+| **可视化Agent**            | 根据分析结果，自动选择合适图表类型（折线图、柱状图、热力图、地理图、词云等），生成并保存图片文件                                                        |
+| **NLP /** **评论洞察Agent** | 对评论文本进行情感分析（极性+主观性），输出关键词/主题摘要，将文本洞察转化为结构化指标                                                            |
+| **决策智能Agent**           | 以分析摘要+预测结果+NLP洞察为输入，结合电商业务知识推理，输出商业建议与What-if答案                                                         |
+| **协调器Agent**            | 解析用户问题，规划多步分析流程，将子任务分派给相应Agent，汇总最终回答                                                                   |
+
 
 ---
 
@@ -150,14 +158,16 @@
 
 系统需自动生成并展示**不少于** **6** **种**不同类型的可视化图表（多表数据提供更丰富的可视化可能性）：
 
-| 序号 | 图表类型                 | 展示要求                                                     |
-| ---- | ------------------------ | ------------------------------------------------------------ |
-| 1    | **时间序列折线图**       | 基于 mv_monthly_sales 构建月度销售额趋势，叠加未来6周预测曲线及置信区间 |
-| 2    | **地理热力图/气泡图**    | 基于 mv_state_sales 和 geolocation 表绘制巴西各州销售额、订单量分布 |
-| 3    | **柱状图/条形图**        | 各州客单价对比、Top 品类销售额、支付方式频率，均优先从预聚合视图取数 |
-| 4    | **热力图/矩阵图**        | 支付方式 × 分期数交叉矩阵，或品类 × 平均评分矩阵             |
-| 5    | **散点图/气泡图**        | 商品重量 vs 运费散点图，气泡大小表示订单量，颜色区分配送状态 |
-| 6    | **词云或文本主题可视化** | 好评与差评评论文本的对比词云                                 |
+
+| 序号  | 图表类型           | 展示要求                                             |
+| --- | -------------- | ------------------------------------------------ |
+| 1   | **时间序列折线图**    | 基于 mv_monthly_sales 构建月度销售额趋势，叠加未来6周预测曲线及置信区间    |
+| 2   | **地理热力图/气泡图**  | 基于 mv_state_sales 和 geolocation 表绘制巴西各州销售额、订单量分布 |
+| 3   | **柱状图/条形图**    | 各州客单价对比、Top 品类销售额、支付方式频率，均优先从预聚合视图取数             |
+| 4   | **热力图/矩阵图**    | 支付方式 × 分期数交叉矩阵，或品类 × 平均评分矩阵                      |
+| 5   | **散点图/气泡图**    | 商品重量 vs 运费散点图，气泡大小表示订单量，颜色区分配送状态                 |
+| 6   | **词云或文本主题可视化** | 好评与差评评论文本的对比词云                                   |
+
 
 **仪表板集成**：最终系统应在一个 Web 页面中整合对话输入框、分析结论、可视化图表及决策建议，形成完整的Agentic BI 体验。
 
@@ -195,14 +205,16 @@ AgenticBI_Final_Olist/
 
 ## 八、评分标准
 
-| 评分项                            | 分值   | 要求说明                                                     |
-| --------------------------------- | ------ | ------------------------------------------------------------ |
-| 数据预处理与多表查询准确性        | 20     | 正确完成9张表的清洗与关联；预聚合视图创建正确、可刷新；Agent 能根据问题准确命中/回退查询 |
-| 预聚合视图设计与性能优化          | **10** | **至少实现4个预聚合视图，Agent查询策略体现出优先使用视图的逻辑；报告中有性能对比截图，响应时间有显著改善** |
-| Agentic BI 系统设计与多智能体协作 | 20     | 4+ Agent 角色设计合理、协作流程正确；多表查询与视图调度策略清晰有效 |
-| 分析任务的完整度与深度            | 20     | 完整实现描述、诊断、预测、规范性四层分析；决策建议具体、具备业务可操作性 |
-| 可视化质量与仪表板交互            | 15     | 图表种类≥6种、美观清晰；Web 界面可交互，布局合理，支持多轮问答 |
-| 报告与演示质量                    | 15     | 报告结构完整、阐述清晰；演示突出预聚合视图加速等亮点，时间控制得当 |
+
+| 评分项                    | 分值     | 要求说明                                                       |
+| ---------------------- | ------ | ---------------------------------------------------------- |
+| 数据预处理与多表查询准确性          | 20     | 正确完成9张表的清洗与关联；预聚合视图创建正确、可刷新；Agent 能根据问题准确命中/回退查询           |
+| 预聚合视图设计与性能优化           | **10** | **至少实现4个预聚合视图，Agent查询策略体现出优先使用视图的逻辑；报告中有性能对比截图，响应时间有显著改善** |
+| Agentic BI 系统设计与多智能体协作 | 20     | 4+ Agent 角色设计合理、协作流程正确；多表查询与视图调度策略清晰有效                     |
+| 分析任务的完整度与深度            | 20     | 完整实现描述、诊断、预测、规范性四层分析；决策建议具体、具备业务可操作性                       |
+| 可视化质量与仪表板交互            | 15     | 图表种类≥6种、美观清晰；Web 界面可交互，布局合理，支持多轮问答                         |
+| 报告与演示质量                | 15     | 报告结构完整、阐述清晰；演示突出预聚合视图加速等亮点，时间控制得当                          |
+
 
 **额外加分（≤10** **分）**：
 
@@ -225,3 +237,4 @@ AgenticBI_Final_Olist/
 - “2017年哪个州的销售额最高？交付准时率是多少？哪种支付方式最受欢迎？”
 - “为什么某些州的平均配送时长显著高于全国均值？哪些卖家的差评率最高？”
 - “如何降低巴西东北部地区的高退货率？请给出具体的运营改进方案。”
+
