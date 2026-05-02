@@ -18,16 +18,3 @@ def get_llm() -> ChatDeepSeek:
         model="deepseek-v4-flash",
         extra_body={"thinking": {"type": "disabled"}},
     )
-
-
-def build_agent(*, tools, middleware=None, system_prompt: str | None = None):
-    model = get_llm()
-    kwargs = {
-        "model": model,
-        "tools": tools,
-    }
-    if middleware is not None:
-        kwargs["middleware"] = middleware
-    if system_prompt:
-        kwargs["system_prompt"] = system_prompt
-    return create_agent(**kwargs)

@@ -1,8 +1,13 @@
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 import time
 from typing import Any
+
+_sql_agent_dir = Path(__file__).resolve().parents[1]
+if str(_sql_agent_dir) not in sys.path:
+    sys.path.insert(0, str(_sql_agent_dir))
 
 from llm import get_llm
 from tools.rewrite_to_query import build_rewrite_to_query_tool
@@ -250,8 +255,8 @@ def build_analysis_text(result: dict[str, Any]) -> str:
 
 
 if __name__ == "__main__":
-    project_root = Path(__file__).resolve().parents[2]
-    output_dir = project_root / "agents" / "sql_agent" / "test" / "eval_outputs"
+    # 与本脚本同目录下的 eval_outputs，避免用 parents[n] 误判仓库根路径
+    output_dir = Path(__file__).resolve().parent / "eval_outputs"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     result = run_eval(rounds=5, verbose=True)

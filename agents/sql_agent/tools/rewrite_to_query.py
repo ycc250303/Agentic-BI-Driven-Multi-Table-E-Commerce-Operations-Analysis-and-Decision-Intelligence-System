@@ -2,7 +2,7 @@ from pathlib import Path
 from functools import lru_cache
 from typing import Any
 
-from langchain.tools import StructuredTool
+from langchain_core.tools import StructuredTool
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
@@ -93,5 +93,20 @@ def build_rewrite_to_query_tool(model):
     )
 
 
-def build_tools(model):
-    return [build_rewrite_to_query_tool(model)]
+# 本地演示用示例问题（运行：在 agents/sql_agent 目录下 python -m tools.rewrite_to_query）
+DEMO_QUESTION = "最近12个月的月度GMV趋势如何？"
+
+
+if __name__ == "__main__":
+    import sys
+
+    SQL_AGENT_DIR = Path(__file__).resolve().parents[1]
+    if str(SQL_AGENT_DIR) not in sys.path:
+        sys.path.insert(0, str(SQL_AGENT_DIR))
+
+    from llm import get_llm
+
+    print("===== 演示：rewrite_to_query_tool =====")
+    print(f"输入: {DEMO_QUESTION}\n")
+    tool = build_rewrite_to_query_tool(get_llm())
+    print(tool.invoke({"query": DEMO_QUESTION}))

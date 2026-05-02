@@ -12,7 +12,48 @@
 6. 输出格式遵循“当前工具/子任务”的专用提示词约束，不同工具的输出结构可以不同。
 7. 不输出性能对比分析、执行计划解读或“视图前后耗时比较”内容。
 
-## 2) 视图命中优先决策规则（必须执行）
+## 2) 术语与关键指标（防误解）
+
+以下为巴西 Olist 多表场景下易被模型混淆的说法；生成 SQL 与解释时请与本库字段、视图口径对齐。**本仓库数据是历史快照（约 2016-09～2018-10），与「当前系统日期」无关，**。
+
+### 2.1 分析层次（勿混用）
+
+- **描述性分析**：发生了什么——汇总、排名、占比、趋势。
+- **诊断性分析**：为什么——下钻关联、对比均值、定位异常维度（州/卖家/品类等）。
+- **预测性分析**：未来区间——时间序列预测需明确历史粒度（如按月）与预测步长。
+- **规范性分析 / 决策智能**：怎么做——基于前述结果给出可执行策略；不等同于再多跑几条 SQL。
+
+### 2.2 关键指标（与本库视图一致）
+
+- **GMV / 成交额 / 销售额（默认口径）**：若无特殊说明，与本项目预聚合视图一致，按 **`price + freight_value`（含运费）** 聚合得到的 **`total_gmv`**。勿默认成不含税或仅 `payment_value`。
+- **订单量 `total_orders`**：订单笔数；跨表统计时常用 **`COUNT(DISTINCT order_id)`** 防重复。
+- **客单价 `avg_basket`**：平均每单金额（已在 `mv_monthly_sales` 等视图中预聚合）。**勿与**「订单行上的 `price` 均值」「SKU 均价」混为一谈。
+- **总运费 `total_freight`**：运费金额汇总维度，与 GMV 并存时使用视图字段名。
+- **去重客户数 `unique_customers`**：某统计粒度下的独立客户数，不是订单数。
+- **准时率 `on_time_rate`**：本库视图中为 **0–1 小数比率**（准时单数 / 订单数），**不是**默认的 0–100 整数百分比；仅在用户明确要求「百分比展示」时再换算并在解释中标注口径。
+- **平均配送天数 `avg_delivery_days`**：配送耗时类指标；与 **`on_time_rate`**、**`delayed_orders`**（延迟订单数）同属 `mv_delivery_perf`，按需选用。
+- **支付交易笔数 `total_transactions`**：支付分布视图中的交易次数；**「最受欢迎支付方式」** 通常按该字段或等价频次降序，勿与 GMV 最大混淆。
+- **平均分期数 `avg_installments`**：按支付方式等粒度预聚合的平均分期期数。
+- **成交均价 `avg_price`**：常见于品类视图，指品类维度下的均价，不是全平台客单价。
+- **评分 `avg_review_score`**：卖家绩效视图中的平均评论得分；差评诊断需结合 `order_reviews` 与业务定义的「差评」阈值。
+
+### 2.3 时间与粒度（易错）
+
+- **`year_month`**：一般为 **`YYYY-MM`** 字符串。过滤「某年」可用 **`LIKE 'YYYY-%'`**、**`BETWEEN 'YYYY-01' AND 'YYYY-12'`** 等与字符串比较的合法写法，保持与字段类型一致。
+- **「默认最近 12 个月」**：必须在 SQL 中写出对 **`year_month`** 或订单时间戳的 **WHERE 条件**，**不能**仅在解释里声称已限制而查询未过滤；滚动窗口如何锚定见本节开头（历史快照勿单独依赖 `CURDATE()`）。
+- **视图粒度 vs 输出粒度**：例如 `mv_delivery_perf` 为 **年-月 × 州**；用户要「各州趋势」时需保留 **`year_month`**；若只做「各州汇总」才在视图之上 **`GROUP BY customer_state`**。勿用错误聚合替代时间明细。
+- **配送相关时间**：下单、预计送达、实际送达等字段不同；延误与准时口径以视图/README 定义为准，勿臆造字段。
+
+### 2.4 其他易误解用语
+
+- **预聚合视图 / Pre-Aggregation**：加速用的汇总表；**能命中则优先查视图**，不是「缓存」或「临时表」的同义词。
+- **回退原始表**：仅当缺明细字段、缺维度组合或缺原子指标时使用；**不等于**「优先 JOIN 更多表以展示能力」。
+- **散点分析（重量/体积 vs 运费）**：通常需要 **订单行级或明细级** 的 `freight_value` 与商品尺寸；避免在无必要时随意 **`GROUP BY product_id`** 改变分析单位，除非问题明确要求商品粒度聚合。
+- **情感分析 / NLP**：针对评论文本；输出的是结构化情绪或主题标签，**不是** SQL 聚合字段名。
+- **KPI**：关键绩效指标的统称，**不是**数据库里的某一列；需映射到具体字段（如 `total_gmv`、`on_time_rate`）。
+- **退货率**：作业附录可出现；本数据集若无直接退货字段，需在解释中说明口径或改用可观测代理指标，**禁止编造列名**。
+
+## 3) 视图命中优先决策规则（必须执行）
 
 对每个问题先抽取 4 类信息：`指标`、`维度`、`时间粒度`、`过滤条件`，再按以下顺序路由：
 
@@ -24,47 +65,21 @@
    - 需要视图不存在的维度组合（如重量 × 运费散点）；
    - 需要视图没有的原子指标（如评论文本关键词、地理经纬度级分析）。
 
-## 3) MySQL SQL 生成规范
+## 4) MySQL SQL 生成规范
 
 1. 仅生成 **MySQL 兼容** SQL（使用 `DATE_FORMAT`、`YEAR`、`MONTH` 等 MySQL 函数）。
-2. 默认添加时间过滤，避免全表/全视图无限扫描。
-3. 聚合口径清晰：在解释中注明 GMV 是否含运费（本库中多数 GMV 口径为 `price + freight_value`）。
-4. 排名类问题必须包含 `ORDER BY ... DESC` 与合理 `LIMIT`。
-5. 比率计算防止除零：使用 `NULLIF(denominator, 0)`。
-6. 非必要不使用 `SELECT *`，明确列名。
-7. 若用户未指定时间范围，默认返回最近 12 个月并在解释中声明。
+2. **`SELECT` 语句文本必须为单行**：关键字与子句之间仅用空格分隔；**不要**在语句中插入换行符、缩进换行或字面量 `\n`，以免破坏 JSON/工具解析或评测规范化。
+3. 默认添加时间过滤，避免全表/全视图无限扫描；滚动窗口锚定规则见 **§2 开头**。
+4. 聚合口径清晰：在解释中注明 GMV 是否含运费（本库中多数 GMV 口径为 `price + freight_value`）。
+5. 排名类问题必须包含 `ORDER BY ... DESC` 与合理 `LIMIT`。
+6. 比率计算防止除零：使用 `NULLIF(denominator, 0)`。
+7. 非必要不使用 `SELECT *`，明确列名。
 
-## 4) 回退到原始表时的 JOIN 规范
+## 5) 回退到原始表时的 JOIN 规范
 
-- 订单主链路：
-  - `orders o`
-  - `JOIN order_items oi ON o.order_id = oi.order_id`
-  - `JOIN customers c ON o.customer_id = c.customer_id`
-  - `JOIN sellers s ON oi.seller_id = s.seller_id`
-  - `JOIN products p ON oi.product_id = p.product_id`
-  - `LEFT JOIN product_category_name_translation pct ON p.product_category_name = pct.product_category_name`
-  - `LEFT JOIN payments pay ON o.order_id = pay.order_id`
-  - `LEFT JOIN order_reviews r ON o.order_id = r.order_id`
+- 订单主链路按需在 `FROM` 中串联，**生成时写成单行**（示例骨架）：`FROM orders o JOIN order_items oi ON o.order_id = oi.order_id JOIN customers c ON o.customer_id = c.customer_id JOIN sellers s ON oi.seller_id = s.seller_id JOIN products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation pct ON p.product_category_name = pct.product_category_name LEFT JOIN payments pay ON o.order_id = pay.order_id LEFT JOIN order_reviews r ON o.order_id = r.order_id`。
 - 仅在需要城市/地理分析时连接 `geolocation`。
 - 避免重复计数：涉及订单数时优先 `COUNT(DISTINCT o.order_id)`。
-
-## 5) 输出格式约束（按子任务生效）
-
-本文件是通用核心规则，不强制唯一输出格式。请按当前子任务选择对应格式：
-
-- 若当前任务是**查询重写工具**，输出格式以 `rewrite_to_query_tool.md` 为准。
-- 若当前任务是**SQL 生成工具**，使用以下 JSON 结构。
-
-返回 JSON 结构：
-
-```json
-{
-  "analysis_grain": "例如: year_month + customer_state",
-  "used_tables": ["mv_state_sales"],
-  "query_sql": "SELECT ...",
-  "result_explanation": "说明口径、过滤条件、视图命中原因与业务含义"
-}
-```
 
 ## 6) 错误与边界处理
 
