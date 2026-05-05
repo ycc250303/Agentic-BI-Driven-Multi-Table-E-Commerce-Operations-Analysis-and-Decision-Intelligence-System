@@ -1,0 +1,32 @@
+{
+  "mv_monthly_sales": {
+    "raw_join": 801.1642999999822,
+    "raw_correlated": 1442.0874000006734,
+    "view": 791.7465999998967
+  },
+  "mv_state_sales": {
+    "raw_join": 1050.1334999999017,
+    "raw_correlated": 1165.7243999998173,
+    "view": 1023.0909000001702
+  },
+  "mv_category_sales": {
+    "raw_join": 895.4161999999997,
+    "raw_correlated": 3663.0451999999423,
+    "view": 973.9863000004334
+  },
+  "mv_delivery_perf": {
+    "raw_join": 386.6447000000335,
+    "raw_correlated": 399.4463999997606,
+    "view": 394.4493999997576
+  },
+  "mv_seller_perf": {
+    "raw_join": 3835.9996999997747,
+    "raw_correlated": 5718.243500000426,
+    "view": 4013.7719000003926
+  },
+  "mv_payment_dist": {
+    "raw_join": 653.0881999997291,
+    "raw_correlated": 1107.695199999398,
+    "view": 604.6593999999459
+  }
+}
