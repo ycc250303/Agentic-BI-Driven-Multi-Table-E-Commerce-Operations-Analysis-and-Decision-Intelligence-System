@@ -16,3 +16,6 @@ PyMySQL
 # 项目其它脚本（如 utils/load_data_to_mysql.py、utils/refresh_views.py）
 # =============================================================================
 mysql-connector-python
+
+# 预聚合性能对比作图（utils/benchmark_preagg_vs_raw.py）
+matplotlib

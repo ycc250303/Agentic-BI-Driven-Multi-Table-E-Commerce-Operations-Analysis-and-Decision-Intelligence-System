@@ -6,22 +6,12 @@ from typing import Callable
 
 import pymysql
 
+from db_env import pymysql_config
 
 # 项目路径与输入文件位置
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 SCHEMA_SQL = ROOT_DIR / "utils" / "origin_table.sql"
-
-# 远程 MySQL 连接信息
-DB_CONFIG = {
-    "host": "111.229.81.45",
-    "port": 3306,
-    "user": "agentic_bi",
-    "password": "agentic_bi",
-    "database": "agentic_bi",
-    "charset": "utf8mb4",
-    "autocommit": False,
-}
 
 BATCH_SIZE = 5000
 
@@ -327,7 +317,11 @@ def load_single_table(connection, table_conf: dict) -> None:
 
 def main() -> None:
     print("连接数据库并执行建表脚本...")
-    connection = pymysql.connect(**DB_CONFIG)
+    try:
+        db_cfg = pymysql_config(autocommit=False)
+    except ValueError as e:
+        raise SystemExit(f"[ERROR] {e}") from e
+    connection = pymysql.connect(**db_cfg)
     try:
         with connection.cursor() as cursor:
             execute_schema_sql(cursor)
