@@ -9,27 +9,19 @@
 4. 输出详细的执行日志
 
 使用方法：
+    设置 AGENTIC_BI_DB_* 环境变量（见项目 README）后执行：
     python refresh_views.py
 """
 
 import mysql.connector
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
+
+from db_env import mysql_connector_config
 
 # 项目路径
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SQL_FILE = ROOT_DIR / "utils" / "create_materialized_views.sql"
-
-# 数据库连接配置（与load_data_to_mysql.py保持一致）
-DB_CONFIG = {
-    "host": "111.229.81.45",
-    "port": 3306,
-    "user": "agentic_bi",
-    "password": "agentic_bi",
-    "database": "agentic_bi",
-    "charset": "utf8mb4",
-    "autocommit": False,
-}
 
 
 def parse_sql_file(sql_file: Path) -> List[str]:
@@ -178,10 +170,16 @@ def main():
 
     # 连接数据库
     print()
-    print(f"[INFO] 连接数据库: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
+    try:
+        db_cfg = mysql_connector_config(autocommit=False)
+    except ValueError as e:
+        print(f"[ERROR] {e}")
+        return
+
+    print(f"[INFO] 连接数据库: {db_cfg['host']}:{db_cfg['port']}/{db_cfg['database']}")
 
     try:
-        connection = mysql.connector.connect(**DB_CONFIG)
+        connection = mysql.connector.connect(**db_cfg)
         print("[SUCCESS] 数据库连接成功")
     except Exception as e:
         print(f"[ERROR] 数据库连接失败: {str(e)}")

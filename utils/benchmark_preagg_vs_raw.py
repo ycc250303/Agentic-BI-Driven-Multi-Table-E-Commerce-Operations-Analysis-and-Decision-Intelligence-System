@@ -9,6 +9,7 @@
   - view：SELECT * FROM mv_*
 
 用法：
+  须先设置 AGENTIC_BI_DB_HOST / PORT / USER / PASSWORD / NAME（与 README 一致）。
   python utils/benchmark_preagg_vs_raw.py
   python utils/benchmark_preagg_vs_raw.py --warmup 1 --runs 5 --out docs/figures/preagg_benchmark.png
 """
@@ -17,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import statistics
 import sys
 import time
@@ -27,19 +27,9 @@ from typing import Dict, List, Optional
 
 import mysql.connector
 
+from db_env import mysql_connector_config
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
-
-
-def _db_config_from_env() -> dict:
-    return {
-        "host": os.getenv("AGENTIC_BI_DB_HOST", "111.229.81.45"),
-        "port": int(os.getenv("AGENTIC_BI_DB_PORT", "3306")),
-        "user": os.getenv("AGENTIC_BI_DB_USER", "agentic_bi"),
-        "password": os.getenv("AGENTIC_BI_DB_PASSWORD", "agentic_bi"),
-        "database": os.getenv("AGENTIC_BI_DB_NAME", "agentic_bi"),
-        "charset": "utf8mb4",
-        "autocommit": True,
-    }
 
 
 ORDER_STATUS_IN = "('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')"
@@ -350,7 +340,12 @@ def main() -> int:
     p.add_argument("--skip-correlated", action="store_true", help="跳过相关子查询用例（仅 JOIN vs 视图）")
     args = p.parse_args()
 
-    cfg = _db_config_from_env()
+    try:
+        cfg = mysql_connector_config(autocommit=True)
+    except ValueError as e:
+        print(f"[ERROR] {e}", file=sys.stderr)
+        return 1
+
     view_names = [
         "mv_monthly_sales",
         "mv_state_sales",
