@@ -19,3 +19,11 @@ mysql-connector-python
 
 # 预聚合性能对比作图（utils/benchmark_preagg_vs_raw.py）
 matplotlib
+
+# =============================================================================
+# agents/viz_agent — 可视化 Agent（pandas / seaborn / wordcloud）
+# =============================================================================
+pandas
+seaborn
+wordcloud
+pillow
