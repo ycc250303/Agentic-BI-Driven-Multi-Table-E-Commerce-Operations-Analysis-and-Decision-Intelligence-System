@@ -73,6 +73,9 @@ python agents/viz_agent/run.py --csv path/to/result.csv --query "各州销售额
 
 # 使用 execute_sql 的 JSON 文件（通常内含列画像，利于 LLM）
 python agents/viz_agent/run.py --execute-json path/to/exec.json --query "支付方式分布"
+
+# 串联：NL → sql_agent → 结果 CSV → 可视化（需 MySQL、AGENTIC_BI_DB_*、DEEPSEEK_API_KEY）
+python agents/viz_agent/run.py --sql-then-viz --query "2017 年各州订单量 TOP10"
 ```
 
 ---

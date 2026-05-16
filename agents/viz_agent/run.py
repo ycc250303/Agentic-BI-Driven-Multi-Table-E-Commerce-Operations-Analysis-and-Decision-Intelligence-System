@@ -338,7 +338,25 @@ if __name__ == "__main__":
         help="用户业务问题（用于图表选型）",
     )
     parser.add_argument("--no-llm", action="store_true", help="仅用启发式，不调用大模型")
+    parser.add_argument(
+        "--sql-then-viz",
+        action="store_true",
+        help="先运行 sql_agent 全链路（需 MySQL 与 AGENTIC_BI_DB_*），再对本条查询结果做可视化",
+    )
     args = parser.parse_args()
+
+    if args.sql_then_viz and (bool(args.csv) or bool(args.execute_json)):
+        print("--sql-then-viz 不能与 --csv / --execute-json 同时使用", file=sys.stderr)
+        sys.exit(2)
+
+    if args.sql_then_viz:
+        try:
+            out = run_sql_then_visualize(args.query, use_llm=not args.no_llm)
+        except Exception as e:
+            print(json.dumps({"ok": False, "error_message": str(e)}, ensure_ascii=False), file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        sys.exit(0 if out.get("visualization", {}).get("ok") else 1)
 
     ex_json = ""
     if args.execute_json:

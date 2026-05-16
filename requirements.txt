@@ -4,7 +4,7 @@
 langchain
 langchain-core
 langchain-deepseek
-pydantic
+pydantic>=2.11.0  # LangChain 调用 model_dump_json(ensure_ascii=...)；2.8 及以下会 TypeError
 python-dotenv
 
 # =============================================================================
