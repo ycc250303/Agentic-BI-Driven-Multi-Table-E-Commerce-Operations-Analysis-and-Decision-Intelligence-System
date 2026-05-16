@@ -1,5 +1,5 @@
 """
-连接 MySQL 执行 generate_sql_tool 输出的 JSON 中的 query_sql，返回结构化结果摘要。
+连接 MySQL 执行 generate_sql_tool 输出的 JSON 中的 query_sqls（可多条 SELECT），返回结构化结果摘要。
 
 编排上应在链中先跑 check_sql_tool；本工具不重复其语法/只读校验（仅做空 query 防护）。
 单独调用本工具时请自行保证输入已通过 check_sql_tool。
@@ -25,8 +25,8 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from pymysql.cursors import DictCursor
 
-from tools.check_sql import normalize_sql
 from tools.generate_sql import GenerateSqlOutput
+from tools.sql_format_rules import normalize_sql
 
 
 def _db_config_from_env() -> dict[str, Any]:
@@ -66,19 +66,22 @@ def _query_result_csv_dir() -> Path:
     return (_sql_agent_dir / "query_results").resolve()
 
 
-def _write_query_result_csv(
-    columns: list[str], rows: list[dict[str, Any]]
-) -> Path:
-    """结果写入 CSV，文件名为可读时间戳（精确到秒）。冲突时追加 _1、_2…"""
-    dest_dir = _query_result_csv_dir()
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    # 例：2026-05-02 20-47-29（年月日、时分秒各段内用“-”，日与时刻之间空格）
-    ts = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-    path = dest_dir / f"{ts}.csv"
+def _unique_csv_path(dest_dir: Path, stem: str) -> Path:
+    """stem 不含 .csv；冲突时追加 _1、_2…"""
+    path = dest_dir / f"{stem}.csv"
     n = 1
     while path.exists():
-        path = dest_dir / f"{ts}_{n}.csv"
+        path = dest_dir / f"{stem}_{n}.csv"
         n += 1
+    return path
+
+
+def _write_query_result_csv(
+    columns: list[str], rows: list[dict[str, Any]], *, file_stem: str
+) -> Path:
+    dest_dir = _query_result_csv_dir()
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    path = _unique_csv_path(dest_dir, file_stem)
     with path.open("w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
         writer.writeheader()
@@ -127,42 +130,50 @@ class ColumnProfile(BaseModel):
     )
 
 
-class ExecuteSqlOutput(BaseModel):
-    ok: bool = Field(description="整体是否成功拿到结果集")
-    sql_syntax_ok: bool = Field(
-        description="输入侧：JSON 可解析且 query_sql 非空。SQL 规则校验由链路上的 check_sql_tool 完成，本工具不重复"
-    )
-    executed: bool = Field(description="是否已在数据库上执行")
+class ExecuteSqlResultItem(BaseModel):
+    """单条 SELECT 的执行结果与对应 CSV。"""
+
+    index: int = Field(description="从 0 起的 SQL 序号")
+    ok: bool = Field(description="本条是否成功返回并写出 CSV")
+    row_count_returned: int = Field(default=0, description="本条返回行数")
+    truncated: bool = Field(default=False, description="是否因行数上限截断")
+    result_csv_path: str = Field(default="", description="本条结果 CSV 绝对路径")
+    data_summary_zh: str = Field(default="", description="本条中文摘要")
+    execution_time_ms: float = Field(default=0.0, description="本条数据库执行耗时（毫秒）")
     error_stage: str | None = Field(
         default=None,
-        description="失败阶段：parse_input | sql_local | env_config | db_connect | db_execute | csv_write",
+        description="失败阶段：db_execute | csv_write",
     )
-    error_message: str | None = Field(default=None, description="错误信息（中文简述）")
+    error_message: str | None = Field(default=None, description="本条错误简述")
 
-    result_explanation: str = Field(default="", description="来自输入的业务口径说明")
-    query_sql: str = Field(default="", description="实际执行的 SQL（规范化后）")
 
-    row_count_returned: int = Field(default=0, description="本次返回的行数")
-    truncated: bool = Field(default=False, description="是否因行数上限截断")
+class ExecuteSqlOutput(BaseModel):
+    ok: bool = Field(description="全部 SQL 是否均成功")
+    executed: bool = Field(description="是否至少有一次已在数据库上执行")
+    error_stage: str | None = Field(
+        default=None,
+        description="整体失败阶段：parse_input | sql_local | env_config | db_connect",
+    )
+    error_message: str | None = Field(
+        default=None, description="整体或聚合错误信息（任一条失败时会汇总）"
+    )
 
-    columns: list[str] = Field(default_factory=list, description="结果列顺序")
-    column_profiles: list[ColumnProfile] = Field(
-        default_factory=list, description="列级摘要，便于可视化映射字段类型"
+    results: list[ExecuteSqlResultItem] = Field(
+        default_factory=list, description="与 query_sqls 顺序一一对应"
     )
-    result_csv_filename: str = Field(
-        default="",
-        description="查询结果 CSV 文件名（如 2026-05-02 20-47-29.csv）；无文件时为空",
+
+    row_count_returned: int = Field(
+        default=0, description="各条返回行数之和；仅一条时即该行数"
     )
-    result_csv_path: str = Field(
-        default="",
-        description="查询结果 CSV 绝对路径；未写入时为空",
-    )
+    truncated: bool = Field(default=False, description="任一条发生截断则为 true")
 
     data_summary_zh: str = Field(
         default="",
-        description="面向人与下游 LLM 的简短中文数据摘要",
+        description="各条摘要合并后的中文概述",
     )
-    execution_time_ms: float = Field(default=0.0, description="数据库执行耗时（毫秒）")
+    execution_time_ms: float = Field(
+        default=0.0, description="各条 execution_time_ms 之和"
+    )
 
 
 def _profile_columns(
@@ -248,128 +259,175 @@ class ExecuteSqlRunner:
         except Exception as e:
             out = ExecuteSqlOutput(
                 ok=False,
-                sql_syntax_ok=False,
                 executed=False,
                 error_stage="parse_input",
                 error_message=f"无法解析为 GenerateSqlOutput：{e}",
-                query_sql="",
             )
-            return out.model_dump_json(indent=2, ensure_ascii=False)
+            return out.model_dump_json(
+                indent=2, ensure_ascii=False, exclude_none=True, exclude_defaults=True
+            )
 
-        sql_raw = payload.query_sql.strip()
-        sql = normalize_sql(sql_raw)
-        if not sql_raw:
+        sql_list = payload.normalized_sqls()
+        if not sql_list or any(not s for s in sql_list):
             out = ExecuteSqlOutput(
                 ok=False,
-                sql_syntax_ok=False,
                 executed=False,
                 error_stage="sql_local",
-                error_message="query_sql 为空，请确保链路中已运行 check_sql_tool 且 generate_sql 输出有效",
-                result_explanation=payload.result_explanation,
-                query_sql="",
+                error_message="query_sqls 为空或含空字符串，请确保链路中已运行 check_sql_tool 且 generate_sql 输出有效",
             )
-            return out.model_dump_json(indent=2, ensure_ascii=False)
+            return out.model_dump_json(
+                indent=2, ensure_ascii=False, exclude_none=True, exclude_defaults=True
+            )
 
         try:
             db_cfg = self._resolve_db_config()
         except ValueError as e:
             out = ExecuteSqlOutput(
                 ok=False,
-                sql_syntax_ok=True,
                 executed=False,
                 error_stage="env_config",
                 error_message=str(e),
-                result_explanation=payload.result_explanation,
-                query_sql=sql,
             )
-            return out.model_dump_json(indent=2, ensure_ascii=False)
+            return out.model_dump_json(
+                indent=2, ensure_ascii=False, exclude_none=True, exclude_defaults=True
+            )
 
+        batch_ts = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        n_sql = len(sql_list)
+        results: list[ExecuteSqlResultItem] = []
         conn = None
-        t0 = time.perf_counter()
-        rows_out: list[dict[str, Any]] = []
-        truncated = False
-        columns: list[str] = []
+        any_executed = False
 
         try:
             conn = pymysql.connect(**db_cfg)
+            any_executed = True
             with conn.cursor() as cursor:
-                cursor.execute(sql)
-                columns = [d[0] for d in (cursor.description or ())]
-                batch = cursor.fetchmany(self.max_rows + 1)
-                if len(batch) > self.max_rows:
-                    truncated = True
-                    batch = batch[: self.max_rows]
-                for raw in batch:
-                    row = {k: _json_safe_value(raw[k]) for k in raw}
-                    rows_out.append(row)
+                for idx, sql_raw in enumerate(sql_list):
+                    sql = normalize_sql(sql_raw)
+                    t0 = time.perf_counter()
+                    rows_out: list[dict[str, Any]] = []
+                    truncated = False
+                    columns: list[str] = []
+
+                    try:
+                        cursor.execute(sql)
+                        columns = [d[0] for d in (cursor.description or ())]
+                        batch = cursor.fetchmany(self.max_rows + 1)
+                        if len(batch) > self.max_rows:
+                            truncated = True
+                            batch = batch[: self.max_rows]
+                        for raw in batch:
+                            row = {k: _json_safe_value(raw[k]) for k in raw}
+                            rows_out.append(row)
+                    except Exception as e:
+                        elapsed = (time.perf_counter() - t0) * 1000
+                        results.append(
+                            ExecuteSqlResultItem(
+                                index=idx,
+                                ok=False,
+                                execution_time_ms=elapsed,
+                                error_stage="db_execute",
+                                error_message=f"执行失败：{e}",
+                            )
+                        )
+                        continue
+
+                    elapsed = (time.perf_counter() - t0) * 1000
+                    profiles = _profile_columns(rows_out, columns)
+                    summary = _build_summary_zh(
+                        len(rows_out), truncated, columns, profiles, elapsed
+                    )
+                    stem = (
+                        f"{batch_ts}_sql{idx + 1}"
+                        if n_sql > 1
+                        else batch_ts
+                    )
+                    try:
+                        csv_path = _write_query_result_csv(
+                            columns, rows_out, file_stem=stem
+                        )
+                    except OSError as e:
+                        results.append(
+                            ExecuteSqlResultItem(
+                                index=idx,
+                                ok=False,
+                                row_count_returned=len(rows_out),
+                                truncated=truncated,
+                                data_summary_zh=summary,
+                                execution_time_ms=elapsed,
+                                error_stage="csv_write",
+                                error_message=f"结果写入 CSV 失败：{e}",
+                            )
+                        )
+                        continue
+
+                    results.append(
+                        ExecuteSqlResultItem(
+                            index=idx,
+                            ok=True,
+                            row_count_returned=len(rows_out),
+                            truncated=truncated,
+                            result_csv_path=str(csv_path),
+                            data_summary_zh=summary
+                            + f" 明细已写入 CSV：{csv_path.name}。",
+                            execution_time_ms=elapsed,
+                        )
+                    )
         except Exception as e:
-            elapsed = (time.perf_counter() - t0) * 1000
-            err_stage = "db_connect" if conn is None else "db_execute"
-            err_msg = (
-                f"数据库连接失败：{e}"
-                if conn is None
-                else f"执行失败（可能含语法或权限错误）：{e}"
-            )
-            executed = conn is not None
             out = ExecuteSqlOutput(
                 ok=False,
-                sql_syntax_ok=True,
-                executed=executed,
-                error_stage=err_stage,
-                error_message=err_msg,
-                result_explanation=payload.result_explanation,
-                query_sql=sql,
-                execution_time_ms=elapsed,
+                executed=any_executed,
+                error_stage="db_connect" if conn is None else "db_execute",
+                error_message=(
+                    f"数据库连接失败：{e}"
+                    if conn is None
+                    else f"执行过程异常：{e}"
+                ),
+                results=results,
             )
-            return out.model_dump_json(indent=2, ensure_ascii=False)
+            return out.model_dump_json(
+                indent=2, ensure_ascii=False, exclude_none=True, exclude_defaults=True
+            )
         finally:
             if conn is not None:
                 conn.close()
 
-        elapsed = (time.perf_counter() - t0) * 1000
-        profiles = _profile_columns(rows_out, columns)
-        summary = _build_summary_zh(
-            len(rows_out), truncated, columns, profiles, elapsed
-        )
+        all_ok = bool(results) and all(r.ok for r in results)
+        err_msgs = [
+            f"[SQL#{r.index + 1}] {r.error_message}"
+            for r in results
+            if not r.ok and r.error_message
+        ]
+        agg_err = "；".join(err_msgs) if err_msgs else None
 
-        try:
-            csv_path = _write_query_result_csv(columns, rows_out)
-        except OSError as e:
-            out = ExecuteSqlOutput(
-                ok=False,
-                sql_syntax_ok=True,
-                executed=True,
-                error_stage="csv_write",
-                error_message=f"结果写入 CSV 失败：{e}",
-                result_explanation=payload.result_explanation,
-                query_sql=sql,
-                row_count_returned=len(rows_out),
-                truncated=truncated,
-                columns=columns,
-                column_profiles=profiles,
-                data_summary_zh=summary,
-                execution_time_ms=elapsed,
+        total_rows = sum(r.row_count_returned for r in results)
+        total_ms = sum(r.execution_time_ms for r in results)
+        any_trunc = any(r.truncated for r in results)
+
+        head = ""
+        if results:
+            head = (
+                f"共执行 {len(results)} 条 SQL。"
+                + (" 全部成功。" if all_ok else f" 存在失败：{agg_err}。")
             )
-            return out.model_dump_json(indent=2, ensure_ascii=False)
+        body_parts = [r.data_summary_zh for r in results if r.data_summary_zh]
+        data_summary_zh = head + " ".join(body_parts)
 
         out = ExecuteSqlOutput(
-            ok=True,
-            sql_syntax_ok=True,
-            executed=True,
-            error_stage=None,
-            error_message=None,
-            result_explanation=payload.result_explanation,
-            query_sql=sql,
-            row_count_returned=len(rows_out),
-            truncated=truncated,
-            columns=columns,
-            column_profiles=profiles,
-            result_csv_filename=csv_path.name,
-            result_csv_path=str(csv_path),
-            data_summary_zh=summary + f" 明细已写入 CSV：{csv_path.name}。",
-            execution_time_ms=elapsed,
+            ok=all_ok,
+            executed=any_executed,
+            error_stage=None if all_ok else "db_execute",
+            error_message=None if all_ok else (agg_err or "部分 SQL 未成功"),
+            results=results,
+            row_count_returned=total_rows,
+            truncated=any_trunc,
+            data_summary_zh=data_summary_zh,
+            execution_time_ms=total_ms,
         )
-        return out.model_dump_json(indent=2, ensure_ascii=False)
+
+        return out.model_dump_json(
+            indent=2, ensure_ascii=False, exclude_none=True, exclude_defaults=True
+        )
 
 
 def build_execute_sql_tool():
@@ -378,10 +436,10 @@ def build_execute_sql_tool():
         func=runner.invoke,
         name="execute_sql_tool",
         description=(
-            "在配置好环境变量后连接 MySQL，执行 generate_sql JSON 中的 query_sql。"
-            "查询明细写入 CSV（文件名：YYYY-MM-DD HH-MM-SS.csv，日与时刻之间空格），工具返回路径与摘要而非原始行。"
-            "可选环境变量 AGENTIC_BI_SQL_CSV_DIR 指定输出目录。"
-            "链式编排下须先调用 check_sql_tool；本工具不重复 SQL 规则校验。"
+            "在配置好环境变量后连接 MySQL，依次执行 generate_sql JSON 中的 query_sqls。"
+            "每条查询写入独立 CSV（单条时文件名为时间戳；多条时为 时间戳_sql1.csv、_sql2.csv…）。"
+            "返回 results 列表与聚合摘要。可选环境变量 AGENTIC_BI_SQL_CSV_DIR。"
+            "链式编排下须先调用 check_sql_tool。"
         ),
     )
 
@@ -401,7 +459,7 @@ if __name__ == "__main__":
     demo = GenerateSqlOutput(
         analysis_grain="month",
         used_tables=["mv_monthly_sales"],
-        query_sql="SELECT `year_month`, `total_gmv` FROM `mv_monthly_sales`",
+        query_sqls=["SELECT `year_month`, `total_gmv` FROM `mv_monthly_sales` LIMIT 5"],
         result_explanation="演示：取月度 GMV 前 5 行",
     ).model_dump_json(indent=2, ensure_ascii=False)
     print("===== 演示：execute_sql_tool =====")

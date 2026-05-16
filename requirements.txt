@@ -5,6 +5,7 @@ langchain
 langchain-core
 langchain-deepseek
 pydantic
+PyYAML
 python-dotenv
 
 # =============================================================================

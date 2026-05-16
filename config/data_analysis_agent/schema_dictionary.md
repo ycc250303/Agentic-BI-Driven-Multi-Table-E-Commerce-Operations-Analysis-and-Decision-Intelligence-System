@@ -142,6 +142,11 @@
   - `on_time_rate`
   - `delayed_orders`
 - 用途：配送时效、延迟诊断、准时率分析
+- **易错口径（生成 SQL 时必须遵守）**：
+  - **`on_time_rate` 为「该年-月 × 该州」单元内的比率**，不是全平台订单级比率。**禁止**用 `SELECT on_time_rate FROM mv_delivery_perf ... ORDER BY ... LIMIT 1`、`MAX(on_time_rate)` 或对 `on_time_rate` 做无权重 `GROUP BY` 冒充「全平台整体准时率」。
+  - **全平台整体准时率**：须在 `orders`（并满足 `order_status='delivered'`、签收与预计送达非空）上按订单计算 `SUM(准时) / COUNT(*)`。
+  - **各州延迟严重程度**：可在本视图对 `delayed_orders` 按 `customer_state` 做 `SUM` 后排序。
+  - **「某州 + 某年」单一准时率**：若仅用本视图，需先将该州该年的多个月份聚成一行（如 `AVG(on_time_rate)`，并注明“按月单元比率简单平均近似”）；更稳妥方式是回退 `orders` 做订单级计算。
 
 ### `mv_seller_perf`
 - 粒度：`year_month + seller_id + seller_state`
@@ -163,6 +168,7 @@
   - `avg_installments`
   - `total_value`
 - 用途：支付偏好与分期行为分析
+- **易错口径**：`avg_installments` 已是「月 × 支付方式」粒度均值。跨月汇总到「支付方式」时，应使用 **`SUM(avg_installments * total_transactions) / NULLIF(SUM(total_transactions), 0)`** 按交易笔数加权；不要直接用 `AVG(avg_installments)`。
 
 ---
 
