@@ -1,0 +1,41 @@
+rules:
+  - id: subject_inheritance_for_top_state_followups
+    when:
+      user_query_contains_all:
+        - "哪个州"
+        - "准时"
+        - "支付方式"
+      min_sub_questions: 3
+    assertions:
+      - type: inherit_or_filter
+        source_index: 0
+        target_indices: [1]
+        allowed_filter_keywords:
+          - "该州"
+          - "最高销售额州"
+          - "top州"
+    message: "检测到“先问最高州再追问指标”的句式，但后续子问题未显式继承 q1 作用域。"
+
+  - id: bad_review_category_metric_key
+    when:
+      user_query_contains_all:
+        - "差评"
+        - "品类"
+    assertions:
+      - type: metric_key_any_of
+        any_of:
+          - "bad_review_count"
+          - "bad_review_rate"
+    message: "“差评品类”未映射到 bad_review_count/bad_review_rate 指标键。"
+
+  - id: bad_review_category_forbid_avg_score
+    when:
+      user_query_contains_all:
+        - "差评"
+        - "品类"
+    assertions:
+      - type: query_for_sql_not_contains_any
+        phrases:
+          - "平均评分最低"
+          - "avg(review_score)"
+    message: "“差评品类”被转写为“平均评分最低”口径，应改为差评数量/差评率口径。"

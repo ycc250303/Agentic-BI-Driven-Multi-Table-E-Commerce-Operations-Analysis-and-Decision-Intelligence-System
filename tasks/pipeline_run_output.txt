@@ -1,0 +1,760 @@
+
+============================================================
+测试问题 1/7
+2017 年 GMV 是多少？按月和各州排名的趋势怎样？
+============================================================
+
+===== rewrite_to_query_tool 完成 =====
+{
+  "query_for_sql": "查询 2017 年全年 GMV 总额，以及 2017 年各月 GMV 趋势和各州 GMV 排名趋势。",
+  "sub_questions": [
+    {
+      "id": "q1",
+      "question_zh": "2017 年全年 GMV 总额",
+      "metric_key": "gmv_total",
+      "time_range": "2017",
+      "aggregation": "total"
+    },
+    {
+      "id": "q2",
+      "question_zh": "2017 年各月 GMV 趋势",
+      "metric_key": "gmv_total",
+      "dimensions": [
+        "year_month"
+      ],
+      "time_range": "2017",
+      "aggregation": "trend"
+    },
+    {
+      "id": "q3",
+      "question_zh": "2017 年各州 GMV 排名趋势",
+      "metric_key": "gmv_total",
+      "dimensions": [
+        "year_month",
+        "customer_state"
+      ],
+      "time_range": "2017",
+      "aggregation": "ranking"
+    }
+  ],
+  "hit_pre_agg_view": true,
+  "candidate_views": [
+    "mv_monthly_sales",
+    "mv_state_sales"
+  ],
+  "confidence": 0.95
+}
+
+===== validate_rewrite_plan_tool 完成 =====
+{
+  "plan_ok": true,
+  "brief": "通过：sub_questions 结构完整，规则引擎校验通过。"
+}
+
+===== generate_sql_tool 完成 =====
+{
+  "analysis_grain": "q1: 全年; q2: year_month; q3: year_month + customer_state",
+  "used_tables": [
+    "mv_monthly_sales",
+    "mv_state_sales"
+  ],
+  "query_sqls": [
+    "SELECT SUM(`total_gmv`) AS `total_gmv_2017` FROM `mv_monthly_sales` WHERE `year_month` >= '2017-01' AND `year_month` <= '2017-12'",
+    "SELECT `year_month`, `total_gmv` FROM `mv_monthly_sales` WHERE `year_month` >= '2017-01' AND `year_month` <= '2017-12' ORDER BY `year_month` ASC",
+    "SELECT `year_month`, `customer_state`, `total_gmv` FROM `mv_state_sales` WHERE `year_month` >= '2017-01' AND `year_month` <= '2017-12' ORDER BY `year_month` ASC, `total_gmv` DESC"
+  ],
+  "result_explanation": "命中预聚合视图 mv_monthly_sales 和 mv_state_sales。q1：从 mv_monthly_sales 汇总 2017 年各月 total_gmv 得全年 GMV 总额（含运费口径：price + freight_value）。q2：从 mv_monthly_sales 按 year_month 排序输出各月 GMV，展示月度趋势。q3：从 mv_state_sales 按 year_month + customer_state 粒度输出 GMV，按年月升序、GMV 降序排列，展示各州每月排名趋势。"
+}
+
+===== check_sql_tool 完成 =====
+{
+  "syntax_ok": true,
+  "brief": "通过：JSON 字段完整，共 3 条只读 SELECT，格式与关键字安全校验均通过。"
+}
+
+===== execute_sql_tool 完成 =====
+{
+  "ok": true,
+  "executed": true,
+  "results": [
+    {
+      "index": 0,
+      "ok": true,
+      "row_count_returned": 1,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-02-39_sql1.csv",
+      "data_summary_zh": "查询返回 1 行，耗时约 419.1 ms。共 1 列：total_gmv_2017。列摘要：total_gmv_2017（float）非空 1，示例 [7090569.24]。 明细已写入 CSV：2026-05-16 19-02-39_sql1.csv。",
+      "execution_time_ms": 419.09512504935265
+    },
+    {
+      "index": 1,
+      "ok": true,
+      "row_count_returned": 12,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-02-39_sql2.csv",
+      "data_summary_zh": "查询返回 12 行，耗时约 418.1 ms。共 2 列：year_month, total_gmv。列摘要：year_month（string）非空 12，示例 ['2017-01', '2017-02', '2017-03']。 total_gmv（float）非空 12，示例 [136943.46, 283561.69, 425617.96]。 明细已写入 CSV：2026-05-16 19-02-39_sql2.csv。",
+      "execution_time_ms": 418.1062920251861
+    },
+    {
+      "index": 2,
+      "ok": true,
+      "row_count_returned": 318,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-02-39_sql3.csv",
+      "data_summary_zh": "查询返回 318 行，耗时约 984.6 ms。共 3 列：year_month, customer_state, total_gmv。列摘要：year_month（string）非空 318，示例 ['2017-01', '2017-01', '2017-01']。 customer_state（string）非空 318，示例 ['SP', 'MG', 'RJ']。 total_gmv（float）非空 318，示例 [46878.55, 18615.96, 14747.45]。 明细已写入 CSV：2026-05-16 19-02-39_sql3.csv。",
+      "execution_time_ms": 984.6017920644954
+    }
+  ],
+  "row_count_returned": 331,
+  "data_summary_zh": "共执行 3 条 SQL。 全部成功。查询返回 1 行，耗时约 419.1 ms。共 1 列：total_gmv_2017。列摘要：total_gmv_2017（float）非空 1，示例 [7090569.24]。 明细已写入 CSV：2026-05-16 19-02-39_sql1.csv。 查询返回 12 行，耗时约 418.1 ms。共 2 列：year_month, total_gmv。列摘要：year_month（string）非空 12，示例 ['2017-01', '2017-02', '2017-03']。 total_gmv（float）非空 12，示例 [136943.46, 283561.69, 425617.96]。 明细已写入 CSV：2026-05-16 19-02-39_sql2.csv。 查询返回 318 行，耗时约 984.6 ms。共 3 列：year_month, customer_state, total_gmv。列摘要：year_month（string）非空 318，示例 ['2017-01', '2017-01', '2017-01']。 customer_state（string）非空 318，示例 ['SP', 'MG', 'RJ']。 total_gmv（float）非空 318，示例 [46878.55, 18615.96, 14747.45]。 明细已写入 CSV：2026-05-16 19-02-39_sql3.csv。",
+  "execution_time_ms": 1821.8032091390342
+}
+
+===== rewrite_to_query 调用次数 =====
+1
+
+===== generate_sql 调用次数 =====
+1
+
+============================================================
+测试问题 2/7
+平台整体准时交付率是多少？哪些州延迟最严重？
+============================================================
+
+===== rewrite_to_query_tool 完成 =====
+{
+  "query_for_sql": "分析平台整体准时交付率，以及各州的延迟严重程度排名",
+  "sub_questions": [
+    {
+      "id": "q1",
+      "question_zh": "平台整体准时交付率（全平台订单级）",
+      "metric_key": "on_time_rate",
+      "time_range": "全部历史",
+      "aggregation": "overall"
+    },
+    {
+      "id": "q2",
+      "question_zh": "各州延迟订单分布，识别延迟最严重的州",
+      "metric_key": "delayed_orders",
+      "dimensions": [
+        "customer_state"
+      ],
+      "time_range": "全部历史",
+      "aggregation": "topN"
+    }
+  ],
+  "hit_pre_agg_view": true,
+  "candidate_views": [
+    "mv_delivery_perf"
+  ],
+  "confidence": 0.95
+}
+
+===== validate_rewrite_plan_tool 完成 =====
+{
+  "plan_ok": true,
+  "brief": "通过：sub_questions 结构完整，规则引擎校验通过。"
+}
+
+===== generate_sql_tool 完成 =====
+{
+  "analysis_grain": "q1:全平台整体(订单级); q2:各州(customer_state)",
+  "used_tables": [
+    "orders",
+    "mv_delivery_perf"
+  ],
+  "query_sqls": [
+    "SELECT ROUND(SUM(CASE WHEN `order_delivered_customer_date` <= `order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) * 100, 2) AS `on_time_rate_pct` FROM `orders` WHERE `order_status` = 'delivered' AND `order_delivered_customer_date` IS NOT NULL AND `order_estimated_delivery_date` IS NOT NULL",
+    "SELECT `customer_state`, SUM(`delayed_orders`) AS `total_delayed_orders` FROM `mv_delivery_perf` GROUP BY `customer_state` ORDER BY `total_delayed_orders` DESC"
+  ],
+  "result_explanation": "q1：全平台整体准时交付率（订单级）。因 `mv_delivery_perf` 中的 `on_time_rate` 是「月×州」单元比率，不能代表全平台整体，故回退 `orders` 表按订单级准确计算准时率（签收日 ≤ 预计送达日）。仅计算已送达且签收/预计日期非空的订单。q2：各州延迟严重程度，利用 `mv_delivery_perf` 视图中 `delayed_orders` 按 `customer_state` 累加后倒序排名，直接识别延迟最严重的州。"
+}
+
+===== check_sql_tool 完成 =====
+{
+  "syntax_ok": true,
+  "brief": "通过：JSON 字段完整，共 2 条只读 SELECT，格式与关键字安全校验均通过。"
+}
+
+===== execute_sql_tool 完成 =====
+{
+  "ok": true,
+  "executed": true,
+  "results": [
+    {
+      "index": 0,
+      "ok": true,
+      "row_count_returned": 1,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-02-48_sql1.csv",
+      "data_summary_zh": "查询返回 1 行，耗时约 77.4 ms。共 1 列：on_time_rate_pct。列摘要：on_time_rate_pct（float）非空 1，示例 [91.89]。 明细已写入 CSV：2026-05-16 19-02-48_sql1.csv。",
+      "execution_time_ms": 77.43820804171264
+    },
+    {
+      "index": 1,
+      "ok": true,
+      "row_count_returned": 27,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-02-48_sql2.csv",
+      "data_summary_zh": "查询返回 27 行，耗时约 483.2 ms。共 2 列：customer_state, total_delayed_orders。列摘要：customer_state（string）非空 27，示例 ['SP', 'RJ', 'MG']。 total_delayed_orders（float）非空 27，示例 [2387.0, 1664.0, 637.0]。 明细已写入 CSV：2026-05-16 19-02-48_sql2.csv。",
+      "execution_time_ms": 483.18787501193583
+    }
+  ],
+  "row_count_returned": 28,
+  "data_summary_zh": "共执行 2 条 SQL。 全部成功。查询返回 1 行，耗时约 77.4 ms。共 1 列：on_time_rate_pct。列摘要：on_time_rate_pct（float）非空 1，示例 [91.89]。 明细已写入 CSV：2026-05-16 19-02-48_sql1.csv。 查询返回 27 行，耗时约 483.2 ms。共 2 列：customer_state, total_delayed_orders。列摘要：customer_state（string）非空 27，示例 ['SP', 'RJ', 'MG']。 total_delayed_orders（float）非空 27，示例 [2387.0, 1664.0, 637.0]。 明细已写入 CSV：2026-05-16 19-02-48_sql2.csv。",
+  "execution_time_ms": 560.6260830536485
+}
+
+===== rewrite_to_query 调用次数 =====
+1
+
+===== generate_sql 调用次数 =====
+1
+
+============================================================
+测试问题 3/7
+哪种支付方式最受欢迎？平均分期数是多少？
+============================================================
+
+===== rewrite_to_query_tool 完成 =====
+{
+  "query_for_sql": "分析各支付方式的总交易笔数（受欢迎程度）及平均分期数，找出最受欢迎的支付方式及其平均分期数",
+  "sub_questions": [
+    {
+      "id": "q1",
+      "question_zh": "统计各支付方式的总交易笔数，找出最受欢迎的支付方式",
+      "metric_key": "payment_popularity",
+      "dimensions": [
+        "payment_type"
+      ],
+      "time_range": "全部历史数据",
+      "aggregation": "top1"
+    },
+    {
+      "id": "q2",
+      "question_zh": "计算最受欢迎支付方式的平均分期数",
+      "metric_key": "avg_installments",
+      "dimensions": [
+        "payment_type"
+      ],
+      "time_range": "全部历史数据",
+      "aggregation": "value",
+      "scope": {
+        "kind": "inherit_previous",
+        "inherit_from": "q1"
+      }
+    }
+  ],
+  "hit_pre_agg_view": true,
+  "candidate_views": [
+    "mv_payment_dist"
+  ],
+  "confidence": 0.95
+}
+
+===== validate_rewrite_plan_tool 完成 =====
+{
+  "plan_ok": true,
+  "brief": "通过：sub_questions 结构完整，规则引擎校验通过。"
+}
+
+===== generate_sql_tool 完成 =====
+{
+  "analysis_grain": "q1: payment_type 粒度; q2: 最受欢迎支付方式（按交易笔数 TOP1）",
+  "used_tables": [
+    "mv_payment_dist"
+  ],
+  "query_sqls": [
+    "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` GROUP BY `payment_type` ORDER BY `total_transactions` DESC LIMIT 1",
+    "SELECT `payment_type`, SUM(`avg_installments` * `total_transactions`) / NULLIF(SUM(`total_transactions`), 0) AS `avg_installments_weighted` FROM `mv_payment_dist` WHERE `payment_type` = (SELECT `payment_type` FROM (SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` GROUP BY `payment_type` ORDER BY `total_transactions` DESC LIMIT 1) AS `top_payment`) GROUP BY `payment_type`"
+  ],
+  "result_explanation": "命中预聚合视图 mv_payment_dist（粒度：year_month × payment_type）。q1：按支付方式汇总总交易笔数，降序取 TOP1 找出最受欢迎支付方式（即交易笔数最多的 payment_type）。q2：继承 q1 结果，对最受欢迎支付方式计算加权平均分期数（avg_installments × total_transactions 加权，使用 NULLIF 防除零），按实际业务口径得出该支付方式的真实平均分期数。"
+}
+
+===== check_sql_tool 完成 =====
+{
+  "syntax_ok": true,
+  "brief": "通过：JSON 字段完整，共 2 条只读 SELECT，格式与关键字安全校验均通过。"
+}
+
+===== execute_sql_tool 完成 =====
+{
+  "ok": true,
+  "executed": true,
+  "results": [
+    {
+      "index": 0,
+      "ok": true,
+      "row_count_returned": 1,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-02-55_sql1.csv",
+      "data_summary_zh": "查询返回 1 行，耗时约 734.4 ms。共 2 列：payment_type, total_transactions。列摘要：payment_type（string）非空 1，示例 ['credit_card']。 total_transactions（float）非空 1，示例 [75618.0]。 明细已写入 CSV：2026-05-16 19-02-55_sql1.csv。",
+      "execution_time_ms": 734.3590839300305
+    },
+    {
+      "index": 1,
+      "ok": true,
+      "row_count_returned": 1,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-02-55_sql2.csv",
+      "data_summary_zh": "查询返回 1 行，耗时约 1200.7 ms。共 2 列：payment_type, avg_installments_weighted。列摘要：payment_type（string）非空 1，示例 ['credit_card']。 avg_installments_weighted（float）非空 1，示例 [3.50574258]。 明细已写入 CSV：2026-05-16 19-02-55_sql2.csv。",
+      "execution_time_ms": 1200.7397919660434
+    }
+  ],
+  "row_count_returned": 2,
+  "data_summary_zh": "共执行 2 条 SQL。 全部成功。查询返回 1 行，耗时约 734.4 ms。共 2 列：payment_type, total_transactions。列摘要：payment_type（string）非空 1，示例 ['credit_card']。 total_transactions（float）非空 1，示例 [75618.0]。 明细已写入 CSV：2026-05-16 19-02-55_sql1.csv。 查询返回 1 行，耗时约 1200.7 ms。共 2 列：payment_type, avg_installments_weighted。列摘要：payment_type（string）非空 1，示例 ['credit_card']。 avg_installments_weighted（float）非空 1，示例 [3.50574258]。 明细已写入 CSV：2026-05-16 19-02-55_sql2.csv。",
+  "execution_time_ms": 1935.0988758960739
+}
+
+===== rewrite_to_query 调用次数 =====
+1
+
+===== generate_sql 调用次数 =====
+1
+
+============================================================
+测试问题 4/7
+产品的重量、尺寸与运费之间有什么关系？
+============================================================
+
+===== rewrite_to_query_tool 完成 =====
+{
+  "query_for_sql": "分析产品重量、尺寸（长度、高度、宽度）与运费之间的关系，识别相关性趋势",
+  "sub_questions": [
+    {
+      "id": "q1",
+      "question_zh": "分析产品重量与运费之间的关系",
+      "metric_key": "freight_value",
+      "dimensions": [
+        "product_weight_g"
+      ],
+      "time_range": "全部",
+      "aggregation": "correlation"
+    },
+    {
+      "id": "q2",
+      "question_zh": "分析产品尺寸（长度、高度、宽度）与运费之间的关系",
+      "metric_key": "freight_value",
+      "dimensions": [
+        "product_length_cm",
+        "product_height_cm",
+        "product_width_cm"
+      ],
+      "time_range": "全部",
+      "aggregation": "correlation"
+    },
+    {
+      "id": "q3",
+      "question_zh": "综合评估产品重量和尺寸对运费的联合影响",
+      "metric_key": "freight_value",
+      "dimensions": [
+        "product_weight_g",
+        "product_length_cm",
+        "product_height_cm",
+        "product_width_cm"
+      ],
+      "time_range": "全部",
+      "aggregation": "multi_correlation",
+      "scope": {
+        "kind": "explicit_filter",
+        "explicit_filter": "按产品维度聚合，计算平均运费与各维度平均值的相关性"
+      }
+    }
+  ],
+  "hit_pre_agg_view": false,
+  "candidate_views": [],
+  "confidence": 0.9
+}
+
+===== validate_rewrite_plan_tool 完成 =====
+{
+  "plan_ok": true,
+  "brief": "通过：sub_questions 结构完整，规则引擎校验通过。"
+}
+
+===== generate_sql_tool 完成 =====
+{
+  "analysis_grain": "product_level: 每个产品为一行，分析产品重量（weight）、尺寸（length/height/width）与平均运费之间的相关性趋势",
+  "used_tables": [
+    "orders",
+    "order_items",
+    "products"
+  ],
+  "query_sqls": [
+    "SELECT `p`.`product_id`, `p`.`product_weight_g`, AVG(`oi`.`freight_value`) AS `avg_freight` FROM `order_items` `oi` INNER JOIN `orders` `o` ON `oi`.`order_id` = `o`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `p`.`product_weight_g` IS NOT NULL GROUP BY `p`.`product_id`, `p`.`product_weight_g`",
+    "SELECT `p`.`product_id`, `p`.`product_length_cm`, `p`.`product_height_cm`, `p`.`product_width_cm`, AVG(`oi`.`freight_value`) AS `avg_freight` FROM `order_items` `oi` INNER JOIN `orders` `o` ON `oi`.`order_id` = `o`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `p`.`product_length_cm` IS NOT NULL AND `p`.`product_height_cm` IS NOT NULL AND `p`.`product_width_cm` IS NOT NULL GROUP BY `p`.`product_id`, `p`.`product_length_cm`, `p`.`product_height_cm`, `p`.`product_width_cm`",
+    "SELECT `p`.`product_id`, `p`.`product_weight_g`, `p`.`product_length_cm`, `p`.`product_height_cm`, `p`.`product_width_cm`, AVG(`oi`.`freight_value`) AS `avg_freight` FROM `order_items` `oi` INNER JOIN `orders` `o` ON `oi`.`order_id` = `o`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `p`.`product_weight_g` IS NOT NULL AND `p`.`product_length_cm` IS NOT NULL AND `p`.`product_height_cm` IS NOT NULL AND `p`.`product_width_cm` IS NOT NULL GROUP BY `p`.`product_id`, `p`.`product_weight_g`, `p`.`product_length_cm`, `p`.`product_height_cm`, `p`.`product_width_cm`"
+  ],
+  "result_explanation": "由于预聚合视图中不含产品粒度（产品重量、尺寸、运费明细），回退到原始表 orders + order_items + products 进行 JOIN 查询。按 3 条子问题一一对应生成 SQL：SQL1：按产品 ID 和产品重量分组，计算每个产品平均运费，用于分析产品重量与运费之间的相关性趋势。SQL2：按产品 ID 及产品长度、高度、宽度分组，计算每个产品平均运费，用于分析产品尺寸各维度与运费之间的相关性趋势。SQL3：按产品 ID 及重量、长度、高度、宽度全维度分组，计算每个产品平均运费，用于综合评估重量和尺寸对运费的联合影响。GMV口径不涉及（此处使用运费 freight_value）。过滤条件：均为全平台范围，无时间过滤，仅排除 NULL 物理属性值。"
+}
+
+===== check_sql_tool 完成 =====
+{
+  "syntax_ok": true,
+  "brief": "通过：JSON 字段完整，共 3 条只读 SELECT，格式与关键字安全校验均通过。"
+}
+
+===== execute_sql_tool 完成 =====
+{
+  "ok": true,
+  "executed": true,
+  "results": [
+    {
+      "index": 0,
+      "ok": true,
+      "row_count_returned": 5000,
+      "truncated": true,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-03-06_sql1.csv",
+      "data_summary_zh": "查询返回 5000 行（已截断），耗时约 4923.6 ms。共 3 列：product_id, product_weight_g, avg_freight。列摘要：product_id（string）非空 5000，示例 ['00066f42aeeb9f3007548bb9d3f33c38', '00088930e925c41fd95ebfe695fd2655', '0009406fd7479715e4bef61dd91f2462']。 product_weight_g（integer）非空 5000，示例 [300, 1225, 300]。 avg_freight（float）非空 5000，示例 [18.59, 13.93, 13.1]。 明细已写入 CSV：2026-05-16 19-03-06_sql1.csv。",
+      "execution_time_ms": 4923.556749941781
+    },
+    {
+      "index": 1,
+      "ok": true,
+      "row_count_returned": 5000,
+      "truncated": true,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-03-06_sql2.csv",
+      "data_summary_zh": "查询返回 5000 行（已截断），耗时约 5523.6 ms。共 5 列：product_id, product_length_cm, product_height_cm, product_width_cm, avg_freight。列摘要：product_id（string）非空 5000，示例 ['00066f42aeeb9f3007548bb9d3f33c38', '00088930e925c41fd95ebfe695fd2655', '0009406fd7479715e4bef61dd91f2462']。 product_length_cm（integer）非空 5000，示例 [20, 55, 45]。 product_height_cm（integer）非空 5000，示例 [16, 10, 15]。 product_width_cm（integer）非空 5000，示例 [16, 26, 35]。 avg_freight（float）非空 5000，示例 [18.59, 13.93, 13.1]。 明细已写入 CSV：2026-05-16 19-03-06_sql2.csv。",
+      "execution_time_ms": 5523.630042094737
+    },
+    {
+      "index": 2,
+      "ok": true,
+      "row_count_returned": 5000,
+      "truncated": true,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-03-06_sql3.csv",
+      "data_summary_zh": "查询返回 5000 行（已截断），耗时约 5999.3 ms。共 6 列：product_id, product_weight_g, product_length_cm, product_height_cm, product_width_cm, avg_freight。列摘要：product_id（string）非空 5000，示例 ['00066f42aeeb9f3007548bb9d3f33c38', '00088930e925c41fd95ebfe695fd2655', '0009406fd7479715e4bef61dd91f2462']。 product_weight_g（integer）非空 5000，示例 [300, 1225, 300]。 product_length_cm（integer）非空 5000，示例 [20, 55, 45]。 product_height_cm（integer）非空 5000，示例 [16, 10, 15]。 product_width_cm（integer）非空 5000，示例 [16, 26, 35]。 avg_freight（float）非空 5000，示例 [18.59, 13.93, 13.1]。 明细已写入 CSV：2026-05-16 19-03-06_sql3.csv。",
+      "execution_time_ms": 5999.349124962464
+    }
+  ],
+  "row_count_returned": 15000,
+  "truncated": true,
+  "data_summary_zh": "共执行 3 条 SQL。 全部成功。查询返回 5000 行（已截断），耗时约 4923.6 ms。共 3 列：product_id, product_weight_g, avg_freight。列摘要：product_id（string）非空 5000，示例 ['00066f42aeeb9f3007548bb9d3f33c38', '00088930e925c41fd95ebfe695fd2655', '0009406fd7479715e4bef61dd91f2462']。 product_weight_g（integer）非空 5000，示例 [300, 1225, 300]。 avg_freight（float）非空 5000，示例 [18.59, 13.93, 13.1]。 明细已写入 CSV：2026-05-16 19-03-06_sql1.csv。 查询返回 5000 行（已截断），耗时约 5523.6 ms。共 5 列：product_id, product_length_cm, product_height_cm, product_width_cm, avg_freight。列摘要：product_id（string）非空 5000，示例 ['00066f42aeeb9f3007548bb9d3f33c38', '00088930e925c41fd95ebfe695fd2655', '0009406fd7479715e4bef61dd91f2462']。 product_length_cm（integer）非空 5000，示例 [20, 55, 45]。 product_height_cm（integer）非空 5000，示例 [16, 10, 15]。 product_width_cm（integer）非空 5000，示例 [16, 26, 35]。 avg_freight（float）非空 5000，示例 [18.59, 13.93, 13.1]。 明细已写入 CSV：2026-05-16 19-03-06_sql2.csv。 查询返回 5000 行（已截断），耗时约 5999.3 ms。共 6 列：product_id, product_weight_g, product_length_cm, product_height_cm, product_width_cm, avg_freight。列摘要：product_id（string）非空 5000，示例 ['00066f42aeeb9f3007548bb9d3f33c38', '00088930e925c41fd95ebfe695fd2655', '0009406fd7479715e4bef61dd91f2462']。 product_weight_g（integer）非空 5000，示例 [300, 1225, 300]。 product_length_cm（integer）非空 5000，示例 [20, 55, 45]。 product_height_cm（integer）非空 5000，示例 [16, 10, 15]。 product_width_cm（integer）非空 5000，示例 [16, 26, 35]。 avg_freight（float）非空 5000，示例 [18.59, 13.93, 13.1]。 明细已写入 CSV：2026-05-16 19-03-06_sql3.csv。",
+  "execution_time_ms": 16446.535916998982
+}
+
+===== rewrite_to_query 调用次数 =====
+1
+
+===== generate_sql 调用次数 =====
+1
+
+============================================================
+测试问题 5/7
+Top 10 差评品类是什么？
+============================================================
+
+===== rewrite_to_query_tool 完成 =====
+{
+  "query_for_sql": "找出排名前10的差评（低评分）商品品类及其差评数量或差评率。",
+  "sub_questions": [
+    {
+      "id": "q1",
+      "question_zh": "按商品品类统计差评数量或差评率，找出差评最多的前10个品类",
+      "metric_key": "bad_review_count",
+      "dimensions": [
+        "product_category_english"
+      ],
+      "time_range": "全量历史数据",
+      "aggregation": "top10"
+    }
+  ],
+  "hit_pre_agg_view": true,
+  "candidate_views": [
+    "mv_category_sales"
+  ],
+  "confidence": 0.85
+}
+
+===== validate_rewrite_plan_tool 完成 =====
+{
+  "plan_ok": true,
+  "brief": "通过：sub_questions 结构完整，规则引擎校验通过。"
+}
+
+===== generate_sql_tool 完成 =====
+{
+  "analysis_grain": "product_category_english",
+  "used_tables": [
+    "mv_category_sales",
+    "order_items",
+    "order_reviews",
+    "orders",
+    "products",
+    "product_category_name_translation"
+  ],
+  "query_sqls": [
+    "SELECT COALESCE(`t`.`product_category_english`, `p`.`product_category_name`) AS `product_category_english`, COUNT(DISTINCT `r`.`review_id`) AS `bad_review_count` FROM `order_reviews` `r` INNER JOIN `orders` `o` ON `r`.`order_id` = `o`.`order_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` LEFT JOIN `product_category_name_translation` `t` ON `p`.`product_category_name` = `t`.`product_category_name` WHERE `r`.`review_score` <= 2 GROUP BY COALESCE(`t`.`product_category_english`, `p`.`product_category_name`) ORDER BY COUNT(DISTINCT `r`.`review_id`) DESC LIMIT 10"
+  ],
+  "result_explanation": "查询差评最多的前10个商品品类。差评定义为 review_score <= 2（低评分）。mv_category_sales 视图按 year_month + product_category_english 聚合了 GMV、订单数、均价，但缺少差评相关字段（review_score、review_id），因此回退到原始表（order_reviews + orders + order_items + products + product_category_name_translation）。统计口径：每个品类下差评的 review_id 去重计数，按降序取前10。使用 COALESCE 优先展示英文品类名，避免翻译缺失导致 NULL 聚合错误。"
+}
+
+===== check_sql_tool 完成 =====
+{
+  "syntax_ok": true,
+  "brief": "通过：JSON 字段完整，共 1 条只读 SELECT，格式与关键字安全校验均通过。"
+}
+
+===== execute_sql_tool 完成 =====
+{
+  "ok": false,
+  "executed": true,
+  "error_stage": "db_execute",
+  "error_message": "[SQL#1] 执行失败：(1054, \"Unknown column 't.product_category_english' in 'field list'\")",
+  "results": [
+    {
+      "index": 0,
+      "ok": false,
+      "execution_time_ms": 21.80741704069078,
+      "error_stage": "db_execute",
+      "error_message": "执行失败：(1054, \"Unknown column 't.product_category_english' in 'field list'\")"
+    }
+  ],
+  "data_summary_zh": "共执行 1 条 SQL。 存在失败：[SQL#1] 执行失败：(1054, \"Unknown column 't.product_category_english' in 'field list'\")。",
+  "execution_time_ms": 21.80741704069078
+}
+
+===== generate_sql_tool 完成 =====
+{
+  "analysis_grain": "q1: product_category_english",
+  "used_tables": [
+    "order_items",
+    "products",
+    "order_reviews",
+    "product_category_name_translation"
+  ],
+  "query_sqls": [
+    "SELECT COALESCE(`pcat`.`product_category_name_english`, `p`.`product_category_name`) AS `product_category_english`, COUNT(DISTINCT `r`.`review_id`) AS `bad_review_count` FROM `order_reviews` `r` INNER JOIN `orders` `o` ON `r`.`order_id` = `o`.`order_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` LEFT JOIN `product_category_name_translation` `pcat` ON `p`.`product_category_name` = `pcat`.`product_category_name` WHERE `r`.`review_score` <= 2 GROUP BY `product_category_english` ORDER BY `bad_review_count` DESC LIMIT 10"
+  ],
+  "result_explanation": "由于 `mv_category_sales` 视图中不包含差评数量（bad_review_count）字段，无法命中视图，因此回退原始表。差评定义为评分 <= 2（review_score <= 2）。按 COALESCE(英文映射, 原始品类名) 分组聚合，统计每个品类的差评数（COUNT DISTINCT review_id），取前10。包含了订单、商品、评论、品类翻译四张表的 JOIN。"
+}
+
+===== check_sql_tool 完成 =====
+{
+  "syntax_ok": true,
+  "brief": "通过：JSON 字段完整，共 1 条只读 SELECT，格式与关键字安全校验均通过。"
+}
+
+===== execute_sql_tool 完成 =====
+{
+  "ok": true,
+  "executed": true,
+  "results": [
+    {
+      "index": 0,
+      "ok": true,
+      "row_count_returned": 10,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-03-33.csv",
+      "data_summary_zh": "查询返回 10 行，耗时约 231.8 ms。共 2 列：product_category_english, bad_review_count。列摘要：product_category_english（string）非空 10，示例 ['cama_mesa_banho', 'beleza_saude', 'informatica_acessorios']。 bad_review_count（integer）非空 10，示例 [1547, 1110, 1056]。 明细已写入 CSV：2026-05-16 19-03-33.csv。",
+      "execution_time_ms": 231.8162090377882
+    }
+  ],
+  "row_count_returned": 10,
+  "data_summary_zh": "共执行 1 条 SQL。 全部成功。查询返回 10 行，耗时约 231.8 ms。共 2 列：product_category_english, bad_review_count。列摘要：product_category_english（string）非空 10，示例 ['cama_mesa_banho', 'beleza_saude', 'informatica_acessorios']。 bad_review_count（integer）非空 10，示例 [1547, 1110, 1056]。 明细已写入 CSV：2026-05-16 19-03-33.csv。",
+  "execution_time_ms": 231.8162090377882
+}
+
+===== rewrite_to_query 调用次数 =====
+1
+
+===== generate_sql 调用次数 =====
+2
+
+============================================================
+测试问题 6/7
+2017年哪个州的销售额最高？交付准时率是多少？哪种支付方式最受欢迎？
+============================================================
+
+===== rewrite_to_query_tool 完成 =====
+{
+  "query_for_sql": "2017年各州销售额排名、各州准时率、各州支付方式偏好分析",
+  "sub_questions": [
+    {
+      "id": "q1",
+      "question_zh": "2017年各州的总销售额（GMV）排名，找出销售额最高的州",
+      "metric_key": "gmv_total",
+      "dimensions": [
+        "customer_state"
+      ],
+      "time_range": "2017",
+      "aggregation": "top1"
+    },
+    {
+      "id": "q2",
+      "question_zh": "2017年销售额最高的州的交付准时率",
+      "metric_key": "on_time_rate",
+      "dimensions": [
+        "customer_state"
+      ],
+      "time_range": "2017",
+      "aggregation": "compute",
+      "scope": {
+        "kind": "inherit_previous",
+        "inherit_from": "q1"
+      }
+    },
+    {
+      "id": "q3",
+      "question_zh": "2017年销售额最高的州中，最受欢迎的支付方式（按交易笔数或支付总额）",
+      "metric_key": "payment_popularity",
+      "dimensions": [
+        "payment_type"
+      ],
+      "time_range": "2017",
+      "aggregation": "top1",
+      "scope": {
+        "kind": "inherit_previous",
+        "inherit_from": "q1"
+      }
+    }
+  ],
+  "hit_pre_agg_view": true,
+  "candidate_views": [
+    "mv_state_sales",
+    "mv_delivery_perf",
+    "mv_payment_dist"
+  ],
+  "confidence": 0.92
+}
+
+===== validate_rewrite_plan_tool 完成 =====
+{
+  "plan_ok": true,
+  "brief": "通过：sub_questions 结构完整，规则引擎校验通过。"
+}
+
+===== generate_sql_tool 完成 =====
+{
+  "analysis_grain": "q1: customer_state; q2: customer_state (州级按订单级准时率); q3: payment_type",
+  "used_tables": [
+    "mv_state_sales",
+    "orders",
+    "order_items",
+    "payments",
+    "customers"
+  ],
+  "query_sqls": [
+    "SELECT `customer_state`, SUM(`total_gmv`) AS `gmv_total` FROM `mv_state_sales` WHERE `year_month` BETWEEN '2017-01' AND '2017-12' GROUP BY `customer_state` ORDER BY `gmv_total` DESC LIMIT 1",
+    "SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `o`.`customer_id` IN (SELECT DISTINCT `c`.`customer_id` FROM `customers` `c` WHERE `c`.`customer_state` = (SELECT `sub`.`customer_state` FROM (SELECT `s`.`customer_state`, SUM(`s`.`total_gmv`) AS `gmv_total` FROM `mv_state_sales` `s` WHERE `s`.`year_month` BETWEEN '2017-01' AND '2017-12' GROUP BY `s`.`customer_state` ORDER BY `gmv_total` DESC LIMIT 1) `sub`))",
+    "SELECT `pymt`.`payment_type`, SUM(`pymt`.`payment_value`) AS `total_value`, COUNT(*) AS `total_transactions` FROM `payments` `pymt` WHERE `pymt`.`order_id` IN (SELECT `o2`.`order_id` FROM `orders` `o2` WHERE `o2`.`order_purchase_timestamp` >= '2017-01-01' AND `o2`.`order_purchase_timestamp` < '2018-01-01' AND `o2`.`customer_id` IN (SELECT DISTINCT `c2`.`customer_id` FROM `customers` `c2` WHERE `c2`.`customer_state` = (SELECT `sub2`.`customer_state` FROM (SELECT `s2`.`customer_state`, SUM(`s2`.`total_gmv`) AS `gmv_total` FROM `mv_state_sales` `s2` WHERE `s2`.`year_month` BETWEEN '2017-01' AND '2017-12' GROUP BY `s2`.`customer_state` ORDER BY `gmv_total` DESC LIMIT 1) `sub2`))) GROUP BY `pymt`.`payment_type` ORDER BY `total_value` DESC LIMIT 1"
+  ],
+  "result_explanation": "共3条SQL：q1优先命中mv_state_sales视图，按customer_state聚合2017年总GMV（含运费，price+freight_value），取最高州；q2因继承该州（q1结果），但mv_delivery_perf准时率是按月×州单元比率，全州2017整体准时率需按订单级计算，故回退orders表，计算该州2017年已交付订单中准时交付（实际签收<=预计送达）占比；q3同样回退到payments+orders+customers，找出该州2017年支付总额最高的支付方式（含交易笔数辅助判断）。注意：q2未使用mv_delivery_perf视图，因为该视图准时率是单元级比率，跨月聚合会丢失权重信息，因此严格按口径说明回退orders做订单级准确计算。"
+}
+
+===== check_sql_tool 完成 =====
+{
+  "syntax_ok": true,
+  "brief": "通过：JSON 字段完整，共 3 条只读 SELECT，格式与关键字安全校验均通过。"
+}
+
+===== execute_sql_tool 完成 =====
+{
+  "ok": true,
+  "executed": true,
+  "results": [
+    {
+      "index": 0,
+      "ok": true,
+      "row_count_returned": 1,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-03-43_sql1.csv",
+      "data_summary_zh": "查询返回 1 行，耗时约 499.4 ms。共 2 列：customer_state, gmv_total。列摘要：customer_state（string）非空 1，示例 ['SP']。 gmv_total（float）非空 1，示例 [2489454.83]。 明细已写入 CSV：2026-05-16 19-03-43_sql1.csv。",
+      "execution_time_ms": 499.42795909009874
+    },
+    {
+      "index": 1,
+      "ok": true,
+      "row_count_returned": 1,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-03-43_sql2.csv",
+      "data_summary_zh": "查询返回 1 行，耗时约 627.9 ms。共 1 列：on_time_rate。列摘要：on_time_rate（float）非空 1，示例 [0.9535]。 明细已写入 CSV：2026-05-16 19-03-43_sql2.csv。",
+      "execution_time_ms": 627.8951249551028
+    },
+    {
+      "index": 2,
+      "ok": true,
+      "row_count_returned": 1,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-03-43_sql3.csv",
+      "data_summary_zh": "查询返回 1 行，耗时约 693.7 ms。共 3 列：payment_type, total_value, total_transactions。列摘要：payment_type（string）非空 1，示例 ['credit_card']。 total_value（float）非空 1，示例 [1972255.69]。 total_transactions（integer）非空 1，示例 [13584]。 明细已写入 CSV：2026-05-16 19-03-43_sql3.csv。",
+      "execution_time_ms": 693.7317079864442
+    }
+  ],
+  "row_count_returned": 3,
+  "data_summary_zh": "共执行 3 条 SQL。 全部成功。查询返回 1 行，耗时约 499.4 ms。共 2 列：customer_state, gmv_total。列摘要：customer_state（string）非空 1，示例 ['SP']。 gmv_total（float）非空 1，示例 [2489454.83]。 明细已写入 CSV：2026-05-16 19-03-43_sql1.csv。 查询返回 1 行，耗时约 627.9 ms。共 1 列：on_time_rate。列摘要：on_time_rate（float）非空 1，示例 [0.9535]。 明细已写入 CSV：2026-05-16 19-03-43_sql2.csv。 查询返回 1 行，耗时约 693.7 ms。共 3 列：payment_type, total_value, total_transactions。列摘要：payment_type（string）非空 1，示例 ['credit_card']。 total_value（float）非空 1，示例 [1972255.69]。 total_transactions（integer）非空 1，示例 [13584]。 明细已写入 CSV：2026-05-16 19-03-43_sql3.csv。",
+  "execution_time_ms": 1821.0547920316458
+}
+
+===== rewrite_to_query 调用次数 =====
+1
+
+===== generate_sql 调用次数 =====
+1
+
+============================================================
+测试问题 7/7
+哪些卖家的差评率最高？
+============================================================
+
+===== rewrite_to_query_tool 完成 =====
+{
+  "query_for_sql": "分析各卖家的差评率（评分<=2的订单占比），找出差评率最高的卖家",
+  "sub_questions": [
+    {
+      "id": "q1",
+      "question_zh": "计算各卖家的差评率（评分<=2的订单数/总评论订单数），并找出差评率最高的卖家",
+      "metric_key": "bad_review_rate",
+      "dimensions": [
+        "seller_id"
+      ],
+      "time_range": "全部时间范围",
+      "aggregation": "topN"
+    }
+  ],
+  "hit_pre_agg_view": true,
+  "candidate_views": [
+    "mv_seller_perf"
+  ],
+  "confidence": 0.85
+}
+
+===== validate_rewrite_plan_tool 完成 =====
+{
+  "plan_ok": true,
+  "brief": "通过：sub_questions 结构完整，规则引擎校验通过。"
+}
+
+===== generate_sql_tool 完成 =====
+{
+  "analysis_grain": "seller_id",
+  "used_tables": [
+    "mv_seller_perf",
+    "orders",
+    "order_reviews"
+  ],
+  "query_sqls": [
+    "SELECT `s`.`seller_id`, `s`.`seller_state`, `s`.`total_orders`, `s`.`avg_review_score`, COALESCE(`br`.`bad_review_orders`, 0) AS `bad_review_orders`, ROUND(COALESCE(`br`.`bad_review_orders`, 0) / NULLIF(`s`.`total_orders`, 0) * 100, 2) AS `bad_review_rate` FROM `mv_seller_perf` `s` LEFT JOIN (SELECT `oi`.`seller_id`, COUNT(DISTINCT `r`.`order_id`) AS `bad_review_orders` FROM `order_reviews` `r` INNER JOIN `order_items` `oi` ON `r`.`order_id` = `oi`.`order_id` WHERE `r`.`review_score` <= 2 GROUP BY `oi`.`seller_id`) `br` ON `s`.`seller_id` = `br`.`seller_id` ORDER BY `bad_review_rate` DESC LIMIT 10"
+  ],
+  "result_explanation": "查询各卖家的差评率（评分<=2的订单数/总评论订单数），并以差评率降序排列取Top10。使用mv_seller_perf视图作为卖家基础数据（含总订单数total_orders），但该视图不直接提供差评订单数，故需回退到原始表order_reviews（差评条件）与order_items（关联卖家）计算每个卖家的差评订单数后左连。差评率 = (差评订单数 / total_orders) * 100，使用NULLIF防除零。GMV口径不涉及此SQL。"
+}
+
+===== check_sql_tool 完成 =====
+{
+  "syntax_ok": true,
+  "brief": "通过：JSON 字段完整，共 1 条只读 SELECT，格式与关键字安全校验均通过。"
+}
+
+===== execute_sql_tool 完成 =====
+{
+  "ok": true,
+  "executed": true,
+  "results": [
+    {
+      "index": 0,
+      "ok": true,
+      "row_count_returned": 10,
+      "result_csv_path": "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic BI-Driven Multi-Table E-Commerce Operations Analysis and Decision Intelligence System/agents/sql_agent/query_results/2026-05-16 19-03-52.csv",
+      "data_summary_zh": "查询返回 10 行，耗时约 1733.7 ms。共 6 列：seller_id, seller_state, total_orders, avg_review_score, bad_review_orders, bad_review_rate。列摘要：seller_id（string）非空 10，示例 ['cc419e0650a3c5ba77189a1882b7556a', '4e922959ae960d389249c378d1c939f5', '4869f7a5dfa277a7dca6462dcf3b52b2']。 seller_state（string）非空 10，示例 ['SP', 'SP', 'SP']。 total_orders（integer）非空 10，示例 [1, 1, 2]。 avg_review_score（float）非空 10，示例 [5.0, 3.0, 4.5]。 bad_review_orders（integer）非空 10，示例 [252, 76, 152]。 bad_review_rate（float）非空 10，示例 [25200.0, 7600.0, 7600.0]。 明细已写入 CSV：2026-05-16 19-03-52.csv。",
+      "execution_time_ms": 1733.6947500007227
+    }
+  ],
+  "row_count_returned": 10,
+  "data_summary_zh": "共执行 1 条 SQL。 全部成功。查询返回 10 行，耗时约 1733.7 ms。共 6 列：seller_id, seller_state, total_orders, avg_review_score, bad_review_orders, bad_review_rate。列摘要：seller_id（string）非空 10，示例 ['cc419e0650a3c5ba77189a1882b7556a', '4e922959ae960d389249c378d1c939f5', '4869f7a5dfa277a7dca6462dcf3b52b2']。 seller_state（string）非空 10，示例 ['SP', 'SP', 'SP']。 total_orders（integer）非空 10，示例 [1, 1, 2]。 avg_review_score（float）非空 10，示例 [5.0, 3.0, 4.5]。 bad_review_orders（integer）非空 10，示例 [252, 76, 152]。 bad_review_rate（float）非空 10，示例 [25200.0, 7600.0, 7600.0]。 明细已写入 CSV：2026-05-16 19-03-52.csv。",
+  "execution_time_ms": 1733.6947500007227
+}
+
+===== rewrite_to_query 调用次数 =====
+1
+
+===== generate_sql 调用次数 =====
+1
