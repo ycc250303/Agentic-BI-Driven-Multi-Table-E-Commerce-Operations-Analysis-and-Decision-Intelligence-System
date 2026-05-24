@@ -1,0 +1,72 @@
+# NLP Agent 葡萄牙语主题关键词词典
+#
+# 用途：对 `order_reviews.review_comment_message`（葡语）做"关键词命中即归类"。
+# 命中策略：先到先得（按本文件中的主题顺序），与 _classify_topic 实现保持一致。
+# 维护建议：
+#   1) 新增主题请追加到列表末尾，避免改动既有顺序导致历史结果不可比；
+#   2) 关键词请保留小写、去重、避免与其它主题重叠；
+#   3) 修改本文件后无需改代码；NLP Agent 启动时会自动重新加载。
+#
+# 当前主题（与 P0 基线保持一致）：
+
+topics:
+  - name: delivery_delay        # 配送延迟
+    keywords:
+      - atraso
+      - atrasado
+      - atrasada
+      - demora
+      - demorou
+      - tarde
+
+  - name: not_received          # 未收到货
+    keywords:
+      - "nao recebi"
+      - "não recebi"
+      - "nao chegou"
+      - "não chegou"
+      - "nunca chegou"
+      - "nao entregue"
+      - "não entregue"
+
+  - name: product_quality       # 商品质量问题
+    keywords:
+      - defeito
+      - defeituoso
+      - quebrado
+      - quebrada
+      - qualidade
+      - ruim
+      - péssimo
+      - pessimo
+
+  - name: wrong_item            # 发错货 / 错版
+    keywords:
+      - errado
+      - errada
+      - diferente
+      - trocado
+      - troca
+
+  - name: customer_service      # 客服 / 卖家服务
+    keywords:
+      - atendimento
+      - suporte
+      - resposta
+      - "vendedor não"
+      - "vendedor nao"
+
+  - name: price_freight         # 价格 / 运费
+    keywords:
+      - frete
+      - caro
+      - preço
+      - preco
+      - cobrança
+      - cobranca
+
+  - name: missing_parts         # 缺件 / 不完整
+    keywords:
+      - faltando
+      - incompleto
+      - incompleta

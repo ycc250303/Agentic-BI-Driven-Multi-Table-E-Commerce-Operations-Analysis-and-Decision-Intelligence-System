@@ -20,7 +20,11 @@
 - GMV 默认口径为 `price + freight_value`，与 `mv_monthly_sales.total_gmv` 一致。
 - 准时率 `on_time_rate` 为 0–1 小数；如需百分比展示请明确说明。
 - 卖家差评通常以 `review_score <= 2` 作为阈值。
-- 评论文本为葡萄牙语，主题分类以关键词为基线方案。
+- 评论文本为葡萄牙语；NLP Agent 提供四类产出，按需引用：
+  1. **关键词主题分类**（业务可解释，给人看）：`review_insights.complaints_by_category`、`topic_distribution`
+  2. **情感聚合**（情绪强度量化）：`review_insights.sentiment.{worst_categories, by_customer_state, by_seller_state, by_review_score}`
+  3. **BERTopic 无监督主题**（细分原因深挖）：`review_insights.topics_bertopic.{topics, complaints_by_category}`
+  4. **好评 / 差评对比词云**（可视化数据，由 viz_agent 渲染，本 Agent 不直接引用词频）：`review_insights.wordcloud`
 
 ## 3) 输出原则
 

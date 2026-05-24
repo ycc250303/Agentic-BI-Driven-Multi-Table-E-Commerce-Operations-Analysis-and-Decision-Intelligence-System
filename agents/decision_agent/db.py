@@ -2,8 +2,9 @@
 Decision Intelligence Agent 的轻量 MySQL 查询封装。
 
 直接复用 SQL Agent 的环境变量与值序列化逻辑（`AGENTIC_BI_DB_*`），
-仅在本 Agent 自身需要补充查询（预测、评论洞察、What-if）时使用。
-不承担 Data Analysis Agent 的常规查询职责。
+仅在本 Agent 自身需要补充查询（销售预测、What-if 模拟）时使用。
+不承担 Data Analysis Agent 的常规查询职责，也不负责评论洞察相关查询
+（评论洞察由 `agents.nlp_agent` 自带 DB 封装独立实现）。
 """
 
 from __future__ import annotations
