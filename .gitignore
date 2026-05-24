@@ -1,4 +1,5 @@
 .env
+.venv/
 __pycache__/
 agents/sql_agent/deepseek-response.json
 agents/sql_agent/query_results

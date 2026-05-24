@@ -17,6 +17,24 @@
 }
 ```
 
+### `review_insights` 字段速查与引用优先级
+
+NLP Agent 一次写入四块数据，请按下述优先级在报告中引用，**避免把所有原始字段堆进正文**：
+
+| 优先级 | 字段路径 | 适合写入的章节 |
+|---|---|---|
+| ⭐⭐⭐ | `complaints_by_category`（关键词法，10 个业务可解释主题）| 二、关键数据发现 / 三、原因诊断 |
+| ⭐⭐⭐ | `sentiment.worst_categories` / `sentiment.by_customer_state` / `sentiment.by_seller_state` | 二、关键数据发现 / 三、原因诊断 |
+| ⭐⭐ | `topics_bertopic.complaints_by_category[*].top_reasons`（细分主题）| 三、原因诊断（仅在关键词法主导原因为 `other` 占比偏高时补充） |
+| ⭐ | `sentiment.by_review_score`（评分 × 极性一致性）| 不进正文，仅作为数据可信度参考 |
+| — | `wordcloud.{positive, negative}`（词频字典）| **不在文字正文中列举词频**；若 `chart_descriptions` 含词云图，仅在「七、图表解读」一句话提及 |
+
+引用建议：
+- BERTopic 主题标签可能是机器视角（如 `dois / apenas / só`），引用时**必须用人话翻译**（如「数量不符 / 少发货」），并附上原标签便于追溯。
+- 若 `topic_distribution` 中 `other` 占比 > 30%，请在三、原因诊断结尾说明「关键词法未覆盖部分已用 BERTopic 补充」。
+
+---
+
 ## 输出结构（严格按章节顺序，使用中文标题）
 
 **一、结论摘要**

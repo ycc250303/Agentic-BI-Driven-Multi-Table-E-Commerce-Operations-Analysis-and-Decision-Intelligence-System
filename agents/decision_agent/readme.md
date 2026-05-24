@@ -1,15 +1,15 @@
 # Decision Intelligence Agent（决策智能层）
 
-面向 **Agentic BI** 4-Agent 方案的末端节点：在 `Orchestrator → Data Analysis → Visualization → Decision Intelligence` 流程的最后一站，把上游的统计结果、图表说明，以及（可选的）销售预测、评论洞察、What-if 模拟整合为面向业务人员的中文运营建议。
+面向 **Agentic BI** 多 Agent 方案的末端节点：在 `Orchestrator → Data Analysis → Visualization → NLP → Decision Intelligence` 流程的最后一站，把上游的统计结果、图表说明、销售预测、评论洞察、What-if 模拟整合为面向业务人员的中文运营建议。
 
 它**不**主要负责常规 SQL 查询，也**不**主要负责绘图，而是承担：
 
 | 职责 | 说明 |
 |------|------|
 | 数据结果解释器 | 把 `sql_results` / `analysis_summary` 翻译成业务语言 |
-| 业务原因诊断器 | 配送 / 差评 / 品类下降的可能成因分析 |
+| 业务原因诊断器 | 配送 / 差评 / 品类下降的可能成因分析（差评原因数据来自 NLP Agent） |
 | 策略建议生成器 | 分短期 / 中期 / 长期的可执行运营建议 |
-| 轻量补充工具调用器 | 在需要时调用 forecast / review_insight / what_if |
+| 轻量补充工具调用器 | 在需要时调用 `forecast` / `what_if` 工具补查；评论洞察由 NLP Agent 在上游写入 |
 | 最终回答组织者 | 按八节模板生成结构化中文报告 |
 
 ---
@@ -25,7 +25,6 @@ agents/decision_agent/
 ├── tools/
 │   ├── __init__.py
 │   ├── forecast.py             # mv_monthly_sales 历史 GMV → 未来 N 周基线预测
-│   ├── review_insight.py       # 差评（review_score<=2）葡语关键词主题分类
 │   ├── what_if.py              # 下架 Top N 高差评卖家的反事实模拟
 │   └── compose_report.py       # LLM 按八节模板生成中文报告
 └── readme.md
@@ -38,6 +37,8 @@ config/decision_agent/
 ├── system_core.md              # Agent 角色边界与硬约束
 └── decision_report.md          # 报告八节模板规则
 ```
+
+> 评论洞察由独立的 [`agents/nlp_agent/`](../nlp_agent/readme.md) 提供，本 Agent 不维护对应的工具文件。
 
 ---
 
@@ -55,13 +56,13 @@ Agent 通过 LangGraph `state` 与其他 Agent 通信。`AgentState` 见 `agents
 | `analysis_summary` | Data Analysis Agent | 自然语言数据摘要 |
 | `chart_paths` | Visualization Agent | 图片路径 |
 | `chart_descriptions` | Visualization Agent | 图表的业务说明文本 |
+| `review_insights` | NLP Agent | 含四类产出：关键词主题分类（`complaints_by_category` / `topic_distribution`）、情感聚合（`sentiment.{worst_categories, by_customer_state, by_seller_state}`）、BERTopic 无监督主题（`topics_bertopic`）、好评/差评对比词云（`wordcloud`）。完整 schema 见 [`agents/nlp_agent/readme.md` §2](../nlp_agent/readme.md) |
 
 **主要写入**
 
 | 字段 | 说明 |
 |------|------|
 | `forecast_result` | 预测工具产出（按需） |
-| `review_insights` | 评论洞察工具产出（按需） |
 | `what_if_result` | What-if 工具产出（按需） |
 | `decision_report` | 最终中文八节决策报告 |
 | `final_answer` | 与 `decision_report` 同值，便于上层直接 `state["final_answer"]` |
@@ -75,8 +76,8 @@ flowchart TD
     A[state in] --> B{need_forecast?}
     B -->|是| Bf[forecast_tool] --> C
     B -->|否| C
-    C{need_review_insight?}
-    C -->|是| Cr[review_insight_tool] --> D
+    C{need_review_insight & state.review_insights 缺失?}
+    C -->|是| Cr[调用 NLP Agent 工具补查] --> D
     C -->|否| D
     D{need_what_if?}
     D -->|是| Dw[what_if_tool] --> E
@@ -87,7 +88,8 @@ flowchart TD
 路由规则（`run.py`）：
 
 - `need_forecast`：`intent == "predictive"` 或问题命中关键词（`预测 / 未来 / 趋势 / 下周 / forecast / predict ...`）
-- `need_review_insight`：问题命中关键词（`评论 / 差评 / 评分 / 抱怨 / sentiment ...`）
+- `need_review_insight`：**直接复用 NLP Agent 的 [`should_run_nlp`](../nlp_agent/run.py)**，避免上下游关键词不一致。
+  **正常路径**：上游 NLP Agent 已将差评洞察写入 `state["review_insights"]`，本 Agent 直接消费而**不**会再触发补查；只有当上游缺失（如 LangGraph 暂未挂接 NLP 节点、或独立运行 Decision 调试）时，才会调度完整的 `ReviewInsightAgent`（关键词 + 情感 + BERTopic + 词云）作为运行期补查。
 - `need_what_if`：`intent == "what_if"` 或命中关键词（`如果 / 假如 / 下架 / what-if ...`）
 
 如果 state 中已经有对应字段，本 Agent 不会重复调用工具，避免覆盖上游结果。
@@ -103,24 +105,19 @@ flowchart TD
 - 返回 `method / history_grain / horizon / history_tail / forecast_values / assumptions / summary`
 - 后续可替换为 ARIMA / Prophet / XGBoost，接口保持不变
 
-### 4.2 `review_insight_tool`（`tools/review_insight.py`）
-
-- 输入：`order_reviews + orders + order_items + products + sellers + customers + product_category_name_translation` JOIN
-- 取 `review_score <= 2` 的差评样本
-- 葡语关键词主题分类：`delivery_delay / not_received / product_quality / wrong_item / customer_service / price_freight / missing_parts / other`
-- 输出主题计数、Top 受影响品类 / 卖家州 / 客户州，方便决策报告引用
-
-### 4.3 `what_if_tool`（`tools/what_if.py`）
+### 4.2 `what_if_tool`（`tools/what_if.py`）
 
 - 场景：下架差评率最高的 Top N 卖家（默认 `top_n=20`，`min_reviews=20`）
 - 输出 `current_avg_score / simulated_avg_score / estimated_score_improvement / current_negative_rate / simulated_negative_rate / total_reviews / removed_reviews`
 - 在 `assumptions` 中显式声明「静态反事实估计」「不考虑用户需求转移」
 
-### 4.4 `compose_report_tool`（`tools/compose_report.py`）
+### 4.3 `compose_report_tool`（`tools/compose_report.py`）
 
 - 系统提示词由 `config/decision_agent/system_core.md + decision_report.md` 拼接
 - 输入：`question / intent / analysis_summary / sql_results_brief / chart_descriptions / forecast_result / review_insights / what_if_result`
 - 输出：八节中文报告纯文本
+
+> 评论洞察相关字段（`review_insights`）的生产说明详见 [`agents/nlp_agent/readme.md`](../nlp_agent/readme.md)；本 Agent 仅消费其结构。
 
 ---
 
@@ -130,17 +127,25 @@ flowchart TD
 from langgraph.graph import StateGraph, END
 from agents.decision_agent.run import decision_intelligence_node
 from agents.decision_agent.state import AgentState
+from agents.nlp_agent.run import nlp_node, should_run_nlp
 
 workflow = StateGraph(AgentState)
 workflow.add_node("orchestrator", orchestrator_node)
 workflow.add_node("data_analysis", data_analysis_node)
 workflow.add_node("visualization", visualization_node)
+workflow.add_node("nlp", nlp_node)                          # ← 独立 NLP Agent
 workflow.add_node("decision", decision_intelligence_node)
 
 workflow.set_entry_point("orchestrator")
 workflow.add_edge("orchestrator", "data_analysis")
 workflow.add_edge("data_analysis", "visualization")
-workflow.add_edge("visualization", "decision")
+# 仅在需要时触发 NLP；否则直连 decision
+workflow.add_conditional_edges(
+    "visualization",
+    lambda s: "nlp" if should_run_nlp(s.get("question", ""), s.get("intent", "")) else "decision",
+    {"nlp": "nlp", "decision": "decision"},
+)
+workflow.add_edge("nlp", "decision")
 workflow.add_edge("decision", END)
 
 app = workflow.compile()
@@ -167,7 +172,7 @@ print(final["final_answer"])
 | 变量 | 用途 |
 |------|------|
 | `DEEPSEEK_API_KEY` | LLM（`compose_report_tool`） |
-| `AGENTIC_BI_DB_HOST/PORT/USER/PASSWORD/NAME` | 内部三个 SQL 工具连接 MySQL |
+| `AGENTIC_BI_DB_HOST/PORT/USER/PASSWORD/NAME` | `forecast` / `what_if` 工具连接 MySQL |
 
 ---
 
@@ -190,6 +195,6 @@ print(final["final_answer"])
 
 ## 8. 演进路线
 
-1. 在不修改 `run.py` 路由的情况下，把 `forecast.py` / `review_insight.py` 各自升级为独立 Agent；
-2. `forecast` 后续可接入 Prophet / ARIMA / XGBoost；`review_insight` 可接入葡语情感模型或 BERTopic；
-3. `what_if` 可扩展为多场景（下架低活跃品类、调整运费阶梯等），接口保持 `dict[str, Any]`。
+1. `forecast` 后续可接入 Prophet / ARIMA / XGBoost，接口保持 `dict[str, Any]` 不变；
+2. `what_if` 可扩展为多场景（下架低活跃品类、调整运费阶梯等）；
+3. 报告八节模板可按业务方反馈再细分（如新增「合规风险」「数据质量提示」节）。

@@ -1,6 +1,10 @@
 """
-Decision Intelligence Agent 入口：在 4-Agent 方案的末端，把 Data Analysis Agent
-的产出与（可选的）预测 / 评论洞察 / What-if 模拟整合为面向业务人员的中文决策报告。
+Decision Intelligence Agent 入口：在 Agentic BI 多 Agent 方案的末端，把 Data Analysis Agent
+的产出与（可选的）销售预测、NLP 评论洞察、What-if 模拟整合为面向业务人员的中文决策报告。
+
+NLP 评论洞察由独立的 `agents.nlp_agent` 生产并写入 `state["review_insights"]`；
+本 Agent 主要作为消费方，仅在该字段缺失时调用完整的 `ReviewInsightAgent`
+（关键词主题 + 情感聚合 + BERTopic + 词云）作为运行期补查，避免阻塞主流程。
 
 对外暴露：
 - `DecisionIntelligenceAgent`：可独立 `run(state)` 的类。
@@ -29,8 +33,16 @@ def _default_llm():
 
 from agents.decision_agent.tools.compose_report import ComposeReportRunner  # noqa: E402
 from agents.decision_agent.tools.forecast import run_forecast  # noqa: E402
-from agents.decision_agent.tools.review_insight import run_review_insight  # noqa: E402
 from agents.decision_agent.tools.what_if import run_what_if  # noqa: E402
+from agents.nlp_agent.run import ReviewInsightAgent, should_run_nlp  # noqa: E402
+
+
+def _default_review_insight_fn() -> dict[str, Any]:
+    """运行期补查：调度完整 NLP Agent（关键词主题 + 情感 + BERTopic + 词云）。
+
+    仅在上游 LangGraph 未挂 NLP 节点 / 独立调试 Decision Agent 时触发。
+    """
+    return ReviewInsightAgent().run(state=None) or {}
 
 
 # ----------------------------------------------------------------------------
@@ -40,10 +52,6 @@ from agents.decision_agent.tools.what_if import run_what_if  # noqa: E402
 _FORECAST_KEYWORDS = (
     "预测", "未来", "趋势", "下周", "下月", "未来6周", "未来 6 周",
     "forecast", "predict", "projection",
-)
-_REVIEW_KEYWORDS = (
-    "评论", "差评", "评分", "抱怨", "原因", "满意度",
-    "review", "negative", "complaint", "sentiment",
 )
 _WHAT_IF_KEYWORDS = (
     "如果", "假如", "下架", "提升多少", "降低多少",
@@ -62,18 +70,21 @@ def _has_kw(text: str, keywords: tuple[str, ...]) -> bool:
 
 
 class DecisionIntelligenceAgent:
-    """决策智能 Agent：对 4-Agent 方案末端的整合与建议生成。
+    """决策智能 Agent：对 Agentic BI 多 Agent 方案末端的整合与建议生成。
 
     传入 `llm` 可注入自定义 LLM；不传则默认使用 sql_agent.llm.get_llm()。
     `tool_callbacks` 与 sql_agent 风格一致：每个内部步骤完成后会回调
     `(tool_name, json_or_text)`，便于 Web 实时推送。
+
+    NLP 评论洞察由独立的 `agents.nlp_agent` 负责生产；本 Agent 主要消费上游写入的
+    `state["review_insights"]`，并在该字段缺失时通过 `review_insight_fn` 补查。
     """
 
     def __init__(
         self,
         llm=None,
         forecast_fn: Callable[..., dict[str, Any]] = run_forecast,
-        review_insight_fn: Callable[..., dict[str, Any]] = run_review_insight,
+        review_insight_fn: Callable[..., dict[str, Any]] = _default_review_insight_fn,
         what_if_fn: Callable[..., dict[str, Any]] = run_what_if,
     ):
         self.llm = llm or _default_llm()
@@ -89,7 +100,8 @@ class DecisionIntelligenceAgent:
 
     @staticmethod
     def need_review_insight(question: str, intent: str) -> bool:
-        return _has_kw(question, _REVIEW_KEYWORDS)
+        # 复用 NLP Agent 的同一套判定，避免上下游关键词不一致
+        return should_run_nlp(question, intent)
 
     @staticmethod
     def need_what_if(question: str, intent: str) -> bool:
