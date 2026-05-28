@@ -6,3 +6,5 @@ agents/sql_agent/query_results
 /.env
 /misc/
 /.worktrees/
+
+.pytest_cache/

@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+"""Boundary adapters for legacy state and upstream agent payloads.
+
+Core Decision-Agent execution uses `DecisionInputs`. This module is the only
+place that should understand historical state keys such as `analysis_summary`,
+`review_insights`, or `chart_result`.
+"""
+
 from copy import deepcopy
 from typing import Any
 
+from .schemas import DecisionInputs, DecisionResult
 from .state import BIState
 
 
@@ -204,6 +212,7 @@ def normalize_visualization_result(raw: dict[str, Any] | None) -> dict[str, Any]
 
 
 def normalize_state(state: dict[str, Any]) -> BIState:
+    """Normalize legacy/orchestrator state into the current compatibility shape."""
     normalized = dict(state)
     normalized["analysis_result"] = normalize_analysis_result(
         state.get("analysis_result") or state.get("analysis_summary")
@@ -221,3 +230,33 @@ def normalize_state(state: dict[str, Any]) -> BIState:
     normalized["conversation_history"] = _as_list(state.get("conversation_history"))
     normalized["warnings"] = _as_list(state.get("warnings"))
     return normalized
+
+
+def decision_inputs_from_state(state: dict[str, Any]) -> DecisionInputs:
+    """Convert compatibility state into the core `DecisionInputs` contract."""
+    normalized = normalize_state(state)
+    return DecisionInputs(
+        user_query=str(normalized.get("user_query") or ""),
+        intent=str(normalized.get("intent") or "prescriptive"),
+        analysis_result=normalized.get("analysis_result") or {},
+        nlp_result=normalized.get("nlp_result") or {},
+        forecast_result=normalized.get("forecast_result") or {},
+        visualization_result=normalized.get("visualization_result") or {},
+        what_if_result=normalized.get("what_if_result") or {},
+        conversation_history=normalized.get("conversation_history") or [],
+    )
+
+
+def merge_decision_result_to_state(
+    state: dict[str, Any],
+    decision_result: DecisionResult,
+    *,
+    warnings: list[str] | None = None,
+) -> BIState:
+    """Write a `DecisionResult` back to compatibility state fields."""
+    next_state = dict(state)
+    next_state["decision_result"] = decision_result.model_dump(mode="json")
+    next_state["final_answer"] = decision_result.narrative_answer
+    if warnings is not None:
+        next_state["warnings"] = list(warnings)
+    return next_state

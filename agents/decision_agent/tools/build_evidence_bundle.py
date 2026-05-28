@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from ..schemas import DecisionSignal, EvidenceBundle
-from ..state import BIState
 
 
 def _safe_float(value: Any) -> float | None:
@@ -19,7 +19,7 @@ def _cap_score(score: float) -> float:
     return max(0.0, min(1.0, round(score, 4)))
 
 
-def build_evidence_bundle(state: BIState) -> EvidenceBundle:
+def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
     user_query = str(state.get("user_query", "")).strip()
     analysis_result = state.get("analysis_result") or {}
     nlp_result = state.get("nlp_result") or {}

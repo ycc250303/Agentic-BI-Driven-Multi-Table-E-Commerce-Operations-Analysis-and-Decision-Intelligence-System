@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from ..schemas import WhatIfResult
-from ..state import BIState
 
 
 def _round_delta(value: float) -> float:
     return round(value, 4)
 
 
-def run_what_if(scenario_type: str, parameters: dict[str, Any], state: BIState) -> WhatIfResult:
+def run_what_if(
+    scenario_type: str,
+    parameters: dict[str, Any],
+    state: Mapping[str, Any],
+) -> WhatIfResult:
     analysis_result = state.get("analysis_result") or {}
     simulation_inputs = analysis_result.get("simulation_inputs") or {}
 

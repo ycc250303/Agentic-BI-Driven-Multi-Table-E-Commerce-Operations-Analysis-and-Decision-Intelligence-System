@@ -4,6 +4,13 @@ from typing import Any, TypedDict
 
 
 class BIState(TypedDict, total=False):
+    """Compatibility-only state shape for orchestrators such as LangGraph.
+
+    This is not the primary Decision-Agent input contract. New integrations
+    should prefer `DecisionInputs` and the `answer_decision` / `run_decision`
+    interfaces.
+    """
+
     user_query: str
     intent: str
     task_plan: list[str]

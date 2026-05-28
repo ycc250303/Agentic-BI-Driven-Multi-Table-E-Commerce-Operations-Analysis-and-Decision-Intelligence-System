@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agents.decision_agent.run import DecisionAgent
+from agents.decision_agent.run import DecisionAgent, run_decision_state
 
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -50,5 +50,14 @@ def test_decision_agent_smoke():
     result = agent.run(state)
     assert "decision_result" in result
     assert result["final_answer"]
+    assert "warnings" in result
     assert result["decision_result"]["action_plan"]
     assert result["decision_result"]["what_if_result"]["scenario_type"] == "improve_delivery_days"
+
+
+def test_run_decision_state_smoke():
+    state = load_case("high_delivery_risk.json")
+    result = run_decision_state(state, model=DummyModel())
+    assert "decision_result" in result
+    assert result["final_answer"]
+    assert "warnings" in result

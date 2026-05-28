@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agents.decision_agent.adapters import normalize_state
+from agents.decision_agent.adapters import decision_inputs_from_state, normalize_state
 
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -91,3 +91,18 @@ def test_normalize_agent_tpc_what_if_snapshot():
     assert out["scenario_type"] == "remove_top_bad_sellers"
     assert out["baseline_metrics"]["avg_review_score"] == 4.0346
     assert out["simulated_metrics"]["avg_review_score"] == 4.0488
+
+
+def test_decision_inputs_from_state_uses_normalized_fields():
+    raw_state = {
+        "user_query": "给出建议",
+        "analysis_summary": {
+            "summary": "配送异常",
+            "metric_summary": {"delivery_on_time_rate": 0.76},
+        },
+        "review_insights": {"summary": "配送差评偏多"},
+    }
+    inputs = decision_inputs_from_state(raw_state)
+    assert inputs.user_query == "给出建议"
+    assert inputs.analysis_result["kpis"]["on_time_rate"] == 0.76
+    assert inputs.nlp_result["summary_text"] == "配送差评偏多"

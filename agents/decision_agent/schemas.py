@@ -10,6 +10,17 @@ DecisionTheme = Literal["物流优化", "卖家治理", "品类治理", "区域�
 DomainName = Literal["delivery", "seller", "category", "region", "forecast", "general"]
 
 
+class DecisionInputs(BaseModel):
+    user_query: str
+    intent: str = "prescriptive"
+    analysis_result: dict[str, Any]
+    nlp_result: dict[str, Any] = Field(default_factory=dict)
+    forecast_result: dict[str, Any] = Field(default_factory=dict)
+    visualization_result: dict[str, Any] = Field(default_factory=dict)
+    what_if_result: dict[str, Any] = Field(default_factory=dict)
+    conversation_history: list[dict[str, str]] = Field(default_factory=list)
+
+
 class DecisionSignal(BaseModel):
     domain: DomainName
     signal: str

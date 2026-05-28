@@ -27,7 +27,7 @@ class DummyModel:
             {
                 "narrative_answer": "这是联调节点测试输出。",
                 "risks": ["节点测试未接入真实 API"],
-                "assumptions": ["状态已由 normalize_state 归一化"],
+                "assumptions": ["状态已通过兼容层转换为核心输入"],
             }
         )
 
