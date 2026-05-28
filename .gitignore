@@ -4,3 +4,4 @@ agents/sql_agent/query_results
 
 /.venv/
 /.env
+/misc/

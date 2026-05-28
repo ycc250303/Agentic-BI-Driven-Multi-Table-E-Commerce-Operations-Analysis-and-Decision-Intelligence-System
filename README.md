@@ -11,7 +11,6 @@ Agentic BI 驱动的多表电商运营分析与决策智能系统
 
 ```bash
 conda create -n agentic_bi python=3.11 -y
-
 conda activate agentic_bi
 ```
 
@@ -19,10 +18,8 @@ conda activate agentic_bi
 
 ```bash
 git clone https://github.com/ycc250303/Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System.git
-
 cd Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System
-
-pip install -r requirement.txt
+pip install -r requirements.txt
 ```
 
 - 设置环境变量
@@ -36,3 +33,11 @@ export AGENTIC_BI_DB_USER='your_database_user_name'
 export AGENTIC_BI_DB_PASSWORD='your_database_password'
 ```
 
+或者使用 `.env`
+
+- 导入数据
+
+```bash
+python utils/load_data_to_mysql.py
+python utils/refresh_views.py
+```
