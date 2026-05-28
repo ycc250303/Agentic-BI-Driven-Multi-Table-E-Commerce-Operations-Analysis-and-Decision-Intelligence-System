@@ -14,13 +14,17 @@
 """
 
 import mysql.connector
+import sys
 from pathlib import Path
 from typing import Dict, List
 
-from db_env import mysql_connector_config
-
 # 项目路径
 ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from db_env import mysql_connector_config
+
 SQL_FILE = ROOT_DIR / "utils" / "create_materialized_views.sql"
 
 

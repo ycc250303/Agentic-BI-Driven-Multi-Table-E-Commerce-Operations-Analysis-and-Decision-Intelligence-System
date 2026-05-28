@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 import csv
+import sys
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Callable
 
 import pymysql
 
-from db_env import pymysql_config
-
 # 项目路径与输入文件位置
 ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from db_env import pymysql_config
+
 DATA_DIR = ROOT_DIR / "data"
 SCHEMA_SQL = ROOT_DIR / "utils" / "origin_table.sql"
 

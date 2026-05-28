@@ -38,6 +38,7 @@ export AGENTIC_BI_DB_PASSWORD='your_database_password'
 - 导入数据
 
 ```bash
+python utils/init_database.py
 python utils/load_data_to_mysql.py
 python utils/refresh_views.py
 ```
