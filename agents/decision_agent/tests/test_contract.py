@@ -41,3 +41,39 @@ def test_langgraph_node_preserves_state_contract():
     assert "final_answer" in out
     assert out["decision_result"]["decision_theme"] == "物流优化"
     assert out["final_answer"] == "这是联调节点测试输出。"
+
+
+def test_langgraph_node_consumes_agent_tpc_upstream_state():
+    state = load_case("upstream_state_from_agent_tpc.json")
+    node = build_decision_node(model=DummyModel())
+    out = node(state)
+    assert out["decision_result"]["action_plan"]
+    assert out["decision_result"]["what_if_result"]["scenario_type"] == "remove_top_bad_sellers"
+    assert any(
+        finding["problem"]
+        for finding in out["decision_result"]["key_findings"]
+        if finding["severity"] in {"medium", "high"}
+    )
+
+
+def test_langgraph_node_consumes_sql_only_delivery_state():
+    state = load_case("upstream_state_sql_agent_delivery_only.json")
+    node = build_decision_node(model=DummyModel())
+    out = node(state)
+    assert out["decision_result"]["decision_theme"] == "物流优化"
+    assert out["decision_result"]["action_plan"]
+
+
+def test_langgraph_node_consumes_sql_only_seller_state():
+    state = load_case("upstream_state_sql_agent_seller_only.json")
+    node = build_decision_node(model=DummyModel())
+    out = node(state)
+    assert out["decision_result"]["decision_theme"] == "卖家治理"
+    assert out["decision_result"]["what_if_result"]["scenario_type"] == "remove_top_bad_sellers"
+
+
+def test_langgraph_node_consumes_sql_only_category_state():
+    state = load_case("upstream_state_sql_agent_category_only.json")
+    node = build_decision_node(model=DummyModel())
+    out = node(state)
+    assert out["decision_result"]["decision_theme"] == "品类治理"

@@ -8,6 +8,7 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from .adapters import normalize_state
 from .llm import get_llm
 from .prompt_builder import build_human_prompt, build_system_prompt
 from .schemas import DecisionResult, RootCauseItem
@@ -78,7 +79,7 @@ class DecisionAgent:
         return NarrativeResponse.model_validate(response)
 
     def run(self, state: BIState) -> BIState:
-        next_state = dict(state)
+        next_state = normalize_state(dict(state))
         warnings = self.validate_inputs(next_state)
         next_state["warnings"] = warnings
 

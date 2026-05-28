@@ -1,0 +1,45 @@
+{
+  "user_query": "平台整体准时交付率是多少？哪些州延迟最严重？",
+  "intent": "diagnostic",
+  "analysis_result": {
+    "summary_text": "q1: 按易错口径说明，全平台整体准时率不在 mv_delivery_perf 中（该视图为按月×州单元比率），因此回退到 orders 表做订单级准时率计算。口径：已交付且签收时间与预计送达时间均非空的订单中，签收日≤预计送达日的订单占比。q2: 利用 mv_delivery_perf 视图按 customer_state 累加 delayed_orders，获得各州延迟订单总数并降序排名，取 TOP 10。",
+    "kpis": {
+      "on_time_rate": 0.9189,
+      "total_orders": null
+    },
+    "findings": [
+      {
+        "topic": "delivery",
+        "metric": "on_time_rate",
+        "scope": "platform",
+        "value": 0.9189,
+        "benchmark": 0.92,
+        "gap": -0.0011,
+        "evidence": "平台整体准时交付率为 91.89%。"
+      },
+      {
+        "topic": "delivery",
+        "metric": "delayed_orders",
+        "scope": "SP",
+        "value": 2387.0,
+        "benchmark": 1664.0,
+        "gap": 723.0,
+        "evidence": "SP 州延迟订单数最高，为 2387，高于 RJ 州的 1664。"
+      }
+    ],
+    "tables": [
+      {
+        "name": "platform_on_time_rate",
+        "csv_path": "F:\\同济大学\\第6学期\\商务智能案例\\workplace\\1\\Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System\\.worktrees\\sql-agent\\agents\\sql_agent\\query_results\\2026-05-28 15-56-05_sql1.csv",
+        "description": "查询返回 1 行，耗时约 158.4 ms。共 1 列：on_time_rate_pct。列摘要：on_time_rate_pct（float）非空 1，示例 [91.89]。 明细已写入 CSV：2026-05-28 15-56-05_sql1.csv。"
+      },
+      {
+        "name": "delayed_orders_by_state_top10",
+        "csv_path": "F:\\同济大学\\第6学期\\商务智能案例\\workplace\\1\\Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System\\.worktrees\\sql-agent\\agents\\sql_agent\\query_results\\2026-05-28 15-56-05_sql2.csv",
+        "description": "查询返回 10 行，耗时约 1092.9 ms。共 2 列：customer_state, total_delayed_orders。列摘要：customer_state（string）非空 10，示例 ['SP', 'RJ', 'MG']。 total_delayed_orders（float）非空 10，示例 [2387.0, 1664.0, 637.0]。 明细已写入 CSV：2026-05-28 15-56-05_sql2.csv。"
+      }
+    ]
+  },
+  "visualization_result": {},
+  "forecast_result": {}
+}

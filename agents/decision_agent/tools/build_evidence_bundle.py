@@ -85,6 +85,22 @@ def build_evidence_bundle(state: BIState) -> EvidenceBundle:
                 )
             )
 
+        if topic == "delivery" and metric in {"delayed_orders", "delayed_orders_count"}:
+            severity = 0.6
+            if gap is not None and value is not None and value > 0:
+                severity = _cap_score(abs(gap) / max(value, 1.0) + 0.45)
+            signals.append(
+                DecisionSignal(
+                    domain="delivery",
+                    signal="delayed_orders finding",
+                    value=value,
+                    benchmark=benchmark,
+                    severity_score=severity,
+                    evidence_text=evidence or f"{scope} 延迟订单数偏高。",
+                    metadata={"scope": scope},
+                )
+            )
+
         if topic == "seller" or metric == "avg_review_score":
             severity = 0.5
             if value is not None and value < 3.6:
@@ -113,6 +129,31 @@ def build_evidence_bundle(state: BIState) -> EvidenceBundle:
                         benchmark=benchmark,
                         severity_score=severity,
                         evidence_text=evidence or f"{scope} 品类销量下滑。",
+                        metadata={"scope": scope},
+                    )
+                )
+            if metric in {"bad_review_rate", "negative_rate"} and value is not None:
+                signals.append(
+                    DecisionSignal(
+                        domain="category",
+                        signal="negative quality rate",
+                        value=value,
+                        benchmark=benchmark,
+                        severity_score=_cap_score(max(value - 0.2, 0.0) / 0.3 + 0.45),
+                        evidence_text=evidence or f"{scope} 品类差评率偏高。",
+                        metadata={"scope": scope},
+                    )
+                )
+            if metric in {"bad_review_count", "negative_review_count"}:
+                severity = 0.6 if value is None else _cap_score(min(value / 2000.0, 0.4) + 0.45)
+                signals.append(
+                    DecisionSignal(
+                        domain="category",
+                        signal="bad_review_count high",
+                        value=value,
+                        benchmark=benchmark,
+                        severity_score=severity,
+                        evidence_text=evidence or f"{scope} 品类差评数量偏高。",
                         metadata={"scope": scope},
                     )
                 )
@@ -208,6 +249,43 @@ def build_evidence_bundle(state: BIState) -> EvidenceBundle:
                 evidence_text=evidence_text,
             )
         )
+
+    what_if_result = state.get("what_if_result") or {}
+    if what_if_result:
+        scenario_type = str(
+            what_if_result.get("scenario_type")
+            or what_if_result.get("scenario")
+            or ""
+        ).lower()
+        summary_text = str(
+            what_if_result.get("summary_text") or what_if_result.get("summary") or ""
+        ).strip()
+        if "seller" in scenario_type or "seller" in summary_text.lower():
+            baseline = what_if_result.get("baseline_metrics") or {}
+            simulated = what_if_result.get("simulated_metrics") or {}
+            baseline_score = _safe_float(
+                baseline.get("avg_review_score")
+                or what_if_result.get("current_avg_score")
+            )
+            simulated_score = _safe_float(
+                simulated.get("avg_review_score")
+                or what_if_result.get("simulated_avg_score")
+            )
+            if baseline_score is not None and simulated_score is not None:
+                signals.append(
+                    DecisionSignal(
+                        domain="seller",
+                        signal="what-if seller removal uplift",
+                        value=simulated_score,
+                        benchmark=baseline_score,
+                        severity_score=_cap_score(
+                            abs(simulated_score - baseline_score) / 0.5 + 0.5
+                        ),
+                        evidence_text=summary_text
+                        or f"What-if 显示剔除高差评卖家后评分可从 {baseline_score:.2f} 提升到 {simulated_score:.2f}。",
+                        metadata={"scenario_type": scenario_type},
+                    )
+                )
 
     if visualization_result.get("summary_text"):
         source_summaries = {

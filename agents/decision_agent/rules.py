@@ -65,7 +65,12 @@ def detect_problems_and_score(bundle: EvidenceBundle) -> list[ScoredProblem]:
         (s for s in delivery_signals if "on_time_rate" in s.signal), None
     )
     delivery_delay_signal = next(
-        (s for s in delivery_signals if "avg_delivery_days" in s.signal), None
+        (
+            s
+            for s in delivery_signals
+            if "avg_delivery_days" in s.signal or "delayed_orders" in s.signal
+        ),
+        None,
     )
     delivery_nlp_signal = next(
         (s for s in delivery_signals if "delivery_delay topic share" in s.signal), None
@@ -132,7 +137,12 @@ def detect_problems_and_score(bundle: EvidenceBundle) -> list[ScoredProblem]:
             )
 
     category_sales_signal = next(
-        (s for s in category_signals if "sales decline" in s.signal), None
+        (
+            s
+            for s in category_signals
+            if "sales decline" in s.signal or "bad_review_count" in s.signal
+        ),
+        None,
     )
     category_quality_signal = next(
         (s for s in category_signals if "negative quality rate" in s.signal), None
