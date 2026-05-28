@@ -1,0 +1,59 @@
+{
+  "user_query": "哪些卖家需要重点治理？如果下架高差评卖家会怎样？",
+  "intent": "卖家治理",
+  "analysis_result": {
+    "summary_text": "少数卖家评分显著偏低，拖累整体口碑。",
+    "kpis": {
+      "total_gmv": 980000,
+      "total_orders": 18000,
+      "avg_basket": 142.8,
+      "avg_review_score": 3.4
+    },
+    "findings": [
+      {
+        "topic": "seller",
+        "metric": "avg_review_score",
+        "scope": "top_risk_sellers",
+        "value": 3.4,
+        "benchmark": 3.6,
+        "gap": -0.2,
+        "evidence": "高风险卖家平均评分低于阈值。"
+      }
+    ],
+    "simulation_inputs": {
+      "seller_quality_impact": {
+        "baseline_avg_review_score": 3.4,
+        "remove_top_n_avg_review_score": 3.8,
+        "baseline_negative_rate": 0.27,
+        "remove_top_n_negative_rate": 0.18,
+        "baseline_gmv": 980000,
+        "remove_top_n_gmv": 955000,
+        "top_n": 20
+      }
+    }
+  },
+  "nlp_result": {
+    "summary_text": "差评评论集中在 seller service 和 wrong item。",
+    "negative_topics": [
+      {"topic": "product_quality", "count": 140, "share": 0.19}
+    ],
+    "worst_categories": [
+      {"category": "bed_bath_table", "negative_rate": 0.31}
+    ],
+    "sentiment_overview": {
+      "positive_ratio": 0.52,
+      "neutral_ratio": 0.21,
+      "negative_ratio": 0.27
+    }
+  },
+  "forecast_result": {
+    "summary_text": "销售趋势整体平稳但增长放缓。",
+    "horizon": "6 weeks",
+    "forecast_values": [100, 101, 100, 99, 99, 98],
+    "trend_direction": "flat",
+    "risk_flags": []
+  },
+  "visualization_result": {
+    "summary_text": "卖家评分分布存在明显长尾。"
+  }
+}

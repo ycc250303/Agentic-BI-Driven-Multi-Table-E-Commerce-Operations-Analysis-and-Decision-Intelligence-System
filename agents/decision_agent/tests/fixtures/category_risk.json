@@ -1,0 +1,49 @@
+{
+  "user_query": "Top 10 差评品类及其主要差评原因是什么？",
+  "intent": "品类治理",
+  "analysis_result": {
+    "summary_text": "部分品类销量下降且质量负面反馈聚集。",
+    "kpis": {
+      "total_gmv": 760000,
+      "total_orders": 15000,
+      "avg_basket": 128.2
+    },
+    "findings": [
+      {
+        "topic": "category",
+        "metric": "sales_decline",
+        "scope": "bed_bath_table",
+        "value": 0.22,
+        "benchmark": 0.0,
+        "gap": -0.22,
+        "evidence": "bed_bath_table 品类销量下滑明显。"
+      }
+    ],
+    "simulation_inputs": {}
+  },
+  "nlp_result": {
+    "summary_text": "差评主题集中在 quality 和 missing parts。",
+    "negative_topics": [
+      {"topic": "product_quality", "count": 240, "share": 0.29},
+      {"topic": "missing_parts", "count": 160, "share": 0.21}
+    ],
+    "worst_categories": [
+      {"category": "bed_bath_table", "negative_rate": 0.31}
+    ],
+    "sentiment_overview": {
+      "positive_ratio": 0.43,
+      "neutral_ratio": 0.25,
+      "negative_ratio": 0.32
+    }
+  },
+  "forecast_result": {
+    "summary_text": "未来销售略有下降。",
+    "horizon": "6 weeks",
+    "forecast_values": [100, 99, 98, 97, 96, 95],
+    "trend_direction": "down",
+    "risk_flags": []
+  },
+  "visualization_result": {
+    "summary_text": "品类趋势图显示问题品类下滑。"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "user_query": "根据历史订单趋势，预测未来 6 周的销售额，并给出建议。",
+  "intent": "综合运营",
+  "analysis_result": {
+    "summary_text": "整体经营平稳，但短期增长放缓。",
+    "kpis": {
+      "total_gmv": 1400000,
+      "total_orders": 36000,
+      "avg_basket": 188.0,
+      "on_time_rate": 0.86,
+      "avg_delivery_days": 6.2
+    },
+    "findings": [
+      {
+        "topic": "region",
+        "metric": "regional_negative_rate",
+        "scope": "BA",
+        "value": 0.24,
+        "benchmark": 0.22,
+        "gap": 0.02,
+        "evidence": "BA 州负面率略高于阈值。"
+      }
+    ],
+    "simulation_inputs": {}
+  },
+  "nlp_result": {
+    "summary_text": "评论情绪整体中性偏正，但存在少量延迟投诉。",
+    "negative_topics": [
+      {"topic": "delivery_delay", "count": 90, "share": 0.21}
+    ],
+    "worst_states": [
+      {"state": "BA", "negative_rate": 0.24}
+    ],
+    "sentiment_overview": {
+      "positive_ratio": 0.51,
+      "neutral_ratio": 0.28,
+      "negative_ratio": 0.21
+    }
+  },
+  "forecast_result": {
+    "summary_text": "未来 6 周销售增长预计放缓。",
+    "horizon": "6 weeks",
+    "forecast_values": [100, 101, 100, 99, 98, 97],
+    "trend_direction": "down",
+    "risk_flags": ["未来 6 周销售增长放缓"]
+  },
+  "visualization_result": {
+    "summary_text": "趋势图已经显示放缓迹象。"
+  }
+}

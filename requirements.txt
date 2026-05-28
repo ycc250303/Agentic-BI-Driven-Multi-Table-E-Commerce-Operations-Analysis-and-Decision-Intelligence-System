@@ -9,3 +9,4 @@ PyMySQL
 mysql-connector-python
 
 matplotlib
+pytest
