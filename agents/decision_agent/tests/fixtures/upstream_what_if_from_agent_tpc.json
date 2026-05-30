@@ -1,0 +1,20 @@
+{
+  "scenario": "Delist Top 20 high-negative-review sellers",
+  "top_n": 20,
+  "min_reviews_filter": 20,
+  "current_avg_score": 4.0346,
+  "simulated_avg_score": 4.0488,
+  "estimated_score_improvement": 0.014199999999999768,
+  "current_negative_rate": 0.1606,
+  "simulated_negative_rate": 0.1567,
+  "estimated_negative_rate_drop": 0.003899999999999987,
+  "total_reviews": 111461,
+  "removed_reviews": 1251,
+  "assumptions": [
+    "为静态反事实估计：仅从样本中剔除被下架卖家的订单评论，不重新分配需求",
+    "未考虑用户在替代卖家上的购买体验差异（替代效应可能拉低或拉高估计）",
+    "差评率阈值使用 review_score<=2，与本项目其他分析保持一致",
+    "卖家筛选要求评论数 >= 20 以避免小样本噪声"
+  ],
+  "summary": "假设下架差评率最高的 Top 20 卖家（要求样本量≥20）将剔除 1251/111461 条评论：平台平均评分由 4.035 提升至 4.049（+0.014），差评率由 16.06% 降至 15.67%（-0.39%）。"
+}

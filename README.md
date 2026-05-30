@@ -11,7 +11,6 @@ Agentic BI 驱动的多表电商运营分析与决策智能系统
 
 ```bash
 conda create -n agentic_bi python=3.11 -y
-
 conda activate agentic_bi
 ```
 
@@ -19,9 +18,7 @@ conda activate agentic_bi
 
 ```bash
 git clone https://github.com/ycc250303/Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System.git
-
 cd Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System
-
 pip install -r requirements.txt
 ```
 
@@ -38,6 +35,16 @@ export AGENTIC_BI_DB_PASSWORD='your_database_password'
 # export AGENTIC_BI_VIZ_DIR='/path/to/charts'
 ```
 
+或者使用 `.env`
+
+- 导入数据
+
+```bash
+python utils/init_database.py
+python utils/load_data_to_mysql.py
+python utils/refresh_views.py
+```
+
 ## 可视化 Agent（作业要求）
 
 - **位置**：`agents/viz_agent/`，提示词：`config/visualization_agent/plan_chart.md`。
@@ -46,4 +53,3 @@ export AGENTIC_BI_DB_PASSWORD='your_database_password'
 - **快速串联（NL → SQL → 图）**：项目根目录执行  
   `python agents/viz_agent/run.py --sql-then-viz --query "<你的问题>"`（需 MySQL、`AGENTIC_BI_DB_*`、`DEEPSEEK_API_KEY`）；或在代码里调用 `run_sql_then_visualize(user_query)`。仅画图调试可用  
   `python agents/viz_agent/run.py --csv <结果.csv> --query "<问题>" --no-llm`。
-

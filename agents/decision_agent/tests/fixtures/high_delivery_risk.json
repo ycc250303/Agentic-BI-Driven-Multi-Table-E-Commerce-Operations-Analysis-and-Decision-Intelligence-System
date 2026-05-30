@@ -1,0 +1,68 @@
+{
+  "user_query": "为什么某些州的平均配送时长显著高于全国均值？给出优化建议。",
+  "intent": "物流履约优化",
+  "analysis_result": {
+    "summary_text": "东北部部分州配送时长偏高，准时率低于全国基准。",
+    "kpis": {
+      "total_gmv": 1200000,
+      "total_orders": 34000,
+      "avg_basket": 176.4,
+      "on_time_rate": 0.74,
+      "avg_delivery_days": 9.6
+    },
+    "findings": [
+      {
+        "topic": "delivery",
+        "metric": "on_time_rate",
+        "scope": "northeast_region",
+        "value": 0.74,
+        "benchmark": 0.84,
+        "gap": -0.10,
+        "evidence": "东北部准时率显著低于全国平均。"
+      },
+      {
+        "topic": "delivery",
+        "metric": "avg_delivery_days",
+        "scope": "northeast_region",
+        "value": 9.6,
+        "benchmark": 8.0,
+        "gap": 1.6,
+        "evidence": "东北部平均配送时长高于全国平均。"
+      }
+    ],
+    "simulation_inputs": {
+      "delivery_improvement": {
+        "baseline_avg_delivery_days": 9.6,
+        "baseline_on_time_rate": 0.74,
+        "baseline_delivery_negative_share": 0.31,
+        "on_time_rate_gain_per_day": 0.04,
+        "negative_share_drop_per_day": 0.025
+      }
+    }
+  },
+  "nlp_result": {
+    "summary_text": "差评主题集中在 delayed delivery 和 late arrival。",
+    "negative_topics": [
+      {"topic": "delivery_delay", "count": 320, "share": 0.28},
+      {"topic": "product_quality", "count": 210, "share": 0.18}
+    ],
+    "worst_states": [
+      {"state": "BA", "negative_rate": 0.29}
+    ],
+    "sentiment_overview": {
+      "positive_ratio": 0.46,
+      "neutral_ratio": 0.24,
+      "negative_ratio": 0.30
+    }
+  },
+  "forecast_result": {
+    "summary_text": "未来 6 周销售增长预计放缓。",
+    "horizon": "6 weeks",
+    "forecast_values": [100, 102, 101, 100, 99, 98],
+    "trend_direction": "down",
+    "risk_flags": ["未来 6 周销售增长放缓"]
+  },
+  "visualization_result": {
+    "summary_text": "配送时长图表显示东北部高于全国均值。"
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "user_query": "基于真实上游产物，给出平台当前需要优先优化的方向。",
+  "intent": "prescriptive",
+  "analysis_result": {
+    "summary_text": "当前经营重点应放在提升履约与修复差评集中品类。",
+    "kpis": {
+      "total_gmv": 4034600,
+      "total_orders": 111461,
+      "avg_basket": 176.2,
+      "on_time_rate": 0.839,
+      "avg_delivery_days": 7.1
+    },
+    "findings": [
+      {
+        "topic": "delivery",
+        "metric": "on_time_rate",
+        "scope": "national",
+        "value": 0.839,
+        "benchmark": 0.85,
+        "gap": -0.011,
+        "evidence": "全国准时率略低于目标值。"
+      },
+      {
+        "topic": "category",
+        "metric": "sales_decline",
+        "scope": "cama_mesa_banho",
+        "value": 0.22,
+        "benchmark": 0.0,
+        "gap": -0.22,
+        "evidence": "床品家居品类存在销量压力。"
+      },
+      {
+        "topic": "region",
+        "metric": "regional_negative_rate",
+        "scope": "SP",
+        "value": 0.28,
+        "benchmark": 0.22,
+        "gap": 0.06,
+        "evidence": "SP 州负面率偏高。"
+      },
+      {
+        "topic": "seller",
+        "metric": "avg_review_score",
+        "scope": "high_risk_sellers",
+        "value": 3.4,
+        "benchmark": 3.6,
+        "gap": -0.2,
+        "evidence": "高风险卖家评分偏低。"
+      }
+    ],
+    "simulation_inputs": {
+      "seller_quality_impact": {
+        "baseline_avg_review_score": 4.0346,
+        "remove_top_n_avg_review_score": 4.0488,
+        "baseline_negative_rate": 0.1606,
+        "remove_top_n_negative_rate": 0.1567,
+        "baseline_gmv": 4034600,
+        "remove_top_n_gmv": 3992100,
+        "top_n": 20
+      }
+    }
+  },
+  "nlp_result": {
+    "summary_text": "差评评论集中在 delivery_delay、not_received 和 product_quality。",
+    "negative_topics": {
+      "empty_text": 80,
+      "wrong_item": 13,
+      "delivery_delay": 17,
+      "other": 121,
+      "not_received": 34,
+      "product_quality": 16,
+      "price_freight": 6,
+      "customer_service": 8,
+      "missing_parts": 5
+    },
+    "worst_categories": [
+      {
+        "category": "relogios_presentes",
+        "total": 28,
+        "dominant_topic": "empty_text",
+        "dominant_share": 0.4286
+      },
+      {
+        "category": "moveis_decoracao",
+        "total": 28,
+        "dominant_topic": "other",
+        "dominant_share": 0.3214
+      },
+      {
+        "category": "cama_mesa_banho",
+        "total": 25,
+        "dominant_topic": "empty_text",
+        "dominant_share": 0.36
+      }
+    ],
+    "worst_states": [
+      {"state": "SP", "negative_rate": 0.31},
+      {"state": "RJ", "negative_rate": 0.29},
+      {"state": "MG", "negative_rate": 0.27}
+    ],
+    "sentiment_overview": {
+      "summary": "sentiment 聚合失败：(1146, \"Table 'bi.review_sentiment' doesn't exist\")"
+    }
+  },
+  "forecast_result": {
+    "summary_text": "结合历史趋势，未来 6 周增长将继续放缓。",
+    "horizon": "6 weeks",
+    "forecast_values": [4.0, 4.02, 4.01, 3.99, 3.98, 3.97],
+    "trend_direction": "down",
+    "risk_flags": ["未来 6 周销售增长放缓"]
+  },
+  "what_if_result": {
+    "scenario": "Delist Top 20 high-negative-review sellers",
+    "top_n": 20,
+    "min_reviews_filter": 20,
+    "current_avg_score": 4.0346,
+    "simulated_avg_score": 4.0488,
+    "estimated_score_improvement": 0.0142,
+    "current_negative_rate": 0.1606,
+    "simulated_negative_rate": 0.1567,
+    "estimated_negative_rate_drop": 0.0039,
+    "total_reviews": 111461,
+    "removed_reviews": 1251,
+    "assumptions": [
+      "为静态反事实估计：仅从样本中剔除被下架卖家的订单评论，不重新分配需求"
+    ],
+    "summary": "假设下架差评率最高的 Top 20 卖家（要求样本量≥20）将剔除 1251/111461 条评论：平台平均评分由 4.035 提升至 4.049（+0.014），差评率由 16.06% 降至 15.67%（-0.39%）。"
+  },
+  "visualization_result": {
+    "summary_text": "图表显示配送与区域负面率问题集中。"
+  }
+}

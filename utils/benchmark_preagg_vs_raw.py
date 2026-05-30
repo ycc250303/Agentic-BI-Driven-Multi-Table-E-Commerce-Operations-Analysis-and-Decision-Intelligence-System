@@ -27,9 +27,11 @@ from typing import Dict, List, Optional
 
 import mysql.connector
 
-from db_env import mysql_connector_config
-
 ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from db_env import mysql_connector_config
 
 
 ORDER_STATUS_IN = "('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')"

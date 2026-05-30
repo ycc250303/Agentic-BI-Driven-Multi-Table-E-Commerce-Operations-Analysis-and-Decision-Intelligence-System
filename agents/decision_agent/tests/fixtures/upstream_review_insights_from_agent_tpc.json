@@ -1,0 +1,295 @@
+{
+  "sample_size": 300,
+  "negative_review_count": 300,
+  "topic_distribution": {
+    "empty_text": 80,
+    "wrong_item": 13,
+    "delivery_delay": 17,
+    "other": 121,
+    "not_received": 34,
+    "product_quality": 16,
+    "price_freight": 6,
+    "customer_service": 8,
+    "missing_parts": 5
+  },
+  "top_categories": [
+    {
+      "key": "relogios_presentes",
+      "count": 28
+    },
+    {
+      "key": "moveis_decoracao",
+      "count": 28
+    },
+    {
+      "key": "cama_mesa_banho",
+      "count": 25
+    },
+    {
+      "key": "beleza_saude",
+      "count": 22
+    },
+    {
+      "key": "telefonia",
+      "count": 19
+    }
+  ],
+  "top_seller_states": [
+    {
+      "key": "SP",
+      "count": 220
+    },
+    {
+      "key": "PR",
+      "count": 26
+    },
+    {
+      "key": "MG",
+      "count": 22
+    },
+    {
+      "key": "RJ",
+      "count": 14
+    },
+    {
+      "key": "RS",
+      "count": 6
+    }
+  ],
+  "top_customer_states": [
+    {
+      "key": "SP",
+      "count": 88
+    },
+    {
+      "key": "RJ",
+      "count": 46
+    },
+    {
+      "key": "MG",
+      "count": 37
+    },
+    {
+      "key": "PR",
+      "count": 26
+    },
+    {
+      "key": "RS",
+      "count": 20
+    }
+  ],
+  "complaints_by_category": [
+    {
+      "category": "relogios_presentes",
+      "total": 28,
+      "dominant_topic": "empty_text",
+      "dominant_share": 0.4286,
+      "topic_distribution": {
+        "empty_text": 12,
+        "other": 7,
+        "not_received": 4,
+        "customer_service": 1,
+        "wrong_item": 1,
+        "product_quality": 3
+      }
+    },
+    {
+      "category": "moveis_decoracao",
+      "total": 28,
+      "dominant_topic": "other",
+      "dominant_share": 0.3214,
+      "topic_distribution": {
+        "delivery_delay": 7,
+        "other": 9,
+        "empty_text": 4,
+        "price_freight": 4,
+        "missing_parts": 4
+      }
+    },
+    {
+      "category": "cama_mesa_banho",
+      "total": 25,
+      "dominant_topic": "empty_text",
+      "dominant_share": 0.36,
+      "topic_distribution": {
+        "empty_text": 9,
+        "other": 8,
+        "not_received": 2,
+        "customer_service": 3,
+        "product_quality": 1,
+        "price_freight": 1,
+        "delivery_delay": 1
+      }
+    },
+    {
+      "category": "beleza_saude",
+      "total": 22,
+      "dominant_topic": "empty_text",
+      "dominant_share": 0.3636,
+      "topic_distribution": {
+        "empty_text": 8,
+        "other": 8,
+        "wrong_item": 2,
+        "not_received": 3,
+        "product_quality": 1
+      }
+    },
+    {
+      "category": "telefonia",
+      "total": 19,
+      "dominant_topic": "other",
+      "dominant_share": 0.8421,
+      "topic_distribution": {
+        "wrong_item": 1,
+        "other": 16,
+        "product_quality": 2
+      }
+    },
+    {
+      "category": "esporte_lazer",
+      "total": 19,
+      "dominant_topic": "empty_text",
+      "dominant_share": 0.4211,
+      "topic_distribution": {
+        "empty_text": 8,
+        "product_quality": 2,
+        "delivery_delay": 1,
+        "not_received": 4,
+        "other": 3,
+        "missing_parts": 1
+      }
+    },
+    {
+      "category": "informatica_acessorios",
+      "total": 16,
+      "dominant_topic": "empty_text",
+      "dominant_share": 0.375,
+      "topic_distribution": {
+        "delivery_delay": 1,
+        "empty_text": 6,
+        "other": 6,
+        "product_quality": 2,
+        "price_freight": 1
+      }
+    },
+    {
+      "category": "automotivo",
+      "total": 16,
+      "dominant_topic": "other",
+      "dominant_share": 0.8125,
+      "topic_distribution": {
+        "other": 13,
+        "wrong_item": 1,
+        "empty_text": 1,
+        "not_received": 1
+      }
+    },
+    {
+      "category": "utilidades_domesticas",
+      "total": 16,
+      "dominant_topic": "other",
+      "dominant_share": 0.5625,
+      "topic_distribution": {
+        "not_received": 1,
+        "empty_text": 6,
+        "other": 9
+      }
+    },
+    {
+      "category": "brinquedos",
+      "total": 11,
+      "dominant_topic": "empty_text",
+      "dominant_share": 0.4545,
+      "topic_distribution": {
+        "other": 2,
+        "empty_text": 5,
+        "wrong_item": 2,
+        "not_received": 1,
+        "product_quality": 1
+      }
+    }
+  ],
+  "method": "keyword_pt_baseline",
+  "summary": "采样 300 条 review_score<=2 的差评（葡语关键词主题分类基线）。主导主题为「other」，占比 40.3%。",
+  "sentiment": {
+    "method": "n/a",
+    "summary": "sentiment 聚合失败：(1146, \"Table 'bi.review_sentiment' doesn't exist\")"
+  },
+  "topics_bertopic": {
+    "method": "n/a",
+    "summary": "bertopic 聚合失败：(1146, \"Table 'bi.review_topic_meta' doesn't exist\")"
+  },
+  "wordcloud": {
+    "positive": {
+      "prazo": 170,
+      "antes": 124,
+      "recomendo": 102,
+      "chegou": 99,
+      "entrega": 88,
+      "bom": 77,
+      "qualidade": 53,
+      "entregue": 52,
+      "tudo": 50,
+      "excelente": 49,
+      "super": 40,
+      "ótimo": 39,
+      "recebi": 37,
+      "não": 36,
+      "gostei": 34,
+      "veio": 27,
+      "rápida": 26,
+      "sempre": 25,
+      "dentro": 24,
+      "parabéns": 23,
+      "boa": 22,
+      "amei": 21,
+      "adorei": 21,
+      "embalado": 17,
+      "perfeito": 17,
+      "previsto": 17,
+      "rápido": 17,
+      "compra": 17,
+      "certo": 17,
+      "atendimento": 16
+    },
+    "negative": {
+      "não": 417,
+      "recebi": 177,
+      "comprei": 104,
+      "entrega": 87,
+      "veio": 85,
+      "entregue": 78,
+      "compra": 64,
+      "chegou": 61,
+      "dia": 45,
+      "nao": 45,
+      "prazo": 42,
+      "lannister": 37,
+      "produtos": 31,
+      "outro": 30,
+      "apenas": 28,
+      "dias": 27,
+      "dois": 27,
+      "porém": 27,
+      "nada": 26,
+      "aguardando": 26,
+      "quero": 25,
+      "correios": 24,
+      "nota": 22,
+      "vou": 22,
+      "diferente": 22,
+      "resposta": 22,
+      "pra": 21,
+      "tive": 21,
+      "fiz": 20,
+      "errado": 20
+    },
+    "method": "1-gram + pt_stopwords",
+    "sample": {
+      "positive": 600,
+      "negative": 600
+    },
+    "stopwords_count": 155,
+    "summary": "好评 Top 词：prazo, antes, recomendo, chegou, entrega；差评 Top 词：não, recebi, comprei, entrega, veio"
+  }
+}

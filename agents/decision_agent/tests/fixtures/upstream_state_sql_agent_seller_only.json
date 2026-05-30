@@ -1,0 +1,30 @@
+{
+  "user_query": "哪些卖家的差评率最高？",
+  "intent": "diagnostic",
+  "analysis_result": {
+    "summary_text": "本查询使用 mv_seller_perf 预聚合视图，按 seller_id 粒度获取 avg_review_score（平均评分），计算差评率近似值（1 - 评分/5），按差评率降序排列取 TOP 10。注意：avg_review_score 已经是该卖家在各年-月的聚合均值，差评率为近似指标（评分越低差评率越高），非严格差评订单比率。若要精确差评率（如 review_score ≤ 2 的订单占比），需回退原始表 order_reviews 与 orders 做明细级计算。",
+    "kpis": {
+      "avg_review_score": 1.0
+    },
+    "findings": [
+      {
+        "topic": "seller",
+        "metric": "avg_review_score",
+        "scope": "ed8cb7b190ceb6067227478e48cf8dde",
+        "value": 1.0,
+        "benchmark": 3.6,
+        "gap": -2.6,
+        "evidence": "卖家 ed8cb7b190ceb6067227478e48cf8dde 的平均评分仅为 1.00，近似差评率 80.00%。"
+      }
+    ],
+    "tables": [
+      {
+        "name": "top_bad_sellers",
+        "csv_path": "F:\\同济大学\\第6学期\\商务智能案例\\workplace\\1\\Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System\\.worktrees\\sql-agent\\agents\\sql_agent\\query_results\\2026-05-28 15-56-15.csv",
+        "description": "查询返回 10 行，耗时约 3026.2 ms。共 4 列：seller_id, total_orders, avg_review_score, bad_review_rate。列摘要：seller_id（string）非空 10，示例 ['ed8cb7b190ceb6067227478e48cf8dde', '7fc87cc3e89b3d1d5cabdca32f8485aa', 'd9d43faf741ceaa8da52fdbb81d9e0e3']。 total_orders（integer）非空 10，示例 [1, 1, 1]。 avg_review_score（float）非空 10，示例 [1.0, 1.0, 1.0]。 bad_review_rate（float）非空 10，示例 [0.8, 0.8, 0.8]。 明细已写入 CSV：2026-05-28 15-56-15.csv。"
+      }
+    ]
+  },
+  "visualization_result": {},
+  "forecast_result": {}
+}
