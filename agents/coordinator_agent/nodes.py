@@ -15,6 +15,7 @@ from agents.coordinator_agent.adapters import (
     pick_viz_csv_from_exec_payload,
 )
 from agents.coordinator_agent.decomposer import decompose_query, decompose_to_state_patch
+from agents.coordinator_agent.guardrails import is_off_topic_query, off_topic_state_patch
 from agents.coordinator_agent.router import choose_next_agent
 from agents.coordinator_agent.state import AgentState
 from agents.coordinator_agent.synthesizer import synthesize_final_answer
@@ -62,12 +63,31 @@ def decompose_node(state: AgentState, *, use_llm: bool = True, model=None) -> Ag
             "warnings": _append_warning(state, "缺少 user_query，无法分解问题。"),
             "next_agent": "synthesize",
         }
+    if is_off_topic_query(user_query):
+        return {**state, **off_topic_state_patch(user_query)}
     result = decompose_query(user_query, use_llm=use_llm, model=model)
+    if result.off_topic:
+        return {**state, **off_topic_state_patch(user_query)}
     patch = decompose_to_state_patch(user_query, result)
     return {**state, **patch}
 
 
 def orchestrator_node(state: AgentState, *, use_llm: bool = True, model=None) -> AgentState:
+    if state.get("off_topic"):
+        iterations = int(state.get("orchestrator_iterations") or 0) + 1
+        return {
+            **state,
+            "orchestrator_iterations": iterations,
+            "next_agent": "synthesize",
+            "execution_log": _append_log(
+                state,
+                {
+                    "step": iterations,
+                    "next_agent": "synthesize",
+                    "reasoning": "off_topic，跳过子 Agent",
+                },
+            ),
+        }
     iterations = int(state.get("orchestrator_iterations") or 0) + 1
     decision = choose_next_agent(
         {**state, "orchestrator_iterations": iterations},
@@ -227,6 +247,8 @@ def synthesize_node(
     model=None,
     use_llm: bool = True,
 ) -> AgentState:
+    if state.get("off_topic") and state.get("final_answer"):
+        return {**state, "agents_done": _mark_done(state, "synthesize")}
     answer = synthesize_final_answer(state, model=model, use_llm=use_llm)
     return {**state, "final_answer": answer, "agents_done": _mark_done(state, "synthesize")}
 

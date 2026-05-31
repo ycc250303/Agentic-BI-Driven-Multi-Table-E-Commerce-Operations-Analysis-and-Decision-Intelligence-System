@@ -56,6 +56,7 @@ print(state["final_answer"])
 | `config/coordinator_agent/decompose_query.md` | 问题分解提示词 |
 | `config/coordinator_agent/route_next.md` | 迭代路由提示词 |
 | `config/coordinator_agent/synthesize_answer.md` | 最终回答撰写提示词 |
+| `config/prompt_guardrails.md` | **各 Agent 共用防注入 / 任务边界** |
 
 ## 测试
 

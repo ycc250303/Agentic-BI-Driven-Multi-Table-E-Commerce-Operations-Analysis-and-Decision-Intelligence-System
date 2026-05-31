@@ -12,6 +12,7 @@ class AgentState(TypedDict, total=False):
     user_query: str
     question: str
 
+    off_topic: bool
     intent: str
     sub_questions: list[str]
     suggested_agents: list[str]

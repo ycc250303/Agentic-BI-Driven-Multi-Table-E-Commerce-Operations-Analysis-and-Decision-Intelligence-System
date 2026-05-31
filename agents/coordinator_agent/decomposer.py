@@ -5,24 +5,28 @@ import re
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from agents.coordinator_agent.planner import IntentName, classify_intent
 
 
 class DecomposeResult(BaseModel):
     intent: IntentName = "descriptive"
-    sub_questions: list[str] = Field(min_length=1)
+    sub_questions: list[str] = Field(default_factory=list)
     suggested_agents: list[str] = Field(default_factory=list)
     reasoning: str = ""
+    off_topic: bool = False
 
     @field_validator("sub_questions")
     @classmethod
     def _strip_questions(cls, items: list[str]) -> list[str]:
-        out = [str(q).strip() for q in items if str(q).strip()]
-        if not out:
-            raise ValueError("sub_questions 不能为空")
-        return out
+        return [str(q).strip() for q in items if str(q).strip()]
+
+    @model_validator(mode="after")
+    def _require_questions_unless_off_topic(self) -> DecomposeResult:
+        if not self.off_topic and not self.sub_questions:
+            raise ValueError("sub_questions 不能为空（off_topic=false 时）")
+        return self
 
 
 def _project_root() -> Path:
@@ -135,9 +139,11 @@ def decompose_query(user_query: str, *, use_llm: bool = True, model=None) -> Dec
 
 
 def decompose_to_state_patch(user_query: str, result: DecomposeResult) -> dict:
-    task_plan = [
-        f"子问题 {i + 1}：{q}" for i, q in enumerate(result.sub_questions)
-    ]
+    if result.off_topic:
+        from agents.coordinator_agent.guardrails import off_topic_state_patch
+
+        return off_topic_state_patch(user_query)
+    task_plan = [f"子问题 {i + 1}：{q}" for i, q in enumerate(result.sub_questions)]
     task_plan.append(f"建议调度：{' → '.join(result.suggested_agents)} → 汇总回答")
     return {
         "user_query": user_query,
