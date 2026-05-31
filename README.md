@@ -45,6 +45,17 @@ python utils/load_data_to_mysql.py
 python utils/refresh_views.py
 ```
 
+## 协调器 Agent（多 Agent 编排）
+
+- **位置**：`agents/coordinator_agent/`
+- **作用**：拆分复合问题 → **迭代式**调度 sql / viz / nlp / decision → **LLM 撰写**最终回答
+- **详细用法**：见 [`agents/coordinator_agent/readme.md`](agents/coordinator_agent/readme.md)
+
+```bash
+python -m agents.coordinator_agent.run --query "2017年哪个州的销售额最高？"
+python -m agents.coordinator_agent.run --decompose-only --no-llm-plan --query "A？B？"
+```
+
 ## 可视化 Agent（作业要求）
 
 - **位置**：`agents/viz_agent/`，提示词：`config/visualization_agent/plan_chart.md`。
