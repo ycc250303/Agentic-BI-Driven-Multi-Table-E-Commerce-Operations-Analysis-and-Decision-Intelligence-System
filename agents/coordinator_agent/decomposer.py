@@ -83,9 +83,11 @@ def _split_compound_query(user_query: str) -> list[str]:
 
 def _default_suggested_agents(intent: IntentName, user_query: str) -> list[str]:
     from agents.nlp_agent.run import should_run_nlp
+    from agents.viz_agent.viz_planner import query_suggests_visualization
 
     agents = ["data_analysis"]
-    agents.append("visualization")
+    if query_suggests_visualization(user_query, intent):
+        agents.append("visualization")
     if should_run_nlp(user_query, intent):
         agents.append("nlp")
     if intent in ("prescriptive", "what_if", "diagnostic", "predictive"):

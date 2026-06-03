@@ -13,11 +13,18 @@
 2. 将用户输入拆成 **sub_questions**：每个元素必须是**完整、自洽、可单独查数**的一句中文问法
 3. 给出 **suggested_agents**：建议可能用到的子 Agent 名称（仅供参考，实际调度由路由模块决定）
 
+**诊断/差评/原因类问题**（如 Top 差评品类、主要差评原因）应建议完整链路：
+`["data_analysis", "nlp", "visualization", "decision"]`
+
+**纯描述性单指标**（如「2017 GMV 是多少」）建议：`["data_analysis"]` 或最多加 `visualization`（仅当需要趋势图）
+
 可用子 Agent 名称：`data_analysis`、`visualization`、`nlp`、`decision`
 
 ## 拆分原则
 
-- 并列问法（如「A 是多少？B 排名怎样？C 最受欢迎？」）必须拆成多条
+- 并列问法（如「A 是多少？B 排名怎样？」）或「A 及其 B」必须拆成多条
+- **差评品类 + 原因**类问题：至少拆成「Top 差评品类排名」与「差评主题/原因分布」两个可查数/可 NLP 的子问题（若 LLM 只拆一条，规则引擎会按「及其」再拆）
+- `suggested_agents` 必须完整：差评/原因/诊断类问题应含 `data_analysis`, `nlp`, `visualization`, `decision`
 - 每条只保留**一个核心指标或一个分析维度**，不要合并多个 unrelated 指标
 - 若原问题已是单一问法，`sub_questions` 只含 1 条
 - 不要生成用户没问的内容

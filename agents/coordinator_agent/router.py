@@ -1,3 +1,5 @@
+"""协调器路由：强制完成 suggested_agents 全链路，避免过早 synthesize。"""
+
 from __future__ import annotations
 
 import json
@@ -10,6 +12,9 @@ from pydantic import BaseModel
 AgentRoute = Literal["data_analysis", "visualization", "nlp", "decision", "synthesize"]
 
 MAX_ORCHESTRATOR_ITERATIONS = 20
+
+# SQL 完成后，其余 Agent 的推荐执行顺序（NLP 先于可视化，便于用评论洞察规划佐证图）
+_POST_SQL_AGENT_ORDER: tuple[AgentRoute, ...] = ("nlp", "visualization", "decision")
 
 
 class RouteDecision(BaseModel):
@@ -45,15 +50,35 @@ def _agent_done(state: dict, name: str) -> bool:
     return bool((state.get("agents_done") or {}).get(name))
 
 
+def _suggested_agents(state: dict) -> list[str]:
+    return list(state.get("suggested_agents") or [])
+
+
+def _pending_post_sql_agents(state: dict) -> list[AgentRoute]:
+    """suggested_agents 中尚未完成的后续 Agent（按推荐顺序）。"""
+    suggested = set(_suggested_agents(state))
+    pending: list[AgentRoute] = []
+    for name in _POST_SQL_AGENT_ORDER:
+        if name in suggested and not _agent_done(state, name):
+            pending.append(name)
+    return pending
+
+
 def _should_visualize(state: dict) -> bool:
+    if _agent_done(state, "visualization"):
+        return False
+    if _pending_sql_count(state) > 0:
+        return False
     if not state.get("sql_runs"):
         return False
-    intent = str(state.get("intent") or "")
-    if intent in ("prescriptive", "what_if"):
+    if "visualization" in _suggested_agents(state):
         return True
-    query = str(state.get("user_query") or "")
-    hints = ("趋势", "排名", "对比", "分布", "各州", "各月", "top", "最高", "最低")
-    return any(h in query.lower() or h in query for h in hints)
+    from agents.viz_agent.viz_planner import query_suggests_visualization
+
+    return query_suggests_visualization(
+        str(state.get("user_query") or ""),
+        str(state.get("intent") or ""),
+    )
 
 
 def _should_nlp(state: dict) -> bool:
@@ -67,12 +92,50 @@ def _should_nlp(state: dict) -> bool:
 
 def _should_decision(state: dict) -> bool:
     intent = str(state.get("intent") or "")
-    if intent in ("prescriptive", "what_if"):
+    query = str(state.get("user_query") or "")
+    if intent in ("prescriptive", "what_if", "diagnostic"):
         return True
-    if intent in ("diagnostic", "predictive"):
-        query = str(state.get("user_query") or "")
+    if intent == "predictive":
         return any(k in query for k in ("建议", "策略", "方案", "如何", "怎么", "改进", "优化"))
     return False
+
+
+def _enforce_suggested_pipeline(decision: RouteDecision, state: dict) -> RouteDecision:
+    """LLM 若过早 synthesize，或 visualization 抢在 nlp 前，用规则纠正。"""
+    if _pending_sql_count(state) > 0:
+        if decision.next_agent != "data_analysis":
+            return RouteDecision(
+                next_agent="data_analysis",
+                reasoning="仍有 sub_question 待查数，优先 data_analysis。",
+            )
+        return decision
+
+    pending = _pending_post_sql_agents(state)
+    if pending and decision.next_agent == "synthesize":
+        nxt = pending[0]
+        return RouteDecision(
+            next_agent=nxt,
+            reasoning=(
+                f"分解阶段建议调度 {', '.join(_suggested_agents(state))}；"
+                f"尚未完成 {nxt}，不得提前汇总。"
+            ),
+        )
+
+    suggested = set(_suggested_agents(state))
+    if (
+        decision.next_agent == "visualization"
+        and "nlp" in suggested
+        and not _agent_done(state, "nlp")
+    ):
+        return RouteDecision(
+            next_agent="nlp",
+            reasoning="评论/差评类问题需先完成 NLP 洞察，再规划佐证图表。",
+        )
+
+    if decision.next_agent != "data_analysis" and _agent_done(state, decision.next_agent):
+        return route_next_rule(state)
+
+    return decision
 
 
 def route_next_rule(state: dict) -> RouteDecision:
@@ -83,25 +146,26 @@ def route_next_rule(state: dict) -> RouteDecision:
             reasoning=f"仍有 {pending} 个子问题待查数。",
         )
 
+    post_pending = _pending_post_sql_agents(state)
+    if post_pending:
+        nxt = post_pending[0]
+        return RouteDecision(
+            next_agent=nxt,
+            reasoning=f"按 suggested_agents 全链路执行，下一步：{nxt}。",
+        )
+
+    # suggested_agents 未列但语义仍需要的兜底（如分解器漏标）
+    if not _agent_done(state, "nlp") and _should_nlp(state):
+        return RouteDecision(next_agent="nlp", reasoning="问题涉及评论洞察，执行 NLP。")
     if not _agent_done(state, "visualization") and _should_visualize(state):
         return RouteDecision(
             next_agent="visualization",
-            reasoning="SQL 结果适合可视化且尚未出图。",
+            reasoning="问题适合可视化佐证，执行 visualization。",
         )
-
-    if not _agent_done(state, "nlp") and _should_nlp(state):
-        return RouteDecision(
-            next_agent="nlp",
-            reasoning="问题涉及评论/诊断/决策，需评论洞察。",
-        )
-
     if not _agent_done(state, "decision") and _should_decision(state):
-        return RouteDecision(
-            next_agent="decision",
-            reasoning="用户需要策略/建议类输出。",
-        )
+        return RouteDecision(next_agent="decision", reasoning="诊断/决策类问题，执行 decision。")
 
-    return RouteDecision(next_agent="synthesize", reasoning="证据已足够，生成最终回答。")
+    return RouteDecision(next_agent="synthesize", reasoning="全链路 Agent 已完成，生成最终回答。")
 
 
 def _build_router_context(state: dict) -> str:
@@ -109,6 +173,7 @@ def _build_router_context(state: dict) -> str:
     sub_qs = state.get("sub_questions") or []
     sql_runs = state.get("sql_runs") or []
     pending = _pending_sql_count(state)
+    post_pending = _pending_post_sql_agents(state)
     log = state.get("execution_log") or []
     recent = log[-6:] if log else []
     return json.dumps(
@@ -119,7 +184,8 @@ def _build_router_context(state: dict) -> str:
             "sql_completed": len(sql_runs),
             "sql_pending": pending,
             "agents_done": done,
-            "suggested_agents": state.get("suggested_agents") or [],
+            "suggested_agents": _suggested_agents(state),
+            "pending_post_sql_agents": post_pending,
             "recent_execution_log": recent,
         },
         ensure_ascii=False,
@@ -139,11 +205,7 @@ def route_next_llm(state: dict, *, model=None) -> RouteDecision:
         resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
         raw = _extract_json_object(str(resp.content))
         decision = RouteDecision.model_validate_json(raw)
-        if decision.next_agent == "data_analysis" and _pending_sql_count(state) == 0:
-            return route_next_rule(state)
-        if decision.next_agent != "data_analysis" and _agent_done(state, decision.next_agent):
-            return route_next_rule(state)
-        return decision
+        return _enforce_suggested_pipeline(decision, state)
     except Exception:
         return route_next_rule(state)
 

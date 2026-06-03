@@ -13,7 +13,6 @@ import json
 import sys
 
 from agents.coordinator_agent.decomposer import decompose_query, dump_decompose_json
-from agents.coordinator_agent.graph import run_coordinator
 
 
 def _write(text: str) -> None:
@@ -58,6 +57,8 @@ def main() -> None:
         result = decompose_query(args.query, use_llm=not args.no_llm_plan)
         _write(dump_decompose_json(result))
         return
+
+    from agents.coordinator_agent.graph import run_coordinator
 
     def _emit(tool: str, payload: str) -> None:
         _write(f"\n===== {tool} =====\n{payload[:2000]}")

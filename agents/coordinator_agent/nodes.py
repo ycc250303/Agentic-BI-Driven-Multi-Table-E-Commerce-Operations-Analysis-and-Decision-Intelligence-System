@@ -9,10 +9,7 @@ from typing import Any
 
 from agents.coordinator_agent.adapters import (
     build_analysis_result_from_sql_pipeline,
-    build_viz_execute_json,
     merge_sql_runs,
-    merge_visualization_results,
-    pick_viz_csv_from_exec_payload,
 )
 from agents.coordinator_agent.decomposer import decompose_query, decompose_to_state_patch
 from agents.coordinator_agent.guardrails import is_off_topic_query, off_topic_state_patch
@@ -167,62 +164,37 @@ def visualization_node(
     use_llm: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
 ) -> AgentState:
-    from agents.viz_agent.run import run_visualization_agent
+    from agents.viz_agent.intelligent_viz import run_intelligent_visualization
 
     sql_runs = state.get("sql_runs") or []
     if not sql_runs:
         return {
             **state,
             "agents_done": _mark_done(state, "visualization"),
-            "warnings": _append_warning(state, "跳过可视化：无 SQL 结果。"),
+            "visualization_result": {
+                "skipped": True,
+                "summary_text": "尚无 SQL 分析结果，跳过可视化。",
+                "charts": [],
+            },
         }
 
-    viz_items: list[dict[str, Any]] = []
-    for run in sql_runs:
-        question = str(run.get("question") or state.get("user_query") or "")
-        exec_json = run.get("execute_sql_json") or ""
-        if not exec_json.strip():
-            continue
-        try:
-            exec_payload = json.loads(exec_json)
-        except json.JSONDecodeError:
-            continue
-        csv_path = pick_viz_csv_from_exec_payload(exec_payload)
-        if not csv_path:
-            viz_items.append(
-                {
-                    "ok": False,
-                    "error_message": f"子问题「{question}」无可用 CSV，跳过可视化。",
-                    "user_query": question,
-                }
-            )
-            continue
+    viz_result = run_intelligent_visualization(
+        user_query=str(state.get("user_query") or ""),
+        intent=str(state.get("intent") or "descriptive"),
+        sql_runs=sql_runs,
+        review_insights=state.get("review_insights") or state.get("nlp_result"),
+        model=model,
+        use_llm=use_llm,
+        on_tool_end=on_tool_end,
+    )
 
-        row = next(
-            (
-                r
-                for r in (exec_payload.get("results") or [])
-                if r.get("ok") and str(r.get("result_csv_path")) == csv_path
-            ),
-            {"result_csv_path": csv_path, "data_summary_zh": exec_payload.get("data_summary_zh")},
-        )
-        item = run_visualization_agent(
-            user_query=question,
-            execute_sql_json=build_viz_execute_json(exec_payload, row),
-            model=model,
-            use_llm=use_llm,
-        )
-        item["user_query"] = question
-        viz_items.append(item)
-        if on_tool_end:
-            on_tool_end(
-                f"visualization_{run.get('index', 0)}",
-                json.dumps(item, ensure_ascii=False),
-            )
+    patch: dict[str, Any] = {}
+    if viz_result.get("forecast_result") and not state.get("forecast_result"):
+        patch["forecast_result"] = viz_result["forecast_result"]
 
-    viz_result = merge_visualization_results(viz_items)
     return {
         **state,
+        **patch,
         "visualization_result": viz_result,
         "agents_done": _mark_done(state, "visualization"),
     }

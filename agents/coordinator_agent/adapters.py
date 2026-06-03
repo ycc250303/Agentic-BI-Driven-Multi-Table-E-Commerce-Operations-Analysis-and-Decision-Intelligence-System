@@ -191,14 +191,24 @@ def build_viz_execute_json(exec_payload: dict[str, Any], row: dict[str, Any]) ->
 def merge_visualization_results(items: list[dict[str, Any]]) -> dict[str, Any]:
     charts: list[dict[str, Any]] = []
     ok_count = 0
+    type_counts: dict[str, int] = {}
     for item in items:
         if not item:
             continue
         if item.get("ok"):
             ok_count += 1
+            ctype = str(
+                item.get("chart_type_resolved")
+                or ((item.get("plan") or {}).get("chart_type"))
+                or ""
+            )
+            if ctype:
+                type_counts[ctype] = type_counts.get(ctype, 0) + 1
         charts.append(
             {
                 "ok": item.get("ok"),
+                "chart_id": item.get("chart_id"),
+                "preset": item.get("preset"),
                 "chart_type": item.get("chart_type_resolved")
                 or ((item.get("plan") or {}).get("chart_type")),
                 "image_path": item.get("image_path"),
@@ -208,9 +218,14 @@ def merge_visualization_results(items: list[dict[str, Any]]) -> dict[str, Any]:
                 "error_message": item.get("error_message"),
             }
         )
+    distinct_types = len(type_counts)
     return {
-        "summary_text": f"共生成 {ok_count} 张图表。",
+        "summary_text": (
+            f"共生成 {ok_count} 张图表，覆盖 {distinct_types} 种类型"
+            f"（{', '.join(sorted(type_counts.keys())) or '无'}）。"
+        ),
         "charts": charts,
+        "chart_type_counts": type_counts,
     }
 
 

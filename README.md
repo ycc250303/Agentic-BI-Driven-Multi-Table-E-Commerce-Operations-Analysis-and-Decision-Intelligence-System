@@ -58,9 +58,9 @@ python -m agents.coordinator_agent.run --decompose-only --no-llm-plan --query "A
 
 ## 可视化 Agent（作业要求）
 
-- **位置**：`agents/viz_agent/`，提示词：`config/visualization_agent/plan_chart.md`。
-- **作用**：读取数据分析 Agent 写入的 **CSV**（及 `execute_sql` JSON 中的 **列画像**），调用 **DeepSeek**（与 `agents/sql_agent` 同源 `get_llm()`）输出结构化 **VizPlan**，再生成 **折线 / 柱状 / 热力 / 地理散点 / 散点 / 词云** 等 PNG。
-- **详细用法与输入输出字段**：见 [`agents/viz_agent/readme.md`](agents/viz_agent/readme.md)。
-- **快速串联（NL → SQL → 图）**：项目根目录执行  
-  `python agents/viz_agent/run.py --sql-then-viz --query "<你的问题>"`（需 MySQL、`AGENTIC_BI_DB_*`、`DEEPSEEK_API_KEY`）；或在代码里调用 `run_sql_then_visualize(user_query)`。仅画图调试可用  
-  `python agents/viz_agent/run.py --csv <结果.csv> --query "<问题>" --no-llm`。
+- **位置**：`agents/viz_agent/`
+- **智能流程**：SQL 分析完成后 → `viz_planner` 根据**用户问题 + 已有查数结果**规划需要几张图、从哪取数 → `intelligent_viz` 按需复用 SQL / 追加查数 / 词云并渲染
+- **不会**固定生成 8 张图；纯数值问题可跳过可视化
+- **详细用法**：见 [`agents/viz_agent/readme.md`](agents/viz_agent/readme.md)
+- **调试全套模板图**（非协调器默认）：`python agents/viz_agent/run.py --dashboard`
+- **NL → SQL → 智能出图**：`python -m agents.coordinator_agent.run --query "<问题>"`

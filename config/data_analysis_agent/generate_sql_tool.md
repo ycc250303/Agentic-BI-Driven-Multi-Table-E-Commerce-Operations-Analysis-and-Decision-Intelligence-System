@@ -32,6 +32,7 @@
 - 语义口径规则（差评阈值、主语继承等）已在 rewrite 语义校验阶段控制；本阶段按结构化计划落 SQL。
 - 当后续子问题继承前序对象时，使用子查询显式绑定过滤条件，不得丢失继承范围。
 - 品类名称展示尽量使用 `COALESCE(英文映射, 原始品类名)`，避免因翻译缺失导致 `NULL` 品类聚合错误。
+- **`product_category_name_translation` 表的英文列名为 `product_category_name_english`（不是 `product_category_english`）**；别名 `AS product_category_english` 仅用于 SELECT 输出列名。
 
 ### `query_sqls` 每一项的书写格式（必须）
 

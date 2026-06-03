@@ -11,23 +11,23 @@
 | next_agent | 何时选择 |
 |------------|----------|
 | data_analysis | 仍有未执行的 sub_questions（待查数的单问题） |
-| visualization | 已有 SQL 结果且尚未出图，且问题适合可视化（趋势/排名/对比/分布） |
-| nlp | 涉及评论/差评/评分/满意度/投诉，或 intent 为 diagnostic/prescriptive/what_if，且尚未做评论洞察 |
-| decision | 需要策略/建议/改进方案/What-if 解读，且 SQL（及可选 NLP）证据已就绪，尚未调用决策 Agent |
-| synthesize | 证据已足够回答用户，或剩余步骤不再必要；进入最终回答生成 |
+| nlp | suggested_agents 含 nlp 且尚未完成；**评论/差评/原因类问题必须在 visualization 之前完成 NLP** |
+| visualization | suggested_agents 含 visualization 且尚未完成；且 NLP（若也在 suggested_agents 中）已完成 |
+| decision | suggested_agents 含 decision 且尚未完成；diagnostic/prescriptive 类问题应用决策 Agent 给出建议 |
+| synthesize | **仅当** suggested_agents 中列出的后续 Agent 全部完成，或用户问题纯描述性且不需要 nlp/viz/decision |
 
-## 原则
+## 原则（极其重要）
 
-- **不要**按固定顺序机械调用；根据用户 intent 与已完成步骤判断
-- 纯描述性查数（只要数字/排名）：SQL 完成后可直接 synthesize，不必强行调用 decision
-- 同一 Agent 已完成且无新输入时，**不要**重复调用（除非 data_analysis 还有待查 sub_question）
-- 优先保证：所有 sub_questions 都跑完 data_analysis 后，再考虑 viz / nlp / decision
+- **禁止过早 synthesize**：若 `pending_post_sql_agents` 非空（如 `[nlp, visualization, decision]`），**不得**选择 synthesize
+- 差评/原因/诊断类问题：典型顺序为 `data_analysis → nlp → visualization → decision → synthesize`
+- 纯描述性单指标（如「GMV 是多少」）：SQL 完成后可直接 synthesize
+- 同一 Agent 已完成时不要重复调用
 
 ## 输出 JSON
 
 ```json
 {
-  "next_agent": "data_analysis",
-  "reasoning": "仍有 2 个 sub_question 未查数"
+  "next_agent": "nlp",
+  "reasoning": "suggested_agents 含 nlp 且尚未执行，需先完成评论洞察"
 }
 ```

@@ -92,7 +92,20 @@ out = run_sql_then_visualize("2017 年各月 GMV 趋势如何？", use_llm=True)
 
 ---
 
-## 7. 改进方向（可选）
+## 7. 智能可视化套件（协调器默认）
 
-- 与 LangGraph 协调器对接：在 SQL 节点后自动挂载可视化节点。
-- 地理「州级」底图需 shapefile 或 GeoPandas 时再扩展；当前 `geo_scatter` 为经纬度散点。
+`visualization_node` 调用 `intelligent_viz.run_intelligent_visualization`：
+
+1. **规划**（`viz_planner` + `config/visualization_agent/plan_suite.md`）：读用户问题、intent、各 `sql_run` 的列与摘要 → 决定要不要图、要几张、每张数据从哪来
+2. **取数**：优先复用已有 SQL CSV；不够时向数据分析 Agent 发起 `supplementary_query`；评论类走 `wordcloud`
+3. **渲染**（`plan_chart.md` + `render.py`）：单图选型 + 可选预测叠加
+
+纯描述性单指标问题（如「2017 GMV 是多少」）通常 **0 张图**。
+
+`preset_charts.py` 仅保留给 `python agents/viz_agent/run.py --dashboard` 本地调试，协调器**不会**自动调用。
+
+---
+
+## 8. 改进方向（可选）
+
+- 地理 choropleth 底图需 GeoPandas/shapefile；当前为按需州中心点气泡。

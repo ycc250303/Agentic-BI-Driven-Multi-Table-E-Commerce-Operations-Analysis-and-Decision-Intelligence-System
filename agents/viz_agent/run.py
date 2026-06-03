@@ -16,15 +16,15 @@ import pandas as pd
 from langchain_core.messages import HumanMessage, SystemMessage
 
 _viz_dir = Path(__file__).resolve().parent
+_project_root = _viz_dir.parents[1]
 _sql_agent_dir = _viz_dir.parent / "sql_agent"
-for p in (_viz_dir, _sql_agent_dir):
+for p in (_project_root, _viz_dir, _sql_agent_dir):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-from llm import get_llm  # noqa: E402
-
-from render import render_to_png  # noqa: E402
-from schema import VisualizationAgentOutput, VizPlan  # noqa: E402
+from agents.sql_agent.llm import get_llm  # noqa: E402
+from agents.viz_agent.render import render_to_png  # noqa: E402
+from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan  # noqa: E402
 
 
 def _project_root() -> Path:
@@ -339,11 +339,32 @@ if __name__ == "__main__":
     )
     parser.add_argument("--no-llm", action="store_true", help="仅用启发式，不调用大模型")
     parser.add_argument(
+        "--dashboard",
+        action="store_true",
+        help="生成作业级预设仪表板图表（8 张，需 MySQL 与 AGENTIC_BI_DB_*）",
+    )
+    parser.add_argument(
         "--sql-then-viz",
         action="store_true",
         help="先运行 sql_agent 全链路（需 MySQL 与 AGENTIC_BI_DB_*），再对本条查询结果做可视化",
     )
     args = parser.parse_args()
+
+    if args.dashboard:
+        try:
+            from agents.viz_agent.preset_charts import run_dashboard_charts
+        except ModuleNotFoundError:
+            from preset_charts import run_dashboard_charts
+
+        try:
+            items = run_dashboard_charts()
+        except Exception as e:
+            print(json.dumps({"ok": False, "error_message": str(e)}, ensure_ascii=False), file=sys.stderr)
+            sys.exit(1)
+        ok_n = sum(1 for i in items if i.get("ok"))
+        out = {"ok": ok_n > 0, "charts_generated": ok_n, "items": items}
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        sys.exit(0 if ok_n > 0 else 1)
 
     if args.sql_then_viz and (bool(args.csv) or bool(args.execute_json)):
         print("--sql-then-viz 不能与 --csv / --execute-json 同时使用", file=sys.stderr)
