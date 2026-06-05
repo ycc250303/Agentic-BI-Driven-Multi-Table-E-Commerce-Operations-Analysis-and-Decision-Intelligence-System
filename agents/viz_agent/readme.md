@@ -99,7 +99,9 @@ out = run_sql_then_visualize("2017 年各月 GMV 趋势如何？", use_llm=True)
 
 1. **规划**（`viz_planner` + `config/visualization_agent/plan_suite.md`）：读用户问题、intent、各 `sql_run` 的列与摘要 → 决定要不要图、要几张、每张数据从哪来
 2. **取数**：优先复用已有 SQL CSV；不够时向数据分析 Agent 发起 `supplementary_query`；评论类走 `wordcloud`
-3. **渲染**（`plan_chart.md` + `render.py`）：单图选型 + 可选预测叠加
+3. **补齐 SQL 图**：每条已成功查数的 `sql_run` 至少 1 张图（从 `data_summary_zh` / CSV 解析列名，不依赖 `column_profiles` 字段）
+4. **去重**：仅剔除**类型 + 内容完全相同**的图；NLP 数据为空的 `review_insights` 任务会在规划阶段剔除，避免空跑失败
+5. **渲染**（`plan_chart.md` + `render.py`）：单图选型 + 可选预测叠加；`rationale` 不画入图表，仅词云保留简短图例
 
 纯描述性单指标问题（如「2017 GMV 是多少」）通常 **0 张图**。
 

@@ -80,6 +80,22 @@ def main() -> None:
     _write("\n===== 调度记录 =====")
     _write(json.dumps(state.get("execution_log") or [], ensure_ascii=False, indent=2))
 
+    viz = state.get("visualization_result") or {}
+    chart_paths = [
+        str(c.get("image_path"))
+        for c in (viz.get("charts") or [])
+        if c.get("ok") and c.get("image_path")
+    ]
+    if chart_paths:
+        _write("\n===== 已生成图表 =====")
+        for i, p in enumerate(chart_paths, 1):
+            title = ""
+            for c in viz.get("charts") or []:
+                if c.get("image_path") == p:
+                    title = str(c.get("title") or c.get("chart_type") or "")
+                    break
+            _write(f"{i}. {title}\n   {p}")
+
     _write("\n===== 最终回答 =====\n")
     _write(str(state.get("final_answer") or "（无 final_answer）"))
 

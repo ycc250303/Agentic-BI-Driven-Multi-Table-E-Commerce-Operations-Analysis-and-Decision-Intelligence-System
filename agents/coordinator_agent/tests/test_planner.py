@@ -27,6 +27,13 @@ def test_decompose_single_question():
     assert len(result.sub_questions) == 1
 
 
+def test_decompose_splits_jiqi_query():
+    result = decompose_query_rule("Top 10 差评品类及其主要差评原因是什么？")
+    assert len(result.sub_questions) == 2
+    assert "差评品类" in result.sub_questions[0]
+    assert "原因" in result.sub_questions[1]
+
+
 def test_router_pending_sql():
     state = {
         "sub_questions": ["问题A？", "问题B？"],

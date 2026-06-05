@@ -6,9 +6,12 @@
 
 1. **不要机械出图**：用户只要一个数字/单句答案时，`needs_visualization` 应为 false，`charts` 为空。
 2. **图表服务于问题**：每张图必须能直接帮助回答用户问题；不要画与问题无关的「标准八件套」。
-3. **优先复用已有 SQL 结果**：若某条 `sql_run` 的数据已足够，用 `data_source: "sql_run"` 并指定 `sql_run_index`。
+3. **优先复用已有 SQL 结果**：输入中每条已成功查数的 `sql_run` **至少规划 1 张图**（`data_source: "sql_run"` + 对应 `sql_run_index`）；Top 排名类用 `bar`，趋势用 `line`。
 4. **仅在现有数据不够时追加查数**：用 `data_source: "supplementary_query"`，并写一条**完整、可独立转 SQL 的中文单问题**作为 `supplementary_question`（交给数据分析 Agent 执行）。
-5. **评论词云**：用户关心评论/差评/口碑时，用 `data_source: "wordcloud"`。
+5. **评论词云**：
+   - **全库好评 vs 差评对比**：`data_source: "wordcloud"`（固定抽样，**同一套件内最多 1 张**，标题不同也画面相同）
+   - **基于 SQL 文本列的单词云**（如某品类评论原文）：`sql_run` + `chart_type_hint: "wordcloud"`，且结果表须含评论/文本列——与全库对比词云**不是同一张图**，可同时存在
+   - SQL 词频/品类聚合表（无文本列）应画柱状图，**不要**标 `wordcloud`
 6. **NLP 结构化洞察**：若输入中已有 `review_insights`（如 topic_distribution、complaints_by_category），优先用 `data_source: "review_insights"` + `insight_chart_type`（`topic_distribution` 或 `complaints_by_category`）做佐证图。
 7. **诊断类问题必须积极佐证**：用户问「差评原因/为什么/诊断」时，`needs_visualization` 应为 true，至少规划：① SQL 结果图 ② 差评主题分布 ③ 针对**主导主题**的 supplementary_query（如价格为 price_freight 则查品类均价对比）。
 8. **数量克制但不过度省略**：诊断/差评类通常 2～4 张；纯描述性单指标可 0 张。
@@ -41,7 +44,7 @@ line | bar | heatmap | scatter | geo_scatter | wordcloud | null（交给下游�
   "charts": [
     {
       "title": "图表中文标题",
-      "rationale": "此图如何回答用户问题",
+      "rationale": "此图如何回答用户问题（仅写入规划 JSON，不会显示在 PNG 上）",
       "data_source": "sql_run",
       "sql_run_index": 0,
       "supplementary_question": null,

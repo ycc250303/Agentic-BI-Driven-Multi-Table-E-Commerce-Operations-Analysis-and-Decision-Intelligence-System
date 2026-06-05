@@ -263,6 +263,46 @@ def _format_axis_currency(ax: plt.Axes, axis: str = "x") -> None:
         ax.yaxis.set_major_formatter(tick)
 
 
+def _human_axis_label(column: str) -> str:
+    """将数据列名转为图表轴中文标签。"""
+    cl = (column or "").lower()
+    mapping = {
+        "category": "产品品类",
+        "product_category_english": "产品品类",
+        "topic": "差评主题",
+        "payment_type": "支付方式",
+        "payment_installments": "分期数",
+        "month": "月份",
+        "state": "州",
+    }
+    if column in mapping:
+        return mapping[column]
+    if "category" in cl:
+        return "产品品类"
+    if "topic" in cl or "theme" in cl or "reason" in cl:
+        return "差评主题"
+    if "payment" in cl and "install" in cl:
+        return "分期数"
+    if "payment" in cl:
+        return "支付方式"
+    if "month" in cl or "date" in cl:
+        return "时间"
+    return column
+
+
+def _human_value_label(column: str) -> str:
+    cl = (column or "").lower()
+    if cl in ("count", "cnt", "bad_review_count"):
+        return "提及次数"
+    if "rate" in cl:
+        return "占比"
+    if "gmv" in cl or "sales" in cl:
+        return "销售额"
+    if "installment" in cl:
+        return "分期数"
+    return column or "数值"
+
+
 def _style_title(ax: plt.Axes, title: str, subtitle: str = "") -> None:
     ax.set_title(title, fontsize=14, fontweight="bold", pad=12)
     if subtitle:
@@ -447,10 +487,10 @@ def render_to_png(
             linewidths=0.4,
             linecolor="white",
             ax=ax,
-            cbar_kws={"label": "交易笔数"},
+            cbar_kws={"label": _human_value_label(v)},
         )
-        ax.set_xlabel("分期数")
-        ax.set_ylabel("支付方式")
+        ax.set_xlabel(_human_axis_label(c))
+        ax.set_ylabel(_human_axis_label(r))
         _style_title(ax, plan.title, subtitle)
 
     elif chart == "geo_scatter":
