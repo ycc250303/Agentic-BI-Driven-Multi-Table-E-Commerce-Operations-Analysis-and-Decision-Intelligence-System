@@ -256,15 +256,27 @@ def build_synthesis_evidence(state: dict[str, Any]) -> dict[str, Any]:
     insights = state.get("review_insights") or state.get("nlp_result") or {}
     decision = state.get("decision_result") or {}
 
+    # 优先用 BERTopic 无监督主题摘要（无 other 盲区）；若无则回退关键词 summary
+    bertopic = insights.get("topics_bertopic") or {}
+    bertopic_summary = bertopic.get("summary") or ""
+    keyword_summary = insights.get("summary") or ""
+    bertopic_topics = bertopic.get("topics") or []
+    # BERTopic 各品类 × 主题下钻，可比关键词 complaints_by_category 更细
+    bertopic_complaints = bertopic.get("complaints_by_category") or []
+
+    review_summary = bertopic_summary or keyword_summary or (
+        insights.get("topic_distribution") and "见差评主题分布"
+    ) or ""
+
     return {
         "user_query": state.get("user_query"),
         "intent": state.get("intent"),
         "sub_questions": state.get("sub_questions") or [],
         "sql_results": sql_items,
         "charts": charts,
-        "review_insights_summary": insights.get("summary")
-        or (insights.get("topic_distribution") and "见差评主题分布")
-        or "",
+        "review_insights_summary": review_summary,
+        "review_topics_bertopic": bertopic_topics,
+        "review_complaints_by_category": bertopic_complaints,
         "decision_narrative": decision.get("narrative_answer") or "",
         "action_plan": decision.get("action_plan") or [],
         "warnings": state.get("warnings") or [],
