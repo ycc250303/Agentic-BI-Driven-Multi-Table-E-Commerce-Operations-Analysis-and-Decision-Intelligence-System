@@ -13,3 +13,5 @@ agents/sql_agent/query_results
 
 CLAUDE.md
 agents/viz_agent/chart_output
+.idea/
+
