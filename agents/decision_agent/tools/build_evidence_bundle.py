@@ -171,60 +171,108 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                 )
             )
 
+    # BERTopic 发现 40 个细粒度主题，单个占比最高 ~14%。
+    # 按 4 大类聚合后判断（基于 review_topic_meta 表 40 个真实标签做葡语词根分类）。
+    topic_delivery_share = 0.0
+    topic_quality_share = 0.0
+    topic_wrong_item_share = 0.0
+    topic_service_share = 0.0
+    topic_delivery_count = 0
+    topic_quality_count = 0
+    topic_wrong_item_count = 0
+    topic_service_count = 0
+
     for topic in nlp_result.get("negative_topics") or []:
-        name = str(topic.get("topic") or "")
+        name = str(topic.get("topic") or "").lower()
         share = _safe_float(topic.get("share")) or 0.0
-        # BERTopic 标签通常是葡语短语（如 "atraso / demora / entrega"），
-        # 用关键词启发式映射到业务域，替代旧关键词的硬编码匹配。
-        name_lower = name.lower()
-        is_delivery = any(
-            kw in name_lower
-            for kw in (
-                "atraso", "demora", "entrega", "chegou", "recebi",
-                "frete", "correio", "transport", "envio",
+        count = int(topic.get("count") or 0)
+        if any(kw in name for kw in (
+            "entrega", "recebi", "demora", "prazo", "chegou",
+            "entregue", "aguardando", "dias", "data", "correios",
+        )):
+            topic_delivery_share += share
+            topic_delivery_count += count
+        if any(kw in name for kw in (
+            "quebrado", "quebrada", "qualidade", "péssima", "pessima",
+            "defeito", "defeitos", "danificado", "material", "usado",
+            "finas", "fino", "plástico", "plastico",
+        )):
+            topic_quality_share += share
+            topic_quality_count += count
+        if any(kw in name for kw in (
+            "diferente", "propaganda", "enganosa", "foto", "imagem",
+            "cor", "tamanho", "errada", "anunciado", "réplica", "replica",
+        )):
+            topic_wrong_item_share += share
+            topic_wrong_item_count += count
+        if any(kw in name for kw in (
+            "cancelamento", "cancelar", "cancelei", "dinheiro",
+            "volta", "cartão", "cartao", "crédito", "credito",
+            "estorno", "devolver", "troca", "trocar", "loja",
+        )):
+            topic_service_share += share
+            topic_service_count += count
+
+    if topic_delivery_share >= 0.25:
+        signals.append(
+            DecisionSignal(
+                domain="delivery",
+                signal="negative topic share high",
+                value=topic_delivery_share,
+                benchmark=0.25,
+                severity_score=_cap_score((topic_delivery_share - 0.25) / 0.3 + 0.45),
+                evidence_text=(
+                    f"负面评论中配送/物流相关主题（未收到货、延迟、超时等）"
+                    f"合计占比 {topic_delivery_share:.1%}（{topic_delivery_count} 条），"
+                    f"超过 25% 基准线。"
+                ),
             )
         )
-        is_quality = any(
-            kw in name_lower
-            for kw in (
-                "defeito", "qualidade", "quebrado", "errado",
-                "produto", "ruim", "péssimo", "faltando",
-                "incompleto", "diferente", "descrição",
+    if topic_quality_share >= 0.15:
+        signals.append(
+            DecisionSignal(
+                domain="category",
+                signal="negative quality rate",
+                value=topic_quality_share,
+                benchmark=0.15,
+                severity_score=_cap_score((topic_quality_share - 0.15) / 0.25 + 0.4),
+                evidence_text=(
+                    f"负面评论中产品质量相关主题（破损、缺陷、材质差等）"
+                    f"合计占比 {topic_quality_share:.1%}（{topic_quality_count} 条），"
+                    f"超过 15% 基准线。"
+                ),
             )
         )
-        if is_delivery and share >= 0.15:
-            signals.append(
-                DecisionSignal(
-                    domain="delivery",
-                    signal="negative topic share high",
-                    value=share,
-                    benchmark=0.15,
-                    severity_score=_cap_score((share - 0.15) / 0.3 + 0.45),
-                    evidence_text=f"负面评论中「{name}」主题占比 {share:.2%}，已超过 15% 阈值。",
-                )
+    if topic_wrong_item_share >= 0.10:
+        signals.append(
+            DecisionSignal(
+                domain="category",
+                signal="wrong item / misleading listing",
+                value=topic_wrong_item_share,
+                benchmark=0.10,
+                severity_score=_cap_score((topic_wrong_item_share - 0.10) / 0.2 + 0.4),
+                evidence_text=(
+                    f"负面评论中货不对板/描述不符相关主题（发错货、图片与实物不符等）"
+                    f"合计占比 {topic_wrong_item_share:.1%}（{topic_wrong_item_count} 条），"
+                    f"超过 10% 基准线。"
+                ),
             )
-        if is_quality and share >= 0.15:
-            signals.append(
-                DecisionSignal(
-                    domain="category",
-                    signal="negative quality rate",
-                    value=share,
-                    benchmark=0.15,
-                    severity_score=_cap_score((share - 0.15) / 0.25 + 0.4),
-                    evidence_text=f"负面评论中「{name}」主题占比 {share:.2%}，品类质量风险偏高。",
-                )
+        )
+    if topic_service_share >= 0.10:
+        signals.append(
+            DecisionSignal(
+                domain="seller",
+                signal="service / refund complaint",
+                value=topic_service_share,
+                benchmark=0.10,
+                severity_score=_cap_score((topic_service_share - 0.10) / 0.2 + 0.35),
+                evidence_text=(
+                    f"负面评论中售后/退款/取消相关主题"
+                    f"合计占比 {topic_service_share:.1%}（{topic_service_count} 条），"
+                    f"超过 10% 基准线。"
+                ),
             )
-        if not is_delivery and not is_quality and share >= 0.20:
-            signals.append(
-                DecisionSignal(
-                    domain="general",
-                    signal="emerging complaint theme",
-                    value=share,
-                    benchmark=0.20,
-                    severity_score=_cap_score((share - 0.20) / 0.3 + 0.35),
-                    evidence_text=f"负面评论中发现新兴投诉主题「{name}」，占比 {share:.2%}，需关注。",
-                )
-            )
+        )
 
     for category in nlp_result.get("worst_categories") or []:
         negative_rate = _safe_float(category.get("negative_rate")) or 0.0
