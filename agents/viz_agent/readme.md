@@ -8,6 +8,7 @@
 
 - 与数据分析链路一致，需配置 **`DEEPSEEK_API_KEY`**（使用默认 LLM 规划图表时）。
 - 可选：`AGENTIC_BI_VIZ_DIR` — 指定 PNG 输出目录；默认 `agents/viz_agent/chart_output/`。
+- 可选：`AGENTIC_BI_VIZ_FONT` — 指定中文字体文件路径（`.ttf` / `.ttc`）。未设置时按系统自动探测：Windows 微软雅黑、macOS 冬青黑体/黑体/宋体/苹方、Linux Noto CJK。macOS 新版若苹方不可用，会在系统字体目录中扫描可用中文字体；仍显示方框时可设置该变量。
 
 ---
 

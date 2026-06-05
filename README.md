@@ -33,6 +33,9 @@ export AGENTIC_BI_DB_USER='your_database_user_name'
 export AGENTIC_BI_DB_PASSWORD='your_database_password'
 # 可选：可视化 PNG 输出目录（默认 agents/viz_agent/chart_output）
 # export AGENTIC_BI_VIZ_DIR='/path/to/charts'
+# 可选：中文字体路径（.ttf/.ttc），避免图表中文显示为方框
+# export AGENTIC_BI_VIZ_FONT='C:/Windows/Fonts/msyh.ttc'   # Windows
+# export AGENTIC_BI_VIZ_FONT='/System/Library/Fonts/Hiragino Sans GB.ttc'  # macOS
 ```
 
 或者使用 `.env`
