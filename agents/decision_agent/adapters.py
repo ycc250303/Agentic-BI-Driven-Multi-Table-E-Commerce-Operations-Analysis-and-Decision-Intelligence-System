@@ -74,26 +74,69 @@ def normalize_nlp_result(raw: dict[str, Any] | None) -> dict[str, Any]:
     source = deepcopy(raw or {})
     if not source:
         return {}
-    negative_topics = _pick_first(
-        source, ["negative_topics", "topic_distribution", "complaint_topics"], []
-    )
-    if isinstance(negative_topics, dict):
-        total = sum(
-            value for value in negative_topics.values() if isinstance(value, int | float)
-        )
+    # 优先用 BERTopic 无监督主题（无 other 盲区），回退到关键词 topic_distribution
+    bertopic_topics = source.get("topics_bertopic") or {}
+    if bertopic_topics.get("topics"):
         negative_topics = [
             {
-                "topic": str(topic),
-                "count": int(count),
-                "share": float(count) / total if total else 0.0,
+                "topic": str(t.get("label") or f"topic_{t.get('topic_id', '')}"),
+                "count": int(t.get("sample_count") or 0),
+                "share": 0.0,
+                "top_words": t.get("top_words") or [],
             }
-            for topic, count in negative_topics.items()
-            if isinstance(count, int | float)
+            for t in bertopic_topics.get("topics") or []
         ]
+        total = sum(t["count"] for t in negative_topics)
+        for t in negative_topics:
+            t["share"] = round(t["count"] / total, 4) if total else 0.0
+    else:
+        negative_topics = _pick_first(
+            source, ["negative_topics", "topic_distribution", "complaint_topics"], []
+        )
+        if isinstance(negative_topics, dict):
+            total = sum(
+                value for value in negative_topics.values() if isinstance(value, int | float)
+            )
+            negative_topics = [
+                {
+                    "topic": str(topic),
+                    "count": int(count),
+                    "share": float(count) / total if total else 0.0,
+                }
+                for topic, count in negative_topics.items()
+                if isinstance(count, int | float)
+            ]
 
-    worst_categories = _pick_first(
+    # 优先用 BERTopic complaints_by_category（更细粒度），回退关键词版
+    bertopic_complaints = bertopic_topics.get("complaints_by_category") or []
+    worst_categories_keyword = _pick_first(
         source, ["worst_categories", "complaints_by_category"], []
     )
+    if bertopic_complaints:
+        worst_categories = [
+            {
+                "category": item.get("category") or "unknown",
+                "negative_count": int(item.get("total") or 0),
+                "dominant_topic": (
+                    item["top_reasons"][0]["label"]
+                    if item.get("top_reasons") and len(item["top_reasons"]) > 0
+                    else ""
+                ),
+                "dominant_share": (
+                    float(item["top_reasons"][0].get("share", 0))
+                    if item.get("top_reasons") and len(item["top_reasons"]) > 0
+                    else 0.0
+                ),
+                "top_reasons": item.get("top_reasons") or [],
+            }
+            for item in bertopic_complaints
+            if isinstance(item, dict)
+        ]
+    elif isinstance(worst_categories_keyword, list):
+        worst_categories = worst_categories_keyword
+    else:
+        worst_categories = []
+
     if isinstance(worst_categories, list):
         normalized_categories = []
         for item in worst_categories:
@@ -137,9 +180,12 @@ def normalize_nlp_result(raw: dict[str, Any] | None) -> dict[str, Any]:
     if isinstance(sentiment, dict) and sentiment.get("method") == "n/a":
         sentiment = {"summary": sentiment.get("summary", "")}
 
+    # 优先用 BERTopic summary（无 other 盲区），回退关键词 summary
+    bertopic_summary = bertopic_topics.get("summary") or ""
     return {
         "summary_text": str(
-            _pick_first(source, ["summary_text", "summary", "review_summary"], "")
+            bertopic_summary
+            or _pick_first(source, ["summary_text", "summary", "review_summary"], "")
         ),
         "negative_topics": negative_topics,
         "worst_categories": worst_categories,

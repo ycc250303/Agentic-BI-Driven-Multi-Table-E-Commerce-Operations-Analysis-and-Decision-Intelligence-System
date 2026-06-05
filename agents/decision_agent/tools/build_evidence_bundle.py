@@ -174,26 +174,55 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
     for topic in nlp_result.get("negative_topics") or []:
         name = str(topic.get("topic") or "")
         share = _safe_float(topic.get("share")) or 0.0
-        if name == "delivery_delay" and share >= 0.2:
+        # BERTopic 标签通常是葡语短语（如 "atraso / demora / entrega"），
+        # 用关键词启发式映射到业务域，替代旧关键词的硬编码匹配。
+        name_lower = name.lower()
+        is_delivery = any(
+            kw in name_lower
+            for kw in (
+                "atraso", "demora", "entrega", "chegou", "recebi",
+                "frete", "correio", "transport", "envio",
+            )
+        )
+        is_quality = any(
+            kw in name_lower
+            for kw in (
+                "defeito", "qualidade", "quebrado", "errado",
+                "produto", "ruim", "péssimo", "faltando",
+                "incompleto", "diferente", "descrição",
+            )
+        )
+        if is_delivery and share >= 0.15:
             signals.append(
                 DecisionSignal(
                     domain="delivery",
-                    signal="delivery_delay topic share high",
+                    signal="negative topic share high",
                     value=share,
-                    benchmark=0.2,
-                    severity_score=_cap_score((share - 0.2) / 0.3 + 0.45),
-                    evidence_text=f"负面评论中配送延迟主题占比 {share:.2%}，已超过 20% 阈值。",
+                    benchmark=0.15,
+                    severity_score=_cap_score((share - 0.15) / 0.3 + 0.45),
+                    evidence_text=f"负面评论中「{name}」主题占比 {share:.2%}，已超过 15% 阈值。",
                 )
             )
-        if name in {"product_quality", "missing_parts", "wrong_item"} and share >= 0.18:
+        if is_quality and share >= 0.15:
             signals.append(
                 DecisionSignal(
                     domain="category",
                     signal="negative quality rate",
                     value=share,
-                    benchmark=0.18,
-                    severity_score=_cap_score((share - 0.18) / 0.25 + 0.4),
-                    evidence_text=f"负面评论中 {name} 主题占比 {share:.2%}，品类质量风险偏高。",
+                    benchmark=0.15,
+                    severity_score=_cap_score((share - 0.15) / 0.25 + 0.4),
+                    evidence_text=f"负面评论中「{name}」主题占比 {share:.2%}，品类质量风险偏高。",
+                )
+            )
+        if not is_delivery and not is_quality and share >= 0.20:
+            signals.append(
+                DecisionSignal(
+                    domain="general",
+                    signal="emerging complaint theme",
+                    value=share,
+                    benchmark=0.20,
+                    severity_score=_cap_score((share - 0.20) / 0.3 + 0.35),
+                    evidence_text=f"负面评论中发现新兴投诉主题「{name}」，占比 {share:.2%}，需关注。",
                 )
             )
 

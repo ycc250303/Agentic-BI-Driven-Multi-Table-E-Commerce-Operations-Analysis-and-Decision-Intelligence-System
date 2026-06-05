@@ -100,9 +100,42 @@ class ReviewInsightAgent:
         self._wc_sample = int(wordcloud_sample)
 
     # ----- helpers -----
+    def _has_bertopic_data(self) -> bool:
+        """快速探测 review_topic_meta 表是否有数据，避免无效回退。"""
+        if self._bertopic_fn is None:
+            return False
+        try:
+            bt = self._bertopic_fn()
+            return bool(bt and bt.get("topics"))
+        except Exception:
+            return False
+
     def _build_insight(self) -> dict[str, Any]:
-        """组合 topic + sentiment + wordcloud + bertopic 四个工具的结果。"""
-        insight = self._topic_fn(self._sample_size)
+        """组合 BERTopic + sentiment + wordcloud + (回退) 关键词分类。
+
+        优先走 BERTopic 无监督主题（无 other 盲区，粒度更细）；仅在 BERTopic
+        表为空时才回退到关键词分类作为兜底。
+        """
+        use_bertopic = self._has_bertopic_data()
+
+        # BERTopic 优先：跳过昂贵的差评抽样 JOIN，直接用 topic meta 聚合
+        if use_bertopic:
+            bt = self._bertopic_fn()  # type: ignore[misc]
+            insight: dict[str, Any] = {
+                "sample_size": self._sample_size,
+                "negative_review_count": 0,
+                "topic_distribution": {},
+                "top_categories": [],
+                "top_seller_states": [],
+                "top_customer_states": [],
+                "complaints_by_category": bt.get("complaints_by_category") or [],
+                "method": bt.get("method") or "bertopic",
+                "summary": bt.get("summary") or "",
+                "topics_bertopic": bt,
+            }
+        else:
+            # 回退：关键词分类（P0 基线）
+            insight = self._topic_fn(self._sample_size)
 
         # 情感聚合（软依赖）
         if self._sentiment_fn is not None:
@@ -113,16 +146,6 @@ class ReviewInsightAgent:
             except Exception as e:  # noqa: BLE001
                 insight["sentiment"] = {"method": "n/a",
                                         "summary": f"sentiment 聚合失败：{e}"}
-
-        # BERTopic 主题聚合（软依赖；若表为空会返回空 topics）
-        if self._bertopic_fn is not None:
-            try:
-                bt = self._bertopic_fn()
-                if bt and bt.get("topics"):
-                    insight["topics_bertopic"] = bt
-            except Exception as e:  # noqa: BLE001
-                insight["topics_bertopic"] = {"method": "n/a",
-                                              "summary": f"bertopic 聚合失败：{e}"}
 
         # 词云数据（软依赖）
         if self._wordcloud_fn is not None:
