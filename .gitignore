@@ -8,6 +8,7 @@ agents/sql_agent/query_results
 /.env
 /misc/
 /.worktrees/
+/runtime/
 
 .pytest_cache/
 

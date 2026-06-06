@@ -59,6 +59,16 @@ python -m agents.coordinator_agent.run --query "2017年哪个州的销售额最�
 python -m agents.coordinator_agent.run --decompose-only --no-llm-plan --query "A？B？"
 ```
 
+多轮会话入口：
+
+```bash
+python -m agents.coordinator_agent.run_session --new --query "人们对 casa_conforto 类产品的评价如何？入行此类产品是否有前景？"
+python -m agents.coordinator_agent.run_session --session-id "<session_id>" --query "那 SP 州呢？"
+python -m agents.coordinator_agent.run_session --list
+python -m agents.coordinator_agent.run_session --new --query "..." --har-out runtime/har/demo.har
+python -m agents.coordinator_agent.run_session --new --query "..." --sse  # 实时 SSE 事件流
+```
+
 ## 可视化 Agent（作业要求）
 
 - **位置**：`agents/viz_agent/`

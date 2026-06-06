@@ -1,5 +1,24 @@
 # Coordinator Session Manager Implementation Plan
 
+## 0. 当前施工进度
+
+截至第一轮施工，已完成：
+
+- Phase 1 核心：本地 JSON session store、多轮 session manager、`run_session` CLI、`runtime/` 忽略规则。
+- Phase 2 核心：标准 trace event collector，接入 coordinator 分解/路由/SQL/NLP/Viz/Decision/最终汇总的用户可见过程事件。
+- SQL trace 增强：`data_analysis_agent/generate_sql` 与 `data_analysis_agent/execute_sql` 事件会携带并输出具体 SQL 命令。
+- Phase 3 核心：语义会话解析器与滚动 `memory_summary` 已接入，不再保留机械解析或规则兜底。
+- 会话解析增强：正式分析前由独立语义解析器判断本轮输入与上一轮问题/回答的业务关系，输出本轮真实任务；无法可靠判断时要求澄清，而不是猜测补全。
+- Phase 4 核心：HAR 捕获逻辑已抽取到正式源码模块，`run_session --har-out` 可捕获本轮 httpx/LLM 流量；旧 `misc/har/capture_coordinator_har.py` 兼容入口复用正式模块。
+- Phase 5 核心：Web/SSE 事件转换层已提供，`run_session --sse` 可实时输出 Server-Sent Events 文本，`SessionManager.stream_turn_events()` 可供 WebSocket/SSE handler 复用。
+- 已补充组件测试文件与 README 入口。
+
+暂未完成：
+
+- 尚未实现具体 FastAPI/前端页面；目前提供的是无框架依赖的 Web/API 预留层。
+
+下一步可选择实现一个最小 FastAPI/SSE handler 或前端聊天页面，直接消费实时事件流。
+
 ## 1. 背景与目标
 
 当前 coordinator 的主要入口是单轮调用：
@@ -32,7 +51,8 @@ python misc\har\capture_coordinator_har.py --query "..." --har-out misc\har\xxx.
 用户输入
   -> session manager 读取 session
   -> memory/context builder 生成上下文
-  -> question rewriter 将当前问题改写为独立 BI 问题
+  -> conversation resolver 理解当前输入与前文的业务关系
+  -> 生成 resolved_task 作为本轮真实任务
   -> coordinator graph 执行本轮
   -> trace collector 收集中间事件
   -> session store 保存 turn/state 摘要
@@ -47,19 +67,19 @@ python misc\har\capture_coordinator_har.py --query "..." --har-out misc\har\xxx.
 |------|------|
 | `agents/coordinator_agent/session_manager.py` | 会话主服务：创建/加载/运行一轮/保存 |
 | `agents/coordinator_agent/session_store.py` | 本地 JSON session 读写、列表、元数据更新 |
-| `agents/coordinator_agent/memory.py` | 历史裁剪、摘要生成、指代上下文构造 |
-| `agents/coordinator_agent/question_rewriter.py` | 将当前问题 + 历史摘要改写成独立问题 |
+| `agents/coordinator_agent/memory.py` | 历史裁剪、语义会话摘要生成 |
+| `agents/coordinator_agent/conversation_resolver.py` | 将当前输入 + 历史摘要解析成本轮真实业务任务 |
 | `agents/coordinator_agent/tracing.py` | 标准化 trace event、从工具 payload/state 提取关键文本 |
 | `agents/coordinator_agent/run_session.py` | 多轮 CLI 入口 |
-| `config/coordinator_agent/rewrite_followup_query.md` | 指代/追问改写提示词 |
-| `config/coordinator_agent/summarize_session_memory.md` | 会话摘要提示词，可先规则兜底 |
+| `agents/coordinator_agent/web_events.py` | SSE/WebSocket 事件转换 |
+| `config/coordinator_agent/resolve_conversation_context.md` | 会话语义解析提示词 |
+| `config/coordinator_agent/summarize_session_memory.md` | 会话摘要提示词 |
 | `docs/session_manager_implementation_plan.md` | 本方案文档 |
 
 可选后续文件：
 
 | 文件 | 用途 |
 |------|------|
-| `agents/coordinator_agent/web_events.py` | SSE/WebSocket 事件转换 |
 | `agents/coordinator_agent/har_capture.py` | 从 `misc/har/capture_coordinator_har.py` 抽取正式 HAR 捕获工具 |
 
 ## 5. Session 数据结构
@@ -84,7 +104,12 @@ python misc\har\capture_coordinator_har.py --query "..." --har-out misc\har\xxx.
       "turn_id": 1,
       "created_at": "2026-06-04T15:30:12+08:00",
       "user_query": "人们对 casa_conforto 类产品的评价如何？入行此类产品是否有前景？",
+      "resolved_task": "分析 Olist 中 casa_conforto 类产品的评论口碑、销售表现，并判断新卖家进入该类目的前景。",
       "standalone_query": "分析 Olist 中 casa_conforto 类产品的评论口碑、销售表现，并判断新卖家进入该类目的前景。",
+      "conversation_resolution": {
+        "relation_to_previous": "new_topic",
+        "resolved_task": "分析 Olist 中 casa_conforto 类产品的评论口碑、销售表现，并判断新卖家进入该类目的前景。"
+      },
       "final_answer": "...",
       "trace_events": [],
       "state_summary": {
@@ -101,7 +126,9 @@ python misc\har\capture_coordinator_har.py --query "..." --har-out misc\har\xxx.
 字段说明：
 
 - `user_query`：用户原始输入，必须完整保存。
-- `standalone_query`：用于本轮 coordinator 执行的改写后问题。
+- `resolved_task`：语义解析器确认的本轮真实业务任务，用于 coordinator 执行。
+- `standalone_query`：兼容旧 Web/CLI 调用的别名，内容等同于 `resolved_task`。
+- `conversation_resolution`：本轮输入与前文的关系、继承目标、继承对象、新增约束和澄清状态。
 - `memory_summary`：跨轮压缩记忆，避免 prompt 过长。
 - `trace_events`：用于 CLI/Web 展示过程。
 - `state_summary`：只保存关键 state，完整 state 可选保存到调试文件，不默认长期保存。
@@ -153,7 +180,7 @@ memory_summary
 当前 user_query
 ```
 
-然后做问题改写：
+然后做会话语义解析：
 
 ```text
 输入：
@@ -161,9 +188,11 @@ memory_summary
   - 最近 3 轮问答
   - 当前问题
 输出：
-  - standalone_query
-  - rewrite_reason
-  - referenced_context
+  - relation_to_previous
+  - resolved_task
+  - carried_over_goal / carried_over_subject
+  - new_constraints / changed_constraints
+  - needs_clarification / clarification_question
 ```
 
 例子：
@@ -171,13 +200,11 @@ memory_summary
 ```text
 历史：用户正在分析 casa_conforto 类产品口碑与入行前景。
 当前：那 SP 州呢？
-改写：分析 Olist 数据中 casa_conforto 类产品在 SP 州的销售表现、评论口碑与进入前景。
+解析：relation_to_previous=scope_refinement；
+      resolved_task=在上一轮入行风险与机会判断框架下，聚焦 SP 州评估 casa_conforto 类产品的风险更高还是更低、机会在哪里，并给出数据依据。
 ```
 
-如果 LLM 改写失败，规则兜底：
-
-- 当前问题包含“那/这个/它/继续/上面/刚才”等指代词时，将最近一轮主题拼接进问题。
-- 当前问题已经完整明确时，直接使用原文。
+不再使用“识别代词 + 拼接主题”的规则。若已有历史但语义解析失败，错误应显式暴露；若解析器认为上下文不足，应先向用户澄清，而不是猜一个问题继续分析。
 
 ## 8. Coordinator 接入点
 
@@ -280,8 +307,8 @@ Turn: 2
 - 新增 `session_manager.py`，支持 run one turn。
 - 新增 `run_session.py`，支持 `--new`、`--session-id`、`--query`、`--list`。
 - 扩展 `run_coordinator()` 支持 `conversation_history` 参数。
-- 每轮保存 `user_query`、`standalone_query`、`final_answer`、`state_summary`。
-- 暂时用规则方式生成 `standalone_query`，LLM 改写可在 Phase 2。
+- 每轮保存 `user_query`、`resolved_task`、`conversation_resolution`、`final_answer`、`state_summary`。
+- `standalone_query` 仅作为兼容别名保留，内容等同于 `resolved_task`。
 
 验收：
 
@@ -291,7 +318,7 @@ python -m agents.coordinator_agent.run_session --session-id <id> --query "那 SP
 python -m agents.coordinator_agent.run_session --list
 ```
 
-第二轮 session 文件中应出现两条 turns，第二轮 `standalone_query` 应包含第一轮主题。
+第二轮 session 文件中应出现两条 turns，第二轮 `conversation_resolution` 应说明本轮与上一轮的业务关系，`resolved_task` 应体现继承的目标、对象和新增约束。
 
 ### Phase 2: 标准 trace events
 
@@ -307,16 +334,18 @@ python -m agents.coordinator_agent.run_session --list
 - 评论类问题包含 nlp trace。
 - 决策类问题包含 decision trace。
 
-### Phase 3: LLM 追问改写与记忆摘要
+### Phase 3: 语义会话解析与记忆摘要
 
-- 新增 `question_rewriter.py` 与 prompt。
+- 新增 `conversation_resolver.py` 与 prompt。
 - 新增 `memory.py`，维护 `memory_summary`。
 - 当历史轮次超过阈值时，滚动更新摘要。
 - coordinator synthesize evidence 中加入简短 `conversation_history` 或 `memory_summary`，让最终回答知道用户连续目标。
 
 验收：
 
-- “那 SP 州呢？”、“继续看差评原因”、“如果我要进入这个品类呢？”可以被改写成独立问题。
+- “那 SP 州呢？”、“继续看差评原因”、“如果我要进入这个品类呢？”应被解析为与前文相关的真实任务。
+- 解析结果应保留上一轮真实业务目标。例如上一轮关注“某品类入行风险和机会”，本轮问“那 SP 州呢？”，应解析为评估该品类在 SP 州入行风险更高还是更低、机会在哪里，而不是只分析 SP 州表现。
+- 对无法判断继承哪段上下文的问题，应返回澄清问题或显式失败，不应规则拼接。
 - session 文件不会因多轮对话无限膨胀到不可用。
 
 ### Phase 4: HAR 可选集成
@@ -338,7 +367,9 @@ python -m agents.coordinator_agent.run_session --list
 {
     "session_id": "...",
     "turn_id": 2,
+    "resolved_task": "...",
     "standalone_query": "...",
+    "conversation_resolution": {...},
     "trace_events": [...],
     "final_answer": "...",
 }
@@ -346,6 +377,7 @@ python -m agents.coordinator_agent.run_session --list
 
 - Web 端可直接把 trace events 转为 SSE/WebSocket 消息。
 - 如果后续接 FastAPI，只需要包一层 HTTP handler，不需要改 coordinator 业务逻辑。
+- 已提供实时事件流接口，Web handler 可在 Agent 运行过程中逐条推送事件，而不是等整轮结束后回放。
 
 ## 12. 测试计划
 
@@ -353,7 +385,7 @@ python -m agents.coordinator_agent.run_session --list
 
 - `session_store` 创建、加载、覆盖保存、列表排序。
 - `memory` 裁剪最近 N 轮。
-- `question_rewriter` 规则兜底。
+- `conversation_resolver` 结构化语义解析与失败不兜底。
 - `tracing` payload preview 截断与 JSON 解析。
 
 集成测试：
@@ -380,7 +412,7 @@ python -m agents.coordinator_agent.run_session --new --query "2017年哪个州�
 
 | 风险 | 处理 |
 |------|------|
-| 追问太短，SQL Agent 无法理解 | 先做 standalone query rewrite，再进 coordinator |
+| 追问太短，SQL Agent 无法理解 | 先做语义会话解析，生成 `resolved_task` 后再进 coordinator；无法可靠解析时先澄清 |
 | 历史过长导致 prompt 变大 | 保存完整 turns，但 prompt 只用摘要 + 最近 N 轮 |
 | trace 泄露技术噪声 | `payload_preview` 截断，只展示摘要；完整 payload 仅调试模式输出 |
 | HAR monkey patch 影响运行 | HAR 只在显式 `--har-out` 时安装 |
@@ -389,21 +421,23 @@ python -m agents.coordinator_agent.run_session --new --query "2017年哪个州�
 
 ## 14. 实施检查清单
 
-- [ ] 增加 `/runtime/` gitignore。
-- [ ] 新增 session 数据模型与本地 store。
-- [ ] 新增 session manager 服务。
-- [ ] 扩展 `run_coordinator()` 注入 conversation history。
-- [ ] 新增 `run_session.py` CLI。
-- [ ] 保存每轮 turn 与 state summary。
-- [ ] 实现规则版 standalone query rewrite。
-- [ ] 新增 trace event collector。
-- [ ] 接入 SQL/NLP/Viz/Decision/Coordinator 关键事件。
-- [ ] 实现 LLM 版 follow-up rewrite。
-- [ ] 实现滚动 memory summary。
-- [ ] 可选接入 HAR 捕获。
-- [ ] 补充 tests 与 README 使用说明。
+- [x] 增加 `/runtime/` gitignore。
+- [x] 新增 session 数据模型与本地 store。
+- [x] 新增 session manager 服务。
+- [x] 扩展 `run_coordinator()` 注入 conversation history。
+- [x] 新增 `run_session.py` CLI。
+- [x] 保存每轮 turn 与 state summary。
+- [x] 实现语义会话解析器。
+- [x] 新增 trace event collector。
+- [x] 接入 SQL/NLP/Viz/Decision/Coordinator 关键事件。
+- [x] 移除机械追问改写和规则兜底。
+- [x] 会话解析支持与上一轮问题/回答的业务关系分析。
+- [x] 实现滚动 memory summary。
+- [x] 可选接入 HAR 捕获。
+- [x] 提供实时 SSE/WebSocket 事件流接口。
+- [x] 补充 tests 与 README 使用说明。
 
 ## 15. 推荐优先级
 
 第一轮实施只做 Phase 1 + Phase 2 的核心部分，即“能多轮、能保存、能展示过程”。  
-等 CLI 稳定后，再做 LLM 追问改写与 HAR 抽取。这样可以最快验证真实用户体验，同时避免把 HAR、Web、记忆摘要一次性耦合到一起。
+CLI 稳定后，优先完善语义会话解析器的测试样例、澄清交互和前端 SSE 消费层；HAR 仍保持为可选调试能力。
