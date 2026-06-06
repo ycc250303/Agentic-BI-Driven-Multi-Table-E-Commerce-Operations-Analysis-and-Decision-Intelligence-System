@@ -61,6 +61,13 @@ def _print_session_detail(session: dict[str, Any]) -> None:
             _write(f"HAR：{turn.get('har_path')}")
 
 
+def _shorten(text: str, limit: int = 120) -> str:
+    value = str(text or "")
+    if len(value) <= limit:
+        return value
+    return value[: limit - 15].rstrip() + "...(truncated)"
+
+
 def _print_run_result(
     result: dict[str, Any],
     *,
@@ -95,6 +102,15 @@ def _print_run_result(
             f"\nHAR: {result.get('har_path')} "
             f"(entries={result.get('har_entry_count', 0)})"
         )
+        request_traces = result.get("http_request_traces") or []
+        if request_traces:
+            _write("\n===== HTTP 请求归属 =====")
+            for item in request_traces:
+                _write(
+                    f"#{item.get('index')} [{item.get('agent')}/{item.get('step')}] "
+                    f"{item.get('method')} {item.get('status')} "
+                    f"{_shorten(str(item.get('url') or ''))}"
+                )
     _write(f"\nSaved: {result.get('session_path')}")
 
 

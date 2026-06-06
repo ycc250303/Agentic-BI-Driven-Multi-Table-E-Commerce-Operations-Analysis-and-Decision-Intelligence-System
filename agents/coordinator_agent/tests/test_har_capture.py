@@ -6,7 +6,9 @@ import httpx
 
 from agents.coordinator_agent.har_capture import (
     HttpxHarCapture,
+    count_har_entries_by_agent,
     infer_agent_trace,
+    summarize_har_entries,
     write_har,
 )
 
@@ -47,6 +49,44 @@ def test_write_har_empty_entries(tmp_path):
 
     assert data["log"]["version"] == "1.2"
     assert data["log"]["entries"] == []
+
+
+def test_summarize_har_entries_exposes_agent_ownership():
+    entries = [
+        {
+            "startedDateTime": "2026-06-06T00:00:00.000Z",
+            "time": 123.4,
+            "request": {
+                "method": "POST",
+                "url": "https://api.example.test/v1/chat/completions",
+            },
+            "response": {"status": 200},
+            "_agentic_bi": {
+                "agent": "data_analysis_agent",
+                "step": "generate_sql",
+                "label": "data_analysis_agent.generate_sql",
+                "source": "prompt_heuristic",
+            },
+        }
+    ]
+
+    summary = summarize_har_entries(entries)
+
+    assert summary == [
+        {
+            "index": 1,
+            "agent": "data_analysis_agent",
+            "step": "generate_sql",
+            "label": "data_analysis_agent.generate_sql",
+            "source": "prompt_heuristic",
+            "method": "POST",
+            "url": "https://api.example.test/v1/chat/completions",
+            "status": 200,
+            "started_at": "2026-06-06T00:00:00.000Z",
+            "time_ms": 123.4,
+        }
+    ]
+    assert count_har_entries_by_agent(entries) == {"data_analysis_agent": 1}
 
 
 def test_har_capture_context_restores_httpx_patch():

@@ -8,7 +8,11 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
-from agents.coordinator_agent.har_capture import HttpxHarCapture
+from agents.coordinator_agent.har_capture import (
+    HttpxHarCapture,
+    count_har_entries_by_agent,
+    summarize_har_entries,
+)
 from agents.coordinator_agent.memory import (
     build_conversation_history,
     build_state_summary,
@@ -96,6 +100,8 @@ class SessionManager:
             )
         result["har_path"] = str(Path(har_out))
         result["har_entry_count"] = len(capture.entries)
+        result["http_request_traces"] = summarize_har_entries(capture.entries)
+        result["har_agent_counts"] = count_har_entries_by_agent(capture.entries)
         return result
 
     def _run_turn_body(
@@ -251,6 +257,9 @@ class SessionManager:
             "trace_events": trace.events,
             "state_summary": turn["state_summary"],
             "har_path": str(Path(har_out)) if har_out is not None else "",
+            "har_entry_count": 0,
+            "http_request_traces": [],
+            "har_agent_counts": {},
         }
 
     def stream_turn_events(

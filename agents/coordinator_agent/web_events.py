@@ -106,6 +106,8 @@ def make_har_saved_event(
         data={
             "har_path": result.get("har_path"),
             "har_entry_count": int(result.get("har_entry_count") or 0),
+            "http_request_traces": result.get("http_request_traces") or [],
+            "har_agent_counts": result.get("har_agent_counts") or {},
         },
     )
 

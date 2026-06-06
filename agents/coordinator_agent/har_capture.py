@@ -289,6 +289,38 @@ def build_har(entries: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def summarize_har_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return compact HTTP request ownership data for API/Web clients."""
+    out: list[dict[str, Any]] = []
+    for index, entry in enumerate(entries, start=1):
+        trace = entry.get("_agentic_bi") or {}
+        request = entry.get("request") or {}
+        response = entry.get("response") or {}
+        out.append(
+            {
+                "index": index,
+                "agent": str(trace.get("agent") or "external_http"),
+                "step": str(trace.get("step") or "unknown"),
+                "label": str(trace.get("label") or ""),
+                "source": str(trace.get("source") or ""),
+                "method": str(request.get("method") or ""),
+                "url": str(request.get("url") or ""),
+                "status": response.get("status"),
+                "started_at": str(entry.get("startedDateTime") or ""),
+                "time_ms": entry.get("time"),
+            }
+        )
+    return out
+
+
+def count_har_entries_by_agent(entries: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in summarize_har_entries(entries):
+        agent = str(item.get("agent") or "external_http")
+        counts[agent] = counts.get(agent, 0) + 1
+    return counts
+
+
 def write_har(path: Path | str, entries: list[dict[str, Any]]) -> Path:
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)

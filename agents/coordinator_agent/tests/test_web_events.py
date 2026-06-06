@@ -20,6 +20,21 @@ def _sample_result() -> dict:
         "final_answer": "SP 州表现较好。",
         "har_path": "runtime/har/s1_2.har",
         "har_entry_count": 3,
+        "http_request_traces": [
+            {
+                "index": 1,
+                "agent": "coordinator_agent",
+                "step": "decompose_query",
+                "label": "coordinator_agent.decompose_query",
+                "source": "prompt_heuristic",
+                "method": "POST",
+                "url": "https://api.example.test/v1/chat/completions",
+                "status": 200,
+                "started_at": "2026-06-06T00:00:00.000Z",
+                "time_ms": 10.5,
+            }
+        ],
+        "har_agent_counts": {"coordinator_agent": 1},
         "state_summary": {"intent": "descriptive"},
         "trace_events": [
             {
@@ -46,6 +61,8 @@ def test_web_events_from_result_order_and_shape():
     assert events[0]["session_id"] == "s1"
     assert events[0]["data"]["resolved_task"].startswith("在上一轮")
     assert events[1]["data"]["trace"]["agent"] == "coordinator_agent"
+    assert events[3]["data"]["http_request_traces"][0]["agent"] == "coordinator_agent"
+    assert events[3]["data"]["har_agent_counts"] == {"coordinator_agent": 1}
     assert events[-1]["data"]["state_summary"]["intent"] == "descriptive"
 
 
