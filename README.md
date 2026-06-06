@@ -69,6 +69,14 @@ python -m agents.coordinator_agent.run_session --new --query "..." --har-out run
 python -m agents.coordinator_agent.run_session --new --query "..." --sse  # 实时 SSE 事件流
 ```
 
+网页调用示例：
+
+```bash
+python examples/session_web_demo/server.py --host 127.0.0.1 --port 8010
+```
+
+打开 `http://127.0.0.1:8010/`，示例代码见 [`examples/session_web_demo/`](examples/session_web_demo/)。
+
 ## 可视化 Agent（作业要求）
 
 - **位置**：`agents/viz_agent/`

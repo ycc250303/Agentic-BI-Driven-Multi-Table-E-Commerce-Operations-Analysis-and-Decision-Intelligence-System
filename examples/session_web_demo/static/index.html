@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agentic BI Session Web Demo</title>
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">BI</div>
+          <div>
+            <h1>Session Demo</h1>
+            <p id="sessionStatus">未连接会话</p>
+          </div>
+        </div>
+        <button id="newSessionButton" class="secondary-button" type="button">新会话</button>
+        <div class="section-label">历史会话</div>
+        <div id="sessionList" class="session-list"></div>
+      </aside>
+
+      <main class="chat-panel">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Agentic BI</p>
+            <h2>多轮运营分析对话</h2>
+          </div>
+          <div class="status-pill" id="runStatus">就绪</div>
+        </header>
+
+        <section id="messages" class="messages" aria-live="polite">
+          <div id="emptyState" class="empty-state">
+            <strong>开始一个 session</strong>
+            <div class="prompt-row">
+              <button type="button" class="prompt-chip">2017年哪个州的销售额最高？</button>
+              <button type="button" class="prompt-chip">casa_conforto 类产品口碑如何？</button>
+              <button type="button" class="prompt-chip">给我一个入行该品类的决策建议</button>
+            </div>
+          </div>
+        </section>
+
+        <form id="chatForm" class="composer">
+          <textarea id="queryInput" rows="1" placeholder="输入运营分析问题"></textarea>
+          <button id="sendButton" class="send-button" type="submit">发送</button>
+        </form>
+      </main>
+    </div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

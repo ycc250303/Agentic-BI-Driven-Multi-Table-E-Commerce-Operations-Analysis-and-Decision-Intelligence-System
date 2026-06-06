@@ -80,6 +80,14 @@ for event in manager.stream_turn_events(query="...", new_session=True):
     ...  # 实时发送给 SSE/WebSocket 前端
 ```
 
+项目内提供了一个零新增依赖的网页调用示例：
+
+```bash
+python examples/session_web_demo/server.py --host 127.0.0.1 --port 8010
+```
+
+打开 `http://127.0.0.1:8010/`，代码位于 [`examples/session_web_demo/`](../../examples/session_web_demo/)。
+
 ## 代码入口
 
 ```python
