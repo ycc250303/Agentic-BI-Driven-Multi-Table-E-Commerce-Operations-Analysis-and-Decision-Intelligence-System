@@ -47,6 +47,28 @@ def _extract_json_object(text: str) -> str:
     return s.strip()
 
 
+def _split_jiqi_query(user_query: str) -> list[str] | None:
+    """「A 及其 B」拆成两条可查数子问题（规则兜底，配合 decompose_query.md）。"""
+    text = user_query.strip()
+    if "及其" not in text:
+        return None
+    left, right = text.split("及其", 1)
+    left = left.strip().rstrip("，,")
+    right = right.strip().rstrip("，,")
+    if not left or not right:
+        return None
+    if not right.endswith(("？", "?")):
+        right = right + "？"
+    if not left.endswith(("？", "?")):
+        if "是什么" in right or "哪些" in right:
+            left = left + "是什么？"
+        elif "怎样" in right or "如何" in right:
+            left = left + "怎样？"
+        else:
+            left = left + "？"
+    return [left, right]
+
+
 def _split_compound_query(user_query: str) -> list[str]:
     """规则拆分：按问号、分号及常见并列连词切分。"""
     text = user_query.strip()
@@ -98,6 +120,10 @@ def _default_suggested_agents(intent: IntentName, user_query: str) -> list[str]:
 def decompose_query_rule(user_query: str) -> DecomposeResult:
     intent = classify_intent(user_query)
     sub_questions = _split_compound_query(user_query)
+    if len(sub_questions) == 1:
+        jiqi = _split_jiqi_query(sub_questions[0])
+        if jiqi:
+            sub_questions = jiqi
     if len(sub_questions) == 1 and sub_questions[0].rstrip("？?") == user_query.rstrip("？?"):
         sub_questions = [user_query if user_query.endswith(("？", "?")) else user_query + "？"]
     suggested = _default_suggested_agents(intent, user_query)

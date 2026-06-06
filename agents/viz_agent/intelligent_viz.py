@@ -20,7 +20,7 @@ from agents.viz_agent.forecast import forecast_weekly_gmv
 from agents.viz_agent.render import render_to_png
 from agents.viz_agent.render_context import RenderExtras
 from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
-from agents.viz_agent.viz_planner import VizChartTask, VizSuitePlan, _TOPIC_ZH, plan_viz_suite
+from agents.viz_agent.viz_planner import VizChartTask, VizSuitePlan, plan_viz_suite
 
 _viz_dir = Path(__file__).resolve().parent
 _project_root = _viz_dir.parents[1]
@@ -135,6 +135,31 @@ def _run_viz_from_exec_payload(
     return out
 
 
+def _allocate_png_path(
+    out_dir: Path, chart_type: str, chart_task: VizChartTask | None = None
+) -> Path:
+    """带 sql_run / 洞察类型 标签的文件名，避免同秒多张 bar 图难以区分。"""
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    tag = ""
+    if chart_task is not None:
+        if chart_task.data_source == "sql_run" and chart_task.sql_run_index is not None:
+            tag = f"_sql{chart_task.sql_run_index}"
+        elif chart_task.data_source == "wordcloud":
+            tag = "_wc"
+        elif (
+            chart_task.data_source == "review_insights"
+            and chart_task.insight_chart_type
+        ):
+            tag = f"_{chart_task.insight_chart_type}"
+    stem = f"viz_{chart_type}{tag}_{ts}"
+    path = out_dir / f"{stem}.png"
+    n = 1
+    while path.exists():
+        path = out_dir / f"{stem}_{n}.png"
+        n += 1
+    return path
+
+
 def _render_with_plan(
     *,
     df,
@@ -146,8 +171,7 @@ def _render_with_plan(
 ) -> dict[str, Any]:
     plan = _normalize_viz_plan(plan)
     out_dir = _viz_output_dir()
-    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    png_path = out_dir / f"viz_{plan.chart_type}_{ts}.png"
+    png_path = _allocate_png_path(out_dir, plan.chart_type, chart_task)
     extras = _build_render_extras(chart_task, plan)
     try:
         img = render_to_png(df, plan, png_path, extras=extras)
@@ -176,7 +200,11 @@ def _render_with_plan(
 
 
 def _build_render_extras(chart_task: VizChartTask, plan: VizPlan) -> RenderExtras | None:
-    extras = RenderExtras(subtitle=chart_task.rationale)
+    # rationale 仅供规划/LLM，不渲染到图上（避免提示词式长文破坏观感）
+    subtitle = ""
+    if plan.chart_type == "wordcloud":
+        subtitle = "左：好评(≥4分)  右：差评(≤2分)"
+    extras = RenderExtras(subtitle=subtitle)
     if chart_task.include_forecast and plan.chart_type == "line":
         fc = forecast_weekly_gmv(horizon_weeks=6)
         if fc.get("ok"):
@@ -242,14 +270,13 @@ def _render_wordcloud_task(
         reasoning=chart_task.rationale,
     )
     out_dir = _viz_output_dir()
-    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    png_path = out_dir / f"viz_wordcloud_{ts}.png"
+    png_path = _allocate_png_path(out_dir, "wordcloud", chart_task)
     extras = RenderExtras(
         wordcloud_compare={
             "positive": wc_data.get("positive") or {},
             "negative": wc_data.get("negative") or {},
         },
-        subtitle=chart_task.rationale or "左：好评(≥4分)  右：差评(≤2分)",
+        subtitle="左：好评(≥4分)  右：差评(≤2分)",
     )
     try:
         import pandas as pd
@@ -276,29 +303,9 @@ def _render_wordcloud_task(
 def _insights_to_dataframe(insights: dict[str, Any], kind: str):
     import pandas as pd
 
-    if kind == "topic_distribution":
-        td = insights.get("topic_distribution") or {}
-        rows = [
-            {"topic": _TOPIC_ZH.get(str(k), str(k)), "count": int(v)}
-            for k, v in td.items()
-            if int(v or 0) > 0
-        ]
-        return pd.DataFrame(rows)
+    from agents.viz_agent.insight_charts import insight_chart_rows
 
-    if kind == "complaints_by_category":
-        rows: list[dict[str, Any]] = []
-        for item in insights.get("complaints_by_category") or []:
-            cat = str(item.get("category") or "未知")
-            for topic, cnt in (item.get("topic_distribution") or {}).items():
-                rows.append(
-                    {
-                        "category": cat,
-                        "topic": _TOPIC_ZH.get(str(topic), str(topic)),
-                        "count": int(cnt or 0),
-                    }
-                )
-        return pd.DataFrame(rows)
-    return pd.DataFrame()
+    return pd.DataFrame(insight_chart_rows(insights, kind))
 
 
 def _render_review_insights_task(
@@ -441,6 +448,54 @@ def _execute_chart_task(
     )
 
 
+def rendered_chart_fingerprint(item: dict[str, Any], task: VizChartTask) -> str | None:
+    """渲染完成后按「图表类型 + 实际数据」生成指纹，用于剔除画面完全相同的图。"""
+    if not item.get("ok"):
+        return None
+    plan_raw = item.get("plan") or {}
+    if isinstance(plan_raw, dict):
+        plan_dict = plan_raw
+    elif hasattr(plan_raw, "model_dump"):
+        plan_dict = plan_raw.model_dump()
+    else:
+        plan_dict = {}
+    ctype = str(
+        item.get("chart_type_resolved") or plan_dict.get("chart_type") or ""
+    )
+    if not ctype:
+        return None
+
+    if ctype == "wordcloud":
+        if task.data_source == "wordcloud":
+            return "wordcloud:compare:global"
+        text_col = str(plan_dict.get("text_column") or "")
+        csv = str(item.get("csv_path") or "")
+        return f"wordcloud:single:{csv}:{text_col}"
+
+    if task.data_source == "review_insights" and task.insight_chart_type:
+        return f"{ctype}:review_insights:{task.insight_chart_type}"
+
+    csv = str(item.get("csv_path") or "")
+    parts = [
+        ctype,
+        str(task.data_source),
+        csv,
+        str(plan_dict.get("x_column") or ""),
+        str(plan_dict.get("y_column") or ""),
+        str(plan_dict.get("pivot_row_col") or ""),
+        str(plan_dict.get("pivot_col_col") or ""),
+        str(plan_dict.get("pivot_value_col") or ""),
+        str(plan_dict.get("lat_column") or ""),
+        str(plan_dict.get("lng_column") or ""),
+        str(plan_dict.get("text_column") or ""),
+    ]
+    if task.data_source == "sql_run" and task.sql_run_index is not None:
+        parts.append(f"idx:{task.sql_run_index}")
+    if task.data_source == "supplementary_query":
+        parts.append(str(task.supplementary_question or task.title or ""))
+    return ":".join(parts)
+
+
 def run_intelligent_visualization(
     *,
     user_query: str,
@@ -477,6 +532,7 @@ def run_intelligent_visualization(
 
     items: list[dict[str, Any]] = []
     forecast_patch: dict[str, Any] = {}
+    rendered_fingerprints: set[str] = set()
     for i, task in enumerate(suite.charts):
         item = _execute_chart_task(
             task,
@@ -486,6 +542,12 @@ def run_intelligent_visualization(
             use_llm=use_llm,
             on_tool_end=on_tool_end,
         )
+        if item.get("ok"):
+            rfp = rendered_chart_fingerprint(item, task)
+            if rfp and rfp in rendered_fingerprints:
+                continue
+            if rfp:
+                rendered_fingerprints.add(rfp)
         items.append(item)
         if on_tool_end:
             on_tool_end(f"visualization_{i}", json.dumps(item, ensure_ascii=False))

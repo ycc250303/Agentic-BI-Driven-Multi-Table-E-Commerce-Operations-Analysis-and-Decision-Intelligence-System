@@ -16,6 +16,7 @@ from agents.coordinator_agent.nodes import (
     visualization_node,
 )
 from agents.coordinator_agent.state import AgentState
+from agents.coordinator_agent.tracing import TraceCollector
 
 
 def build_coordinator_graph(
@@ -25,31 +26,62 @@ def build_coordinator_graph(
     use_llm_viz: bool = True,
     use_llm_synthesize: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
+    trace_collector: TraceCollector | None = None,
 ):
     """迭代式 LangGraph：decompose → orchestrator ⇄ agents → synthesize。"""
 
+    def _tool_end(tool: str, payload: str) -> None:
+        if trace_collector is not None:
+            trace_collector.emit_tool_result(tool, payload)
+        if on_tool_end is not None:
+            on_tool_end(tool, payload)
+
     def _decompose(s: AgentState) -> AgentState:
-        return decompose_node(s, use_llm=use_llm_plan, model=model)
+        return decompose_node(
+            s,
+            use_llm=use_llm_plan,
+            model=model,
+            trace_collector=trace_collector,
+        )
 
     def _orchestrator(s: AgentState) -> AgentState:
-        return orchestrator_node(s, use_llm=use_llm_plan, model=model)
+        return orchestrator_node(
+            s,
+            use_llm=use_llm_plan,
+            model=model,
+            trace_collector=trace_collector,
+        )
 
     def _sql(s: AgentState) -> AgentState:
-        return data_analysis_node(s, model=model, on_tool_end=on_tool_end)
+        return data_analysis_node(
+            s,
+            model=model,
+            on_tool_end=_tool_end,
+            trace_collector=trace_collector,
+        )
 
     def _viz(s: AgentState) -> AgentState:
         return visualization_node(
-            s, model=model, use_llm=use_llm_viz, on_tool_end=on_tool_end
+            s,
+            model=model,
+            use_llm=use_llm_viz,
+            on_tool_end=_tool_end,
+            trace_collector=trace_collector,
         )
 
     def _nlp(s: AgentState) -> AgentState:
-        return nlp_node(s)
+        return nlp_node(s, on_tool_end=_tool_end, trace_collector=trace_collector)
 
     def _decision(s: AgentState) -> AgentState:
-        return decision_node(s, model=model)
+        return decision_node(s, model=model, trace_collector=trace_collector)
 
     def _synthesize(s: AgentState) -> AgentState:
-        return synthesize_node(s, model=model, use_llm=use_llm_synthesize)
+        return synthesize_node(
+            s,
+            model=model,
+            use_llm=use_llm_synthesize,
+            trace_collector=trace_collector,
+        )
 
     workflow = StateGraph(AgentState)
     workflow.add_node("decompose", _decompose)
@@ -90,6 +122,8 @@ def run_coordinator(
     use_llm_viz: bool = True,
     use_llm_synthesize: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
+    conversation_history: list[dict[str, str]] | None = None,
+    trace_collector: TraceCollector | None = None,
 ) -> dict[str, Any]:
     graph = build_coordinator_graph(
         model=model,
@@ -97,6 +131,11 @@ def run_coordinator(
         use_llm_viz=use_llm_viz,
         use_llm_synthesize=use_llm_synthesize,
         on_tool_end=on_tool_end,
+        trace_collector=trace_collector,
     )
-    initial: AgentState = {"user_query": user_query, "question": user_query}
+    initial: AgentState = {
+        "user_query": user_query,
+        "question": user_query,
+        "conversation_history": list(conversation_history or []),
+    }
     return graph.invoke(initial)

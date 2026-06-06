@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import os
 import platform
 import warnings
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
@@ -30,34 +36,223 @@ _PALETTE = {
 }
 _DELIVERY_COLORS = {"准时": "#059669", "延迟": "#DC2626", "其他": "#6B7280"}
 
+# 可通过 AGENTIC_BI_VIZ_FONT 覆盖；否则按当前系统自动探测
+_WINDOWS_FONT_FILES: tuple[str, ...] = (
+    r"C:\Windows\Fonts\msyh.ttc",
+    r"C:\Windows\Fonts\msyhbd.ttc",
+    r"C:\Windows\Fonts\simhei.ttf",
+    r"C:\Windows\Fonts\simsun.ttc",
+)
 
-def _configure_matplotlib_zh() -> None:
-    plt.rcParams["axes.unicode_minus"] = False
-    if platform.system() == "Windows":
-        plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "Arial Unicode MS"]
-    else:
-        plt.rcParams["font.sans-serif"] = [
-            "Arial Unicode MS",
-            "Noto Sans CJK SC",
-            "PingFang SC",
-            "Heiti TC",
-            "DejaVu Sans",
-        ]
+# macOS：优先 FreeType/matplotlib 可直接读取的字体（避免新版 PingFangUI 私有格式）
+_MAC_FONT_FILES: tuple[str, ...] = (
+    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+    "/System/Library/Fonts/STHeiti Medium.ttc",
+    "/System/Library/Fonts/STHeiti Light.ttc",
+    "/System/Library/Fonts/Supplemental/Songti.ttc",
+    "/System/Library/Fonts/Supplemental/STHeiti Light.ttc",
+    "/System/Library/Fonts/Supplemental/STHeiti Medium.ttc",
+    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+    "/System/Library/Fonts/PingFang.ttc",
+    "/System/Library/Fonts/LanguageSupport/PingFang.ttc",
+    "/Library/Fonts/Arial Unicode.ttf",
+    "/Library/Fonts/Microsoft/Microsoft YaHei.ttf",
+)
+
+_LINUX_FONT_FILES: tuple[str, ...] = (
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+)
+
+_MAC_FONT_NAME_FALLBACKS: tuple[str, ...] = (
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "STHeiti",
+    "Songti SC",
+    "Heiti SC",
+    "Arial Unicode MS",
+    "Microsoft YaHei",
+    "SimHei",
+    "Noto Sans CJK SC",
+)
+
+_WINDOWS_FONT_NAME_FALLBACKS: tuple[str, ...] = (
+    "Microsoft YaHei",
+    "SimHei",
+    "SimSun",
+    "Noto Sans CJK SC",
+    "Arial Unicode MS",
+)
+
+_LINUX_FONT_NAME_FALLBACKS: tuple[str, ...] = (
+    "Noto Sans CJK SC",
+    "Noto Sans CJK JP",
+    "WenQuanYi Micro Hei",
+    "WenQuanYi Zen Hei",
+    "Arial Unicode MS",
+    "Microsoft YaHei",
+    "SimHei",
+)
+
+_MAC_FONT_SCAN_DIRS: tuple[str, ...] = (
+    "/System/Library/Fonts",
+    "/System/Library/Fonts/Supplemental",
+    "/System/Library/Fonts/LanguageSupport",
+    "/Library/Fonts",
+)
+
+_MAC_FONT_SCAN_KEYWORDS: tuple[str, ...] = (
+    "Hiragino Sans GB",
+    "STHeiti",
+    "Songti",
+    "PingFang",
+    "Arial Unicode",
+)
+
+_resolved_cjk_font: tuple[str | None, str | None] | None = None
 
 
-def _wordcloud_font_path() -> str | None:
-    if platform.system() == "Windows":
-        p = Path(r"C:\Windows\Fonts\msyh.ttc")
-        if p.is_file():
-            return str(p)
+def _platform_font_files() -> tuple[str, ...]:
+    system = platform.system()
+    if system == "Darwin":
+        return _MAC_FONT_FILES
+    if system == "Windows":
+        return _WINDOWS_FONT_FILES
+    return _LINUX_FONT_FILES
+
+
+def _platform_font_name_fallbacks() -> tuple[str, ...]:
+    system = platform.system()
+    if system == "Darwin":
+        return _MAC_FONT_NAME_FALLBACKS
+    if system == "Windows":
+        return _WINDOWS_FONT_NAME_FALLBACKS
+    return _LINUX_FONT_NAME_FALLBACKS
+
+
+def _scan_mac_font_files() -> list[Path]:
+    found: list[Path] = []
+    seen: set[str] = set()
+    for directory in _MAC_FONT_SCAN_DIRS:
+        root = Path(directory)
+        if not root.is_dir():
+            continue
+        for path in root.iterdir():
+            if not path.is_file() or path.suffix.lower() not in {".ttf", ".ttc", ".otf"}:
+                continue
+            if not any(keyword in path.name for keyword in _MAC_FONT_SCAN_KEYWORDS):
+                continue
+            resolved = str(path.resolve())
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            found.append(path)
+    return found
+
+
+def _register_font_file(path: Path) -> str | None:
+    try:
+        fm.fontManager.addfont(str(path))
+    except (OSError, ValueError):
+        pass
+    try:
+        return fm.FontProperties(fname=str(path)).get_name()
+    except (OSError, ValueError):
+        return None
+
+
+def _registered_fonts() -> dict[str, str]:
+    return {f.name: f.fname for f in fm.fontManager.ttflist}
+
+
+def _match_registered_font(
+    registered: dict[str, str],
+    target: str,
+) -> tuple[str, str] | None:
+    if target in registered:
+        return target, registered[target]
+    target_key = target.lower().replace(" ", "")
+    for name, path in registered.items():
+        name_key = name.lower().replace(" ", "")
+        if target_key in name_key or name_key in target_key:
+            return name, path
     return None
 
 
+def _resolve_cjk_font() -> tuple[str | None, str | None]:
+    """解析可用于 matplotlib / wordcloud 的中文字体，返回 (font_name, font_path)。"""
+    global _resolved_cjk_font
+    if _resolved_cjk_font is not None:
+        return _resolved_cjk_font
+
+    env_path = os.environ.get("AGENTIC_BI_VIZ_FONT", "").strip()
+    if env_path:
+        custom = Path(env_path)
+        if custom.is_file():
+            name = _register_font_file(custom)
+            if name:
+                _resolved_cjk_font = (name, str(custom.resolve()))
+                return _resolved_cjk_font
+
+    # macOS 上系统字体常已由 matplotlib 索引，优先按名称匹配（含词云 font_path）
+    registered = _registered_fonts()
+    for name in _platform_font_name_fallbacks():
+        matched = _match_registered_font(registered, name)
+        if matched:
+            _resolved_cjk_font = matched
+            return _resolved_cjk_font
+
+    font_paths: list[Path] = [Path(p) for p in _platform_font_files()]
+    if platform.system() == "Darwin":
+        font_paths.extend(_scan_mac_font_files())
+
+    for path in font_paths:
+        if not path.is_file():
+            continue
+        name = _register_font_file(path)
+        if name:
+            _resolved_cjk_font = (name, str(path.resolve()))
+            return _resolved_cjk_font
+
+    _resolved_cjk_font = (None, None)
+    return _resolved_cjk_font
+
+
+def _configure_matplotlib_zh() -> None:
+    plt.rcParams["axes.unicode_minus"] = False
+    font_name, _font_path = _resolve_cjk_font()
+    fallbacks = list(_platform_font_name_fallbacks()) + ["DejaVu Sans"]
+    if font_name:
+        plt.rcParams["font.family"] = font_name
+        plt.rcParams["font.sans-serif"] = [font_name] + [
+            n for n in fallbacks if n != font_name
+        ]
+    else:
+        plt.rcParams["font.sans-serif"] = list(fallbacks)
+        system = platform.system()
+        hint = (
+            "macOS 可在「字体册」下载苹方/宋体，或设置 AGENTIC_BI_VIZ_FONT；"
+            if system == "Darwin"
+            else "请安装 Noto Sans CJK / 微软雅黑，或设置 AGENTIC_BI_VIZ_FONT；"
+        )
+        warnings.warn(
+            "未找到可用的中文字体，图表中文可能显示为方框；"
+            f"{hint}指向 .ttf/.ttc 文件。",
+            UserWarning,
+            stacklevel=3,
+        )
+
+
+def _wordcloud_font_path() -> str | None:
+    _font_name, font_path = _resolve_cjk_font()
+    return font_path
+
+
 def _apply_style() -> None:
-    _configure_matplotlib_zh()
     sns.set_theme(style="whitegrid", context="notebook")
-    if platform.system() == "Windows":
-        sns.set_theme(style="whitegrid", context="notebook", font="Microsoft YaHei")
+    _configure_matplotlib_zh()
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "#FAFAFA"
     plt.rcParams["grid.color"] = _PALETTE["grid"]
@@ -70,6 +265,46 @@ def _format_axis_currency(ax: plt.Axes, axis: str = "x") -> None:
         ax.xaxis.set_major_formatter(tick)
     else:
         ax.yaxis.set_major_formatter(tick)
+
+
+def _human_axis_label(column: str) -> str:
+    """将数据列名转为图表轴中文标签。"""
+    cl = (column or "").lower()
+    mapping = {
+        "category": "产品品类",
+        "product_category_english": "产品品类",
+        "topic": "差评主题",
+        "payment_type": "支付方式",
+        "payment_installments": "分期数",
+        "month": "月份",
+        "state": "州",
+    }
+    if column in mapping:
+        return mapping[column]
+    if "category" in cl:
+        return "产品品类"
+    if "topic" in cl or "theme" in cl or "reason" in cl:
+        return "差评主题"
+    if "payment" in cl and "install" in cl:
+        return "分期数"
+    if "payment" in cl:
+        return "支付方式"
+    if "month" in cl or "date" in cl:
+        return "时间"
+    return column
+
+
+def _human_value_label(column: str) -> str:
+    cl = (column or "").lower()
+    if cl in ("count", "cnt", "bad_review_count"):
+        return "提及次数"
+    if "rate" in cl:
+        return "占比"
+    if "gmv" in cl or "sales" in cl:
+        return "销售额"
+    if "installment" in cl:
+        return "分期数"
+    return column or "数值"
 
 
 def _style_title(ax: plt.Axes, title: str, subtitle: str = "") -> None:
@@ -256,10 +491,10 @@ def render_to_png(
             linewidths=0.4,
             linecolor="white",
             ax=ax,
-            cbar_kws={"label": "交易笔数"},
+            cbar_kws={"label": _human_value_label(v)},
         )
-        ax.set_xlabel("分期数")
-        ax.set_ylabel("支付方式")
+        ax.set_xlabel(_human_axis_label(c))
+        ax.set_ylabel(_human_axis_label(r))
         _style_title(ax, plan.title, subtitle)
 
     elif chart == "geo_scatter":

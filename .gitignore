@@ -8,10 +8,10 @@ agents/sql_agent/query_results
 /.env
 /misc/
 /.worktrees/
+/runtime/
 
 .pytest_cache/
 
 CLAUDE.md
-agents/viz_agent/chart_output
 .idea/
-
+/agents/viz_agent/chart_output/

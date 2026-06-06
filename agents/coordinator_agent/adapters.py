@@ -177,12 +177,14 @@ def pick_viz_csv_from_exec_payload(exec_payload: dict[str, Any]) -> str | None:
 
 def build_viz_execute_json(exec_payload: dict[str, Any], row: dict[str, Any]) -> str:
     """构造 viz_agent 可识别的 execute_sql_json（顶层含 result_csv_path）。"""
+    from agents.viz_agent.viz_planner import build_column_profiles_for_viz
+
     payload = {
         "ok": True,
         "executed": True,
         "result_csv_path": row.get("result_csv_path"),
         "data_summary_zh": row.get("data_summary_zh") or exec_payload.get("data_summary_zh"),
-        "column_profiles": exec_payload.get("column_profiles") or [],
+        "column_profiles": build_column_profiles_for_viz(exec_payload, row),
         "row_count_returned": row.get("row_count_returned"),
     }
     return json.dumps(payload, ensure_ascii=False)

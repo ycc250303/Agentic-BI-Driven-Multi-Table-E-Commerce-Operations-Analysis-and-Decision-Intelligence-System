@@ -16,6 +16,7 @@ from agents.coordinator_agent.guardrails import is_off_topic_query, off_topic_st
 from agents.coordinator_agent.router import choose_next_agent
 from agents.coordinator_agent.state import AgentState
 from agents.coordinator_agent.synthesizer import synthesize_final_answer
+from agents.coordinator_agent.tracing import TraceCollector
 from agents.decision_agent.run import run_decision_state
 from agents.nlp_agent.run import ReviewInsightAgent
 
@@ -52,26 +53,107 @@ def _mark_done(state: AgentState, agent: str) -> dict[str, bool]:
     return done
 
 
-def decompose_node(state: AgentState, *, use_llm: bool = True, model=None) -> AgentState:
+def _emit_trace(
+    trace_collector: TraceCollector | None,
+    *,
+    agent: str,
+    step: str,
+    kind: str,
+    title: str,
+    summary: str,
+    payload: Any | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    if trace_collector is None:
+        return
+    trace_collector.emit(
+        agent=agent,
+        step=step,
+        kind=kind,
+        title=title,
+        summary=summary,
+        payload=payload,
+        metadata=metadata,
+    )
+
+
+def decompose_node(
+    state: AgentState,
+    *,
+    use_llm: bool = True,
+    model=None,
+    trace_collector: TraceCollector | None = None,
+) -> AgentState:
     user_query = str(state.get("user_query") or state.get("question") or "").strip()
     if not user_query:
+        _emit_trace(
+            trace_collector,
+            agent="coordinator_agent",
+            step="decompose",
+            kind="warning",
+            title="问题分解跳过",
+            summary="缺少 user_query，无法分解问题。",
+        )
         return {
             **state,
             "warnings": _append_warning(state, "缺少 user_query，无法分解问题。"),
             "next_agent": "synthesize",
         }
     if is_off_topic_query(user_query):
+        _emit_trace(
+            trace_collector,
+            agent="coordinator_agent",
+            step="decompose",
+            kind="planning",
+            title="问题越界",
+            summary="问题不属于 Olist 电商 BI 分析范围，进入拒答汇总。",
+        )
         return {**state, **off_topic_state_patch(user_query)}
     result = decompose_query(user_query, use_llm=use_llm, model=model)
     if result.off_topic:
+        _emit_trace(
+            trace_collector,
+            agent="coordinator_agent",
+            step="decompose",
+            kind="planning",
+            title="问题越界",
+            summary="分解器判断问题越界，进入拒答汇总。",
+        )
         return {**state, **off_topic_state_patch(user_query)}
     patch = decompose_to_state_patch(user_query, result)
+    _emit_trace(
+        trace_collector,
+        agent="coordinator_agent",
+        step="decompose",
+        kind="planning",
+        title="问题分解完成",
+        summary=(
+            f"识别 intent={result.intent}，拆分 {len(result.sub_questions)} 个子问题，"
+            f"建议调度：{' → '.join(result.suggested_agents)}。"
+        ),
+        payload=result.model_dump(),
+    )
     return {**state, **patch}
 
 
-def orchestrator_node(state: AgentState, *, use_llm: bool = True, model=None) -> AgentState:
+def orchestrator_node(
+    state: AgentState,
+    *,
+    use_llm: bool = True,
+    model=None,
+    trace_collector: TraceCollector | None = None,
+) -> AgentState:
     if state.get("off_topic"):
         iterations = int(state.get("orchestrator_iterations") or 0) + 1
+        _emit_trace(
+            trace_collector,
+            agent="coordinator_agent",
+            step="route_next",
+            kind="routing",
+            title="路由到最终汇总",
+            summary="off_topic，跳过子 Agent。",
+            metadata={"next_agent": "synthesize", "iteration": iterations},
+        )
         return {
             **state,
             "orchestrator_iterations": iterations,
@@ -90,6 +172,15 @@ def orchestrator_node(state: AgentState, *, use_llm: bool = True, model=None) ->
         {**state, "orchestrator_iterations": iterations},
         use_llm=use_llm,
         model=model,
+    )
+    _emit_trace(
+        trace_collector,
+        agent="coordinator_agent",
+        step="route_next",
+        kind="routing",
+        title=f"路由到 {decision.next_agent}",
+        summary=decision.reasoning,
+        metadata={"next_agent": decision.next_agent, "iteration": iterations},
     )
     log = _append_log(
         state,
@@ -112,6 +203,7 @@ def data_analysis_node(
     *,
     model=None,
     on_tool_end: Callable[[str, str], None] | None = None,
+    trace_collector: TraceCollector | None = None,
 ) -> AgentState:
     sub_questions = state.get("sub_questions") or [str(state.get("user_query") or "")]
     sql_runs = list(state.get("sql_runs") or [])
@@ -125,6 +217,15 @@ def data_analysis_node(
     analysis = build_analysis_result_from_sql_pipeline(
         user_query=question,
         sql_pipeline=sql_out,
+    )
+    _emit_trace(
+        trace_collector,
+        agent="data_analysis_agent",
+        step="analysis_result",
+        kind="agent_result",
+        title="数据分析结果整理完成",
+        summary=str(analysis.get("business_summary") or analysis.get("summary_text") or ""),
+        metadata={"question": question, "index": idx},
     )
     sql_runs.append(
         {
@@ -163,11 +264,20 @@ def visualization_node(
     model=None,
     use_llm: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
+    trace_collector: TraceCollector | None = None,
 ) -> AgentState:
     from agents.viz_agent.intelligent_viz import run_intelligent_visualization
 
     sql_runs = state.get("sql_runs") or []
     if not sql_runs:
+        _emit_trace(
+            trace_collector,
+            agent="visualization_agent",
+            step="visualization",
+            kind="agent_result",
+            title="可视化跳过",
+            summary="尚无 SQL 分析结果，跳过可视化。",
+        )
         return {
             **state,
             "agents_done": _mark_done(state, "visualization"),
@@ -192,6 +302,17 @@ def visualization_node(
     if viz_result.get("forecast_result") and not state.get("forecast_result"):
         patch["forecast_result"] = viz_result["forecast_result"]
 
+    charts = viz_result.get("charts") or []
+    _emit_trace(
+        trace_collector,
+        agent="visualization_agent",
+        step="visualization",
+        kind="agent_result",
+        title="可视化 Agent 完成",
+        summary=str(viz_result.get("summary_text") or f"生成/规划 {len(charts)} 个图表结果。"),
+        metadata={"chart_count": len(charts)},
+    )
+
     return {
         **state,
         **patch,
@@ -200,16 +321,45 @@ def visualization_node(
     }
 
 
-def nlp_node(state: AgentState) -> AgentState:
+def nlp_node(
+    state: AgentState,
+    *,
+    on_tool_end: Callable[[str, str], None] | None = None,
+    trace_collector: TraceCollector | None = None,
+) -> AgentState:
     agent = ReviewInsightAgent()
-    out = agent.run(dict(state))
+    out = agent.run(dict(state), on_tool_end=on_tool_end)
     out["agents_done"] = _mark_done(out, "nlp")
+    insights = out.get("review_insights") or {}
+    _emit_trace(
+        trace_collector,
+        agent="nlp_agent",
+        step="review_insights",
+        kind="agent_result",
+        title="评论洞察 Agent 完成",
+        summary=str(insights.get("summary") or insights.get("summary_text") or "已完成评论主题、情感与词云数据整理。"),
+    )
     return dict(out)
 
 
-def decision_node(state: AgentState, *, model=None) -> AgentState:
+def decision_node(
+    state: AgentState,
+    *,
+    model=None,
+    trace_collector: TraceCollector | None = None,
+) -> AgentState:
     out = run_decision_state(state, model=model)
     out["agents_done"] = _mark_done(out, "decision")
+    decision = out.get("decision_result") or {}
+    _emit_trace(
+        trace_collector,
+        agent="decision_agent",
+        step="compose_final_answer",
+        kind="agent_result",
+        title="决策 Agent 完成",
+        summary=str(decision.get("narrative_answer") or out.get("final_answer") or ""),
+        metadata={"action_count": len(decision.get("action_plan") or [])},
+    )
     return out
 
 
@@ -218,10 +368,27 @@ def synthesize_node(
     *,
     model=None,
     use_llm: bool = True,
+    trace_collector: TraceCollector | None = None,
 ) -> AgentState:
     if state.get("off_topic") and state.get("final_answer"):
+        _emit_trace(
+            trace_collector,
+            agent="coordinator_agent",
+            step="synthesize_answer",
+            kind="final_answer",
+            title="最终回答完成",
+            summary=str(state.get("final_answer") or ""),
+        )
         return {**state, "agents_done": _mark_done(state, "synthesize")}
     answer = synthesize_final_answer(state, model=model, use_llm=use_llm)
+    _emit_trace(
+        trace_collector,
+        agent="coordinator_agent",
+        step="synthesize_answer",
+        kind="final_answer",
+        title="最终回答完成",
+        summary=answer,
+    )
     return {**state, "final_answer": answer, "agents_done": _mark_done(state, "synthesize")}
 
 
