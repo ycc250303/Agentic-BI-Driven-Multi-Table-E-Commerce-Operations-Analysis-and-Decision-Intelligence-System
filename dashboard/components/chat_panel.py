@@ -51,17 +51,14 @@ def _run_coordinator(
     render_viz: Callable[[], None] | None,
 ) -> AgentProgress | None:
     final_progress: AgentProgress | None = None
+    session_store.set_live_viz(conversation.id, None)
 
     def on_progress(progress: AgentProgress, state: dict[str, Any]) -> None:
         nonlocal final_progress
         final_progress = progress
         with progress_slot.container():
             render_agent_progress(progress)
-        if state.get("visualization_result"):
-            session_store.set_last_state(conversation.id, state)
-            live = viz_round_from_state(query, state)
-            if live is not None:
-                session_store.set_live_viz(conversation.id, live)
+        if session_store.sync_viz_progress(conversation.id, query, state):
             if viz_placeholder is not None and render_viz is not None:
                 with viz_placeholder.container():
                     render_viz()

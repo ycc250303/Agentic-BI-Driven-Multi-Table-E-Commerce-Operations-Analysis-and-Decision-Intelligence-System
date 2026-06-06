@@ -7,6 +7,9 @@ from typing import Any
 import streamlit as st
 
 from dashboard.models import AgentProgress, ChatMessage, Conversation, VizRound
+from dashboard.constants import SESSION_TITLE_MAX_CHARS
+from dashboard.text_utils import truncate_text
+from dashboard.viz_helpers import should_show_live_viz, viz_round_from_state
 
 
 def init_session_store() -> None:
@@ -55,7 +58,7 @@ def append_message(conv_id: str, message: ChatMessage) -> None:
         return
     conv.messages.append(message)
     if message.role == "user" and conv.title == "新对话":
-        conv.title = message.content[:20] + ("…" if len(message.content) > 20 else "")
+        conv.title = truncate_text(message.content, SESSION_TITLE_MAX_CHARS)
 
 
 def set_last_state(conv_id: str, state: dict[str, Any]) -> None:
@@ -64,10 +67,17 @@ def set_last_state(conv_id: str, state: dict[str, Any]) -> None:
         conv.last_state = state
 
 
-def set_agent_progress(conv_id: str, progress: AgentProgress | None) -> None:
-    conv = st.session_state.conversations.get(conv_id)
-    if conv is not None:
-        conv.agent_progress = progress
+def sync_viz_progress(conv_id: str, query: str, state: dict[str, Any]) -> bool:
+    """协调器进度回调：持久化 viz 状态并更新 live 预览。返回是否产生了 viz 结果。"""
+    if not state.get("visualization_result"):
+        return False
+    set_last_state(conv_id, state)
+    viz_round = viz_round_from_state(query, state)
+    set_live_viz(
+        conv_id,
+        viz_round if viz_round is not None and should_show_live_viz(viz_round) else None,
+    )
+    return True
 
 
 def _pending_query_key(conv_id: str) -> str:
