@@ -28,6 +28,8 @@ def build_system_prompt() -> str:
             _load_prompt("system_core.md"),
             "# 决策规则",
             _load_prompt("decision_rules.md"),
+            "# 内容质量规则",
+            _load_prompt("quality_rules.md"),
             "# 输出格式",
             _load_prompt("output_schema.md"),
         ]

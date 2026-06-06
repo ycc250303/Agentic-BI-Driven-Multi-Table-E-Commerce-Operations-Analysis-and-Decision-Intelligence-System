@@ -25,6 +25,13 @@ def _priority_score(impact: float, urgency: float, feasibility: float) -> float:
     return round(0.5 * impact + 0.3 * urgency + 0.2 * feasibility, 4)
 
 
+def _max_signal(signals, predicate):
+    matches = [signal for signal in signals if predicate(signal)]
+    if not matches:
+        return None
+    return max(matches, key=lambda signal: signal.severity_score)
+
+
 def _problem(
     *,
     problem_type: str,
@@ -61,19 +68,21 @@ def detect_problems_and_score(bundle: EvidenceBundle) -> list[ScoredProblem]:
     region_signals = [s for s in bundle.signals if s.domain == "region"]
     forecast_signals = [s for s in bundle.signals if s.domain == "forecast"]
 
-    late_rate_signal = next(
-        (s for s in delivery_signals if "on_time_rate" in s.signal), None
+    late_rate_signal = _max_signal(
+        delivery_signals,
+        lambda s: "on_time_rate" in s.signal,
     )
-    delivery_delay_signal = next(
-        (
-            s
-            for s in delivery_signals
-            if "avg_delivery_days" in s.signal or "delayed_orders" in s.signal
+    delivery_delay_signal = _max_signal(
+        delivery_signals,
+        lambda s: "avg_delivery_days" in s.signal or "delayed_orders" in s.signal,
+    )
+    delivery_nlp_signal = _max_signal(
+        delivery_signals,
+        lambda s: (
+            s.metadata.get("signal_family") == "negative_topic"
+            or "delivery_delay topic share" in s.signal
+            or "negative topic share" in s.signal
         ),
-        None,
-    )
-    delivery_nlp_signal = next(
-        (s for s in delivery_signals if "delivery_delay topic share" in s.signal), None
     )
     if late_rate_signal or delivery_delay_signal or delivery_nlp_signal:
         impact = max(

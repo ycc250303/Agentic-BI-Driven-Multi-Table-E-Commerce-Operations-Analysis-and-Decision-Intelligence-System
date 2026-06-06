@@ -3,7 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agents.decision_agent.adapters import decision_inputs_from_state, normalize_state
+from agents.decision_agent.adapters import (
+    decision_inputs_from_state,
+    normalize_nlp_result,
+    normalize_state,
+)
 
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -106,3 +110,16 @@ def test_decision_inputs_from_state_uses_normalized_fields():
     assert inputs.user_query == "给出建议"
     assert inputs.analysis_result["kpis"]["on_time_rate"] == 0.76
     assert inputs.nlp_result["summary_text"] == "配送差评偏多"
+
+
+def test_normalize_nlp_result_converts_topic_distribution_dict():
+    nlp = normalize_nlp_result(
+        {
+            "topic_distribution": {
+                "delivery_delay": 30,
+                "product_quality": 20,
+            }
+        }
+    )
+    assert nlp["negative_topics"][0]["topic"] == "delivery_delay"
+    assert nlp["negative_topics"][0]["share"] == 0.6

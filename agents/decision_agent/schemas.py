@@ -70,11 +70,14 @@ class RootCauseItem(BaseModel):
 
 class WhatIfResult(BaseModel):
     scenario_type: str = ""
+    status: str = "not_run"
     parameters: dict[str, Any] = Field(default_factory=dict)
     baseline_metrics: dict[str, Any] = Field(default_factory=dict)
     simulated_metrics: dict[str, Any] = Field(default_factory=dict)
     delta_metrics: dict[str, Any] = Field(default_factory=dict)
     summary_text: str = ""
+    limitations: list[str] = Field(default_factory=list)
+    missing_inputs: list[str] = Field(default_factory=list)
 
 
 class DecisionResult(BaseModel):
@@ -87,3 +90,5 @@ class DecisionResult(BaseModel):
     risks: list[str] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
     narrative_answer: str = ""
+    quality_report: dict[str, Any] = Field(default_factory=dict)
+    revision_count: int = 0

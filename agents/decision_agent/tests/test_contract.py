@@ -49,6 +49,7 @@ def test_langgraph_node_consumes_agent_tpc_upstream_state():
     out = node(state)
     assert out["decision_result"]["action_plan"]
     assert out["decision_result"]["what_if_result"]["scenario_type"] == "remove_top_bad_sellers"
+    assert out["decision_result"]["what_if_result"]["status"] == "run"
     assert any(
         finding["problem"]
         for finding in out["decision_result"]["key_findings"]

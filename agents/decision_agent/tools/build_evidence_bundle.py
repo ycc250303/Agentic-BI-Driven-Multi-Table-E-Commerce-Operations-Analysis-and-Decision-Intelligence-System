@@ -19,6 +19,38 @@ def _cap_score(score: float) -> float:
     return max(0.0, min(1.0, round(score, 4)))
 
 
+def _metadata(
+    *,
+    evidence_strength: str = "direct",
+    subject_match: str = "unknown",
+    **extra: Any,
+) -> dict[str, Any]:
+    return {
+        "evidence_strength": evidence_strength,
+        "subject_match": subject_match,
+        **{k: v for k, v in extra.items() if v is not None and v != ""},
+    }
+
+
+def _iter_negative_topics(raw_topics: Any) -> list[dict[str, Any]]:
+    if isinstance(raw_topics, dict):
+        total = sum(
+            value for value in raw_topics.values() if isinstance(value, int | float)
+        )
+        return [
+            {
+                "topic": str(topic),
+                "count": int(count),
+                "share": float(count) / total if total else 0.0,
+            }
+            for topic, count in raw_topics.items()
+            if isinstance(count, int | float)
+        ]
+    if isinstance(raw_topics, list):
+        return [topic for topic in raw_topics if isinstance(topic, dict)]
+    return []
+
+
 def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
     user_query = str(state.get("user_query", "")).strip()
     analysis_result = state.get("analysis_result") or {}
@@ -41,6 +73,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                 benchmark=0.82,
                 severity_score=_cap_score(gap / 0.22 + 0.2),
                 evidence_text=f"准时交付率仅为 {on_time_rate:.2%}，低于 82% 阈值。",
+                metadata=_metadata(signal_family="delivery_performance"),
             )
         )
 
@@ -55,6 +88,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                 benchmark=8.0,
                 severity_score=_cap_score(delta / 6.0 + 0.25),
                 evidence_text=f"平均配送时长 {avg_delivery_days:.1f} 天，高于 8 天基准。",
+                metadata=_metadata(signal_family="delivery_performance"),
             )
         )
 
@@ -81,7 +115,11 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                     benchmark=benchmark,
                     severity_score=severity,
                     evidence_text=evidence or f"{scope} 存在配送表现异常。",
-                    metadata={"scope": scope},
+                    metadata=_metadata(
+                        signal_family="delivery_performance",
+                        subject_match="exact" if scope and scope.lower() in user_query.lower() else "unknown",
+                        scope=scope,
+                    ),
                 )
             )
 
@@ -97,7 +135,11 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                     benchmark=benchmark,
                     severity_score=severity,
                     evidence_text=evidence or f"{scope} 延迟订单数偏高。",
-                    metadata={"scope": scope},
+                    metadata=_metadata(
+                        signal_family="delivery_performance",
+                        subject_match="exact" if scope and scope.lower() in user_query.lower() else "unknown",
+                        scope=scope,
+                    ),
                 )
             )
 
@@ -113,7 +155,11 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                         benchmark=3.6,
                         severity_score=severity,
                         evidence_text=evidence or f"{scope} 卖家评分偏低。",
-                        metadata={"scope": scope},
+                        metadata=_metadata(
+                            signal_family="seller_quality",
+                            subject_match="exact" if scope and scope.lower() in user_query.lower() else "unknown",
+                            scope=scope,
+                        ),
                     )
                 )
 
@@ -129,7 +175,11 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                         benchmark=benchmark,
                         severity_score=severity,
                         evidence_text=evidence or f"{scope} 品类销量下滑。",
-                        metadata={"scope": scope},
+                        metadata=_metadata(
+                            signal_family="category_performance",
+                            subject_match="exact" if scope and scope.lower() in user_query.lower() else "unknown",
+                            scope=scope,
+                        ),
                     )
                 )
             if metric in {"bad_review_rate", "negative_rate"} and value is not None:
@@ -141,7 +191,11 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                         benchmark=benchmark,
                         severity_score=_cap_score(max(value - 0.2, 0.0) / 0.3 + 0.45),
                         evidence_text=evidence or f"{scope} 品类差评率偏高。",
-                        metadata={"scope": scope},
+                        metadata=_metadata(
+                            signal_family="category_quality",
+                            subject_match="exact" if scope and scope.lower() in user_query.lower() else "unknown",
+                            scope=scope,
+                        ),
                     )
                 )
             if metric in {"bad_review_count", "negative_review_count"}:
@@ -154,7 +208,11 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                         benchmark=benchmark,
                         severity_score=severity,
                         evidence_text=evidence or f"{scope} 品类差评数量偏高。",
-                        metadata={"scope": scope},
+                        metadata=_metadata(
+                            signal_family="category_quality",
+                            subject_match="exact" if scope and scope.lower() in user_query.lower() else "unknown",
+                            scope=scope,
+                        ),
                     )
                 )
 
@@ -167,7 +225,11 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                     benchmark=benchmark,
                     severity_score=_cap_score(abs(gap or 0.12) + 0.45),
                     evidence_text=evidence or f"{scope} 区域销售与口碑存在冲突。",
-                    metadata={"scope": scope},
+                    metadata=_metadata(
+                        signal_family="regional_sentiment",
+                        subject_match="exact" if scope and scope.lower() in user_query.lower() else "unknown",
+                        scope=scope,
+                    ),
                 )
             )
 
@@ -182,13 +244,15 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
     topic_wrong_item_count = 0
     topic_service_count = 0
 
-    for topic in nlp_result.get("negative_topics") or []:
+    for topic in _iter_negative_topics(nlp_result.get("negative_topics")):
         name = str(topic.get("topic") or "").lower()
         share = _safe_float(topic.get("share")) or 0.0
         count = int(topic.get("count") or 0)
         if any(kw in name for kw in (
             "entrega", "recebi", "demora", "prazo", "chegou",
             "entregue", "aguardando", "dias", "data", "correios",
+            "delivery", "delay", "late", "arrival", "not_received",
+            "not received", "shipping", "shipment",
         )):
             topic_delivery_share += share
             topic_delivery_count += count
@@ -196,12 +260,15 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
             "quebrado", "quebrada", "qualidade", "péssima", "pessima",
             "defeito", "defeitos", "danificado", "material", "usado",
             "finas", "fino", "plástico", "plastico",
+            "quality", "defect", "broken", "damaged", "missing_parts",
+            "missing parts",
         )):
             topic_quality_share += share
             topic_quality_count += count
         if any(kw in name for kw in (
             "diferente", "propaganda", "enganosa", "foto", "imagem",
             "cor", "tamanho", "errada", "anunciado", "réplica", "replica",
+            "wrong_item", "wrong item", "misleading",
         )):
             topic_wrong_item_share += share
             topic_wrong_item_count += count
@@ -209,6 +276,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
             "cancelamento", "cancelar", "cancelei", "dinheiro",
             "volta", "cartão", "cartao", "crédito", "credito",
             "estorno", "devolver", "troca", "trocar", "loja",
+            "refund", "customer_service", "customer service", "cancel",
         )):
             topic_service_share += share
             topic_service_count += count
@@ -226,6 +294,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                     f"合计占比 {topic_delivery_share:.1%}（{topic_delivery_count} 条），"
                     f"超过 25% 基准线。"
                 ),
+                metadata=_metadata(signal_family="negative_topic"),
             )
         )
     if topic_quality_share >= 0.15:
@@ -241,6 +310,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                     f"合计占比 {topic_quality_share:.1%}（{topic_quality_count} 条），"
                     f"超过 15% 基准线。"
                 ),
+                metadata=_metadata(signal_family="negative_topic"),
             )
         )
     if topic_wrong_item_share >= 0.10:
@@ -256,6 +326,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                     f"合计占比 {topic_wrong_item_share:.1%}（{topic_wrong_item_count} 条），"
                     f"超过 10% 基准线。"
                 ),
+                metadata=_metadata(signal_family="negative_topic"),
             )
         )
     if topic_service_share >= 0.10:
@@ -271,6 +342,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                     f"合计占比 {topic_service_share:.1%}（{topic_service_count} 条），"
                     f"超过 10% 基准线。"
                 ),
+                metadata=_metadata(signal_family="negative_topic"),
             )
         )
 
@@ -286,7 +358,20 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                     benchmark=0.25,
                     severity_score=_cap_score((negative_rate - 0.25) / 0.25 + 0.5),
                     evidence_text=f"{category_name} 品类负面评论率为 {negative_rate:.2%}，高于 25% 阈值。",
-                    metadata={"category": category_name},
+                    metadata=_metadata(
+                        signal_family="category_quality",
+                        evidence_strength=(
+                            "direct"
+                            if category_name.lower() in user_query.lower()
+                            else "proxy"
+                        ),
+                        subject_match=(
+                            "exact"
+                            if category_name.lower() in user_query.lower()
+                            else "partial"
+                        ),
+                        category=category_name,
+                    ),
                 )
             )
 
@@ -302,7 +387,15 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                     benchmark=0.22,
                     severity_score=_cap_score((negative_rate - 0.22) / 0.25 + 0.45),
                     evidence_text=f"{state_name} 州负面评论率达 {negative_rate:.2%}，显著高于 22% 阈值。",
-                    metadata={"state": state_name},
+                    metadata=_metadata(
+                        signal_family="regional_sentiment",
+                        subject_match=(
+                            "exact"
+                            if state_name.lower() in user_query.lower()
+                            else "unknown"
+                        ),
+                        state=state_name,
+                    ),
                 )
             )
 
@@ -324,6 +417,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                 benchmark="up",
                 severity_score=severity,
                 evidence_text=evidence_text,
+                metadata=_metadata(signal_family="forecast"),
             )
         )
 
@@ -360,7 +454,10 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                         ),
                         evidence_text=summary_text
                         or f"What-if 显示剔除高差评卖家后评分可从 {baseline_score:.2f} 提升到 {simulated_score:.2f}。",
-                        metadata={"scenario_type": scenario_type},
+                        metadata=_metadata(
+                            signal_family="what_if",
+                            scenario_type=scenario_type,
+                        ),
                     )
                 )
 

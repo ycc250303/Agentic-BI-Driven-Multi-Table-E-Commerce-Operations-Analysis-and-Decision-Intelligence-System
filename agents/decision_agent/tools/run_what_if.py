@@ -10,6 +10,32 @@ def _round_delta(value: float) -> float:
     return round(value, 4)
 
 
+def _missing_inputs(*, group_name: str, metrics: Mapping[str, Any], keys: list[str]) -> list[str]:
+    return [
+        f"analysis_result.simulation_inputs.{group_name}.{key}"
+        for key in keys
+        if metrics.get(key) in (None, "")
+    ]
+
+
+def _missing_result(
+    scenario_type: str,
+    parameters: dict[str, Any],
+    missing_inputs: list[str],
+) -> WhatIfResult:
+    return WhatIfResult(
+        scenario_type=scenario_type,
+        status="missing_inputs",
+        parameters=parameters,
+        missing_inputs=missing_inputs,
+        summary_text=(
+            "本次未运行 What-if：缺少可支撑该场景的模拟输入，"
+            f"需补充 {', '.join(missing_inputs)}。"
+        ),
+        limitations=["未使用默认 0 值替代缺失指标，避免产生误导性模拟结果。"],
+    )
+
+
 def run_what_if(
     scenario_type: str,
     parameters: dict[str, Any],
@@ -20,6 +46,21 @@ def run_what_if(
 
     if scenario_type == "remove_top_bad_sellers":
         seller_metrics = simulation_inputs.get("seller_quality_impact") or {}
+        required = [
+            "baseline_avg_review_score",
+            "remove_top_n_avg_review_score",
+            "baseline_negative_rate",
+            "remove_top_n_negative_rate",
+            "baseline_gmv",
+            "remove_top_n_gmv",
+        ]
+        missing = _missing_inputs(
+            group_name="seller_quality_impact",
+            metrics=seller_metrics,
+            keys=required,
+        )
+        if missing:
+            return _missing_result(scenario_type, parameters, missing)
         baseline_review = float(seller_metrics.get("baseline_avg_review_score", 0.0))
         simulated_review = float(
             seller_metrics.get("remove_top_n_avg_review_score", baseline_review)
@@ -33,6 +74,7 @@ def run_what_if(
         top_n = int(parameters.get("top_n", seller_metrics.get("top_n", 20)))
         return WhatIfResult(
             scenario_type=scenario_type,
+            status="run",
             parameters={"top_n": top_n},
             baseline_metrics={
                 "avg_review_score": baseline_review,
@@ -54,10 +96,23 @@ def run_what_if(
                 f"{simulated_review:.2f}，负面率变化 {simulated_negative - baseline_negative:+.2%}，"
                 f"GMV 变化 {simulated_gmv - baseline_gmv:+.2f}。"
             ),
+            limitations=["静态反事实估计，不重新分配被剔除卖家的需求。"],
         )
 
     if scenario_type == "improve_delivery_days":
         delivery_metrics = simulation_inputs.get("delivery_improvement") or {}
+        required = [
+            "baseline_avg_delivery_days",
+            "baseline_on_time_rate",
+            "baseline_delivery_negative_share",
+        ]
+        missing = _missing_inputs(
+            group_name="delivery_improvement",
+            metrics=delivery_metrics,
+            keys=required,
+        )
+        if missing:
+            return _missing_result(scenario_type, parameters, missing)
         improvement_days = float(parameters.get("improvement_days", 1.0))
         baseline_days = float(delivery_metrics.get("baseline_avg_delivery_days", 0.0))
         baseline_on_time = float(delivery_metrics.get("baseline_on_time_rate", 0.0))
@@ -69,6 +124,7 @@ def run_what_if(
         simulated_negative = max(0.0, baseline_negative - improvement_days * negative_per_day)
         return WhatIfResult(
             scenario_type=scenario_type,
+            status="run",
             parameters={"improvement_days": improvement_days},
             baseline_metrics={
                 "avg_delivery_days": baseline_days,
@@ -91,10 +147,12 @@ def run_what_if(
                 f"若平均配送时长缩短 {improvement_days:.1f} 天，准时率预计由 {baseline_on_time:.2%} "
                 f"提升到 {simulated_on_time:.2%}，配送相关负面主题占比预计下降到 {simulated_negative:.2%}。"
             ),
+            limitations=["启发式估计，只反映当前输入快照下的方向性影响。"],
         )
 
     return WhatIfResult(
         scenario_type=scenario_type,
+        status="not_applicable",
         parameters=parameters,
         summary_text="当前未命中已实现的 What-if 场景。",
     )

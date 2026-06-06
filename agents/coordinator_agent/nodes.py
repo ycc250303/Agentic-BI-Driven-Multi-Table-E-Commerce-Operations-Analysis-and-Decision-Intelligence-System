@@ -351,6 +351,8 @@ def decision_node(
     out = run_decision_state(state, model=model)
     out["agents_done"] = _mark_done(out, "decision")
     decision = out.get("decision_result") or {}
+    what_if = decision.get("what_if_result") or {}
+    quality = decision.get("quality_report") or {}
     _emit_trace(
         trace_collector,
         agent="decision_agent",
@@ -358,7 +360,14 @@ def decision_node(
         kind="agent_result",
         title="决策 Agent 完成",
         summary=str(decision.get("narrative_answer") or out.get("final_answer") or ""),
-        metadata={"action_count": len(decision.get("action_plan") or [])},
+        metadata={
+            "action_count": len(decision.get("action_plan") or []),
+            "decision_theme": decision.get("decision_theme"),
+            "what_if_status": what_if.get("status"),
+            "what_if_scenario": what_if.get("scenario_type"),
+            "quality_score": quality.get("score"),
+            "revision_count": decision.get("revision_count", 0),
+        },
     )
     return out
 

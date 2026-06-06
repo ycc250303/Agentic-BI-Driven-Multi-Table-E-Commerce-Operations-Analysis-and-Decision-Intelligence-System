@@ -47,4 +47,17 @@ def test_what_if_remove_bad_sellers():
     state = load_case("high_seller_risk.json")
     result = run_what_if("remove_top_bad_sellers", {"top_n": 20}, state)
     assert result.scenario_type == "remove_top_bad_sellers"
+    assert result.status == "run"
     assert result.simulated_metrics["avg_review_score"] > result.baseline_metrics["avg_review_score"]
+
+
+def test_what_if_missing_inputs_does_not_fake_simulation():
+    result = run_what_if(
+        "improve_delivery_days",
+        {"improvement_days": 1.0},
+        {"analysis_result": {"simulation_inputs": {}}},
+    )
+    assert result.status == "missing_inputs"
+    assert result.baseline_metrics == {}
+    assert result.simulated_metrics == {}
+    assert result.missing_inputs
