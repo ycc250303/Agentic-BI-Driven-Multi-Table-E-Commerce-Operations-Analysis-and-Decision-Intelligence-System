@@ -109,3 +109,8 @@ class LocalSessionStore:
                 }
             )
         return sorted(items, key=lambda item: str(item.get("updated_at") or ""), reverse=True)
+
+    def delete_session(self, session_id: str) -> None:
+        path = self._path(_validate_session_id(session_id))
+        if path.is_file():
+            path.unlink()

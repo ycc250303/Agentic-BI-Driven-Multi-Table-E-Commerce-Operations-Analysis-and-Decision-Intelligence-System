@@ -15,10 +15,10 @@ def render_viz_panel(conversation: Conversation | None) -> None:
         st.info("提交问题后，图表将在此按提问分组展示")
         return
 
-    if live is not None:
-        render_viz_round(live, live=True)
-
-    for viz_round in reversed(rounds):
+    for viz_round in rounds:
         if live is not None and viz_round.user_query == live.user_query:
             continue
         render_viz_round(viz_round)
+
+    if live is not None:
+        render_viz_round(live, live=True)
