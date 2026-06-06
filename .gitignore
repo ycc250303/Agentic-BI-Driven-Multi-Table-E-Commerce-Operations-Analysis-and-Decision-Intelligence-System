@@ -13,6 +13,5 @@ agents/sql_agent/query_results
 .pytest_cache/
 
 CLAUDE.md
-agents/viz_agent/chart_output
 .idea/
-
+/agents/viz_agent/chart_output/

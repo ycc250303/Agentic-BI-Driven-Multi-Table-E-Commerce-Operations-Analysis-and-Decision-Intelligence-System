@@ -289,6 +289,32 @@ button {
   font-weight: 700;
 }
 
+.chart-list {
+  display: grid;
+  gap: 12px;
+}
+
+.chart-figure {
+  margin: 0;
+}
+
+.chart-figure img {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  border: 1px solid var(--agent-border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.chart-figure figcaption {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .timeline {
   display: grid;
   gap: 8px;

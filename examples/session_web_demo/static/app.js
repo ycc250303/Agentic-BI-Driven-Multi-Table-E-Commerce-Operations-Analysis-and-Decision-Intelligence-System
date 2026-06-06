@@ -82,11 +82,15 @@ function appendAssistantShell({ history = false } = {}) {
   answer.className = "answer pending";
   answer.textContent = history ? "" : "正在分析...";
 
-  bubble.append(meta, timeline, answer);
+  const charts = document.createElement("div");
+  charts.className = "chart-list";
+  charts.hidden = true;
+
+  bubble.append(meta, timeline, answer, charts);
   item.appendChild(bubble);
   els.messages.appendChild(item);
   scrollToBottom();
-  return { item, bubble, meta, timeline, answer };
+  return { item, bubble, meta, timeline, answer, charts };
 }
 
 function agentName(value) {
@@ -132,6 +136,32 @@ function addTrace(shell, trace) {
   scrollToBottom();
 }
 
+function imageUrl(path) {
+  return `/api/image?path=${encodeURIComponent(path)}`;
+}
+
+function renderCharts(shell, charts) {
+  const okCharts = (charts || []).filter((chart) => chart && chart.ok && chart.image_path);
+  shell.charts.textContent = "";
+  shell.charts.hidden = okCharts.length === 0;
+  okCharts.forEach((chart) => {
+    const figure = document.createElement("figure");
+    figure.className = "chart-figure";
+
+    const img = document.createElement("img");
+    img.src = imageUrl(chart.image_path);
+    img.alt = chart.title || chart.chart_type || "可视化图表";
+    img.loading = "lazy";
+
+    const caption = document.createElement("figcaption");
+    caption.textContent = chart.title || chart.chart_type || "可视化图表";
+
+    figure.append(img, caption);
+    shell.charts.appendChild(figure);
+  });
+  scrollToBottom();
+}
+
 function showError(shell, message) {
   shell.answer.classList.remove("pending");
   shell.answer.classList.add("error");
@@ -161,6 +191,7 @@ function handleWebEvent(event, shell, userQuery) {
   if (event.type === "answer.final") {
     shell.answer.classList.remove("pending");
     shell.answer.innerHTML = formatMultiline(event.data.final_answer || "（无回答）");
+    renderCharts(shell, event.data.charts || []);
     scrollToBottom();
     return;
   }
@@ -297,6 +328,7 @@ function renderLoadedSession(session) {
     (turn.trace_events || []).slice(0, 4).forEach((trace) => addTrace(shell, trace));
     shell.answer.classList.remove("pending");
     shell.answer.innerHTML = formatMultiline(turn.final_answer || "（无回答）");
+    renderCharts(shell, ((turn.state_summary || {}).charts || []));
     shell.meta.textContent = `历史回答 · Turn ${turn.turn_id || ""}`.trim();
   });
   scrollToBottom();

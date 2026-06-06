@@ -80,13 +80,17 @@ def make_answer_final_event(
     turn_id: int,
     sequence: int,
 ) -> dict[str, Any]:
+    state_summary = result.get("state_summary") or {}
     return _event(
         event_type="answer.final",
         event_id=f"{session_id}:{turn_id}:answer",
         session_id=session_id,
         turn_id=turn_id,
         sequence=sequence,
-        data={"final_answer": result.get("final_answer") or ""},
+        data={
+            "final_answer": result.get("final_answer") or "",
+            "charts": state_summary.get("charts") or [],
+        },
     )
 
 

@@ -63,6 +63,16 @@ def build_conversation_history(
 
 def build_state_summary(state: dict[str, Any]) -> dict[str, Any]:
     """Keep the session file readable by persisting only high-signal state."""
+    charts = [
+        {
+            "ok": c.get("ok"),
+            "title": c.get("title") or c.get("chart_type") or "图表",
+            "chart_type": c.get("chart_type"),
+            "image_path": c.get("image_path"),
+            "error_message": c.get("error_message"),
+        }
+        for c in (state.get("visualization_result") or {}).get("charts") or []
+    ]
     return {
         "intent": state.get("intent"),
         "sub_questions": state.get("sub_questions") or [],
@@ -71,7 +81,8 @@ def build_state_summary(state: dict[str, Any]) -> dict[str, Any]:
         "execution_log": state.get("execution_log") or [],
         "warnings": state.get("warnings") or [],
         "off_topic": bool(state.get("off_topic")),
-        "chart_count": len((state.get("visualization_result") or {}).get("charts") or []),
+        "chart_count": len(charts),
+        "charts": charts,
         "sql_run_count": len(state.get("sql_runs") or []),
     }
 

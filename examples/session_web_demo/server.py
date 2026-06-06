@@ -6,12 +6,14 @@ import mimetypes
 import sys
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import os
 from pathlib import Path
 from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+DEFAULT_VIZ_DIR = PROJECT_ROOT / "agents" / "viz_agent" / "chart_output"
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -48,6 +50,14 @@ def _public_session(session: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _allowed_image_dirs() -> list[Path]:
+    dirs = [DEFAULT_VIZ_DIR]
+    raw = os.environ.get("AGENTIC_BI_VIZ_DIR")
+    if raw:
+        dirs.append(Path(raw).expanduser())
+    return [p.resolve() for p in dirs]
+
+
 def _options_from_payload(payload: dict[str, Any]) -> CoordinatorRunOptions:
     raw = payload.get("options") or {}
     if not isinstance(raw, dict):
@@ -74,6 +84,9 @@ class SessionWebDemoHandler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/session":
             self._handle_get_session(parsed)
+            return
+        if parsed.path == "/api/image":
+            self._handle_get_image(parsed)
             return
         if parsed.path.startswith("/static/"):
             rel = parsed.path.removeprefix("/static/")
@@ -122,6 +135,30 @@ class SessionWebDemoHandler(BaseHTTPRequestHandler):
             requested.relative_to(base)
         except ValueError:
             self._send_json(403, {"error": "forbidden", "message": "非法静态资源路径。"})
+            return
+        self._send_file(requested)
+
+    def _handle_get_image(self, parsed: urllib.parse.ParseResult) -> None:
+        params = urllib.parse.parse_qs(parsed.query)
+        raw_path = str((params.get("path") or [""])[0]).strip()
+        if not raw_path:
+            self._send_json(400, {"error": "bad_request", "message": "缺少图片路径。"})
+            return
+
+        requested = Path(raw_path).expanduser().resolve()
+        if requested.suffix.lower() != ".png":
+            self._send_json(403, {"error": "forbidden", "message": "仅允许访问 PNG 图片。"})
+            return
+        allowed = False
+        for base in _allowed_image_dirs():
+            try:
+                requested.relative_to(base)
+            except ValueError:
+                continue
+            allowed = True
+            break
+        if not allowed:
+            self._send_json(403, {"error": "forbidden", "message": "图片路径不在可视化输出目录中。"})
             return
         self._send_file(requested)
 
