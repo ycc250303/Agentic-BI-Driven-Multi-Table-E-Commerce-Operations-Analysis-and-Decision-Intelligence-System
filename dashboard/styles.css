@@ -1,0 +1,130 @@
+/* === 主区域布局 === */
+[data-testid="stAppViewContainer"],
+section.main {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+section.main > div.block-container {
+    padding-top: 1rem;
+    padding-bottom: 0.5rem;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+div[data-testid="column"] {
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: var(--secondary-background-color);
+    border-radius: 0.5rem;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"] > div {
+    padding: 0.25rem 0.5rem;
+}
+
+section.main img {
+    max-width: 100%;
+    height: auto;
+}
+
+section.main [data-testid="stChatMessage"],
+section.main [data-testid="stMarkdownContainer"] {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+/* === 侧边栏会话列表 === */
+section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {
+    gap: 0.25rem;
+    align-items: center;
+}
+
+section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] [data-testid="stButton"] {
+    margin-bottom: 0;
+}
+
+section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* 会话标题列 */
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="column"]:first-child {
+    min-width: 0 !important;
+    overflow: hidden !important;
+}
+
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="column"]:first-child
+    button {
+    min-height: 2rem !important;
+    max-height: 2rem !important;
+    height: 2rem !important;
+    padding: 0.35rem 0.5rem !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    font-weight: 400 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+}
+
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="column"]:first-child
+    button:hover {
+    background: rgba(128, 128, 128, 0.12) !important;
+}
+
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="column"]:first-child
+    button:active {
+    background: rgba(128, 128, 128, 0.2) !important;
+}
+
+/* 删除按钮列 */
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="column"]:last-child {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 2rem;
+}
+
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="column"]:last-child
+    button {
+    min-height: 1.75rem !important;
+    height: 1.75rem !important;
+    width: 1.75rem !important;
+    min-width: 1.75rem !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    font-size: 0.95rem !important;
+}
+
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="column"]:last-child
+    button:hover {
+    background: rgba(255, 75, 75, 0.14) !important;
+}
+
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="column"]:last-child
+    button:active {
+    background: rgba(255, 75, 75, 0.22) !important;
+}

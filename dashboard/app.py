@@ -12,7 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from dashboard.components.chat_panel import handle_chat_panel
 from dashboard.components.sidebar import render_sidebar
 from dashboard.components.viz_panel import render_viz_panel
-from dashboard.layout import PANEL_SCROLL_HEIGHT, inject_independent_panel_styles
+from dashboard.layout import PANEL_SCROLL_HEIGHT, inject_dashboard_styles
 from dashboard import session_store
 
 
@@ -23,7 +23,7 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
 
-    inject_independent_panel_styles()
+    inject_dashboard_styles()
     session_store.init_session_store()
     conversation = session_store.get_active_conversation()
 

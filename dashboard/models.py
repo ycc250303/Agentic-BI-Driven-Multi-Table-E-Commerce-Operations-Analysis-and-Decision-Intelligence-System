@@ -40,4 +40,3 @@ class Conversation:
     title: str
     messages: list[ChatMessage] = field(default_factory=list)
     last_state: dict[str, Any] | None = None
-    agent_progress: AgentProgress | None = None

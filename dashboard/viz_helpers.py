@@ -16,6 +16,11 @@ def _ok_charts(charts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def should_show_live_viz(viz_round: VizRound) -> bool:
+    """是否展示 live 预览（有实际图表且未跳过）。"""
+    return not viz_round.skipped and bool(_ok_charts(viz_round.charts))
+
+
 def viz_round_from_state(user_query: str, state: dict[str, Any]) -> VizRound | None:
     viz = state.get("visualization_result") or {}
     charts = list(viz.get("charts") or [])
@@ -40,7 +45,8 @@ def collect_viz_rounds(conversation: Conversation | None) -> list[VizRound]:
 
 
 def render_viz_round(viz_round: VizRound, *, live: bool = False) -> None:
-    prefix = "（生成中）" if live else ""
+    show_generating = live and should_show_live_viz(viz_round)
+    prefix = "（生成中）" if show_generating else ""
     st.markdown(f"**{prefix}问：{viz_round.user_query}**")
     ok_charts = _ok_charts(viz_round.charts)
 
