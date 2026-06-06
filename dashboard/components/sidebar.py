@@ -8,6 +8,12 @@ from dashboard.models import Conversation
 from dashboard.text_utils import format_session_button_label
 
 
+def _session_help_text(conv: Conversation) -> str:
+    if conv.turn_count:
+        return f"{conv.title}\n{conv.turn_count} 轮"
+    return conv.title
+
+
 def _render_conversation_row(conv: Conversation, *, active_id: str | None) -> None:
     is_active = conv.id == active_id
     label = format_session_button_label(conv.title, active=is_active)
@@ -20,7 +26,7 @@ def _render_conversation_row(conv: Conversation, *, active_id: str | None) -> No
             key=f"conv_{conv.id}",
             type="tertiary",
             use_container_width=True,
-            help=conv.title,
+            help=_session_help_text(conv),
         ):
             session_store.set_active_conversation(conv.id)
             st.rerun()
@@ -47,5 +53,10 @@ def render_sidebar() -> None:
     st.markdown("**会话记录**")
 
     active_id = st.session_state.get("active_conversation_id")
-    for conv in reversed(session_store.list_conversations()):
+    conversations = session_store.list_conversations()
+    if not conversations:
+        st.caption("暂无会话")
+        return
+
+    for conv in conversations:
         _render_conversation_row(conv, active_id=active_id)

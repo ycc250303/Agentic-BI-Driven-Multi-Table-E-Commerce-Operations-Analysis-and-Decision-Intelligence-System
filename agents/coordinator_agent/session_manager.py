@@ -42,6 +42,21 @@ def _infer_title(query: str) -> str:
     return q[:40]
 
 
+_PLACEHOLDER_TITLES = frozenset({"", "新对话", "新会话", "未命名会话"})
+
+
+def _should_infer_title_from_first_query(session: dict[str, Any], *, turn_id: int) -> bool:
+    """首轮提问后，若标题仍为占位符（如 Dashboard 预置的「新对话」），则用问题生成标题。"""
+    if turn_id != 1:
+        return False
+    title = str(session.get("title") or "").strip()
+    if not title:
+        return True
+    if title in _PLACEHOLDER_TITLES:
+        return True
+    return title == str(session.get("session_id") or "").strip()
+
+
 class SessionManager:
     """Manage multi-turn Coordinator sessions."""
 
@@ -58,6 +73,9 @@ class SessionManager:
 
     def load_session(self, session_id: str) -> dict[str, Any]:
         return self.store.load_session(session_id)
+
+    def delete_session(self, session_id: str) -> None:
+        self.store.delete_session(session_id)
 
     def run_turn(
         self,
@@ -225,7 +243,7 @@ class SessionManager:
             turn["har_path"] = str(Path(har_out))
 
         session.setdefault("turns", []).append(turn)
-        if not session.get("title"):
+        if _should_infer_title_from_first_query(session, turn_id=turn_id) or not session.get("title"):
             session["title"] = _infer_title(query)
         session["memory_summary"] = update_memory_summary(session, model=model)
         trace.emit(

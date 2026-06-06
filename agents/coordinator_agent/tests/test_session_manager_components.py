@@ -57,6 +57,88 @@ def test_local_session_store_roundtrip(tmp_path):
     assert store.list_sessions()[0]["turn_count"] == 1
 
 
+def test_local_session_store_delete_session(tmp_path):
+    store = LocalSessionStore(tmp_path)
+    session = store.create_session(title="demo")
+    store.save_session(session)
+    sid = session["session_id"]
+
+    store.delete_session(sid)
+
+    assert not store._path(sid).is_file()
+    assert store.list_sessions() == []
+    with pytest.raises(FileNotFoundError):
+        store.load_session(sid)
+
+
+def test_session_manager_delete_session(tmp_path):
+    manager = SessionManager(LocalSessionStore(tmp_path))
+    session = manager.create_session(title="demo")
+    sid = session["session_id"]
+
+    manager.delete_session(sid)
+
+    assert manager.list_sessions() == []
+
+
+def test_first_turn_replaces_placeholder_title(tmp_path):
+    manager = SessionManager(LocalSessionStore(tmp_path))
+    session = manager.create_session(title="新对话")
+    sid = session["session_id"]
+    options = CoordinatorRunOptions(
+        use_llm_plan=False,
+        use_llm_viz=False,
+        use_llm_synthesize=False,
+    )
+    model = _FakeModel(
+        {
+            "SessionMemorySummary": {
+                "memory_summary": "用户询问 2017 GMV。",
+                "updated_focus": "GMV",
+            }
+        }
+    )
+
+    manager.run_turn(
+        query="2017 年 GMV 是多少？",
+        session_id=sid,
+        options=options,
+        model=model,
+    )
+
+    loaded = manager.load_session(sid)
+    assert loaded["title"] == "2017 年 GMV 是多少？"
+
+
+def test_first_turn_keeps_custom_title(tmp_path):
+    manager = SessionManager(LocalSessionStore(tmp_path))
+    session = manager.create_session(title="我的分析专题")
+    sid = session["session_id"]
+    options = CoordinatorRunOptions(
+        use_llm_plan=False,
+        use_llm_viz=False,
+        use_llm_synthesize=False,
+    )
+    model = _FakeModel(
+        {
+            "SessionMemorySummary": {
+                "memory_summary": "摘要",
+                "updated_focus": "focus",
+            }
+        }
+    )
+
+    manager.run_turn(
+        query="2017 年 GMV 是多少？",
+        session_id=sid,
+        options=options,
+        model=model,
+    )
+
+    loaded = manager.load_session(sid)
+    assert loaded["title"] == "我的分析专题"
+
+
 def test_resolve_conversation_context_first_turn_is_new_topic():
     result = resolve_conversation_context("分析 casa_conforto 品类的销售表现。", {"turns": []})
 

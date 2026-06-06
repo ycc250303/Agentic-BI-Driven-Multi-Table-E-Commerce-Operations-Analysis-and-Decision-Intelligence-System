@@ -77,6 +77,18 @@ python examples/session_web_demo/server.py --host 127.0.0.1 --port 8010
 
 打开 `http://127.0.0.1:8010/`，示例代码见 [`examples/session_web_demo/`](examples/session_web_demo/)。
 
+## Streamlit Dashboard（多轮会话）
+
+Dashboard 与协调器共用 `SessionManager` 与 `runtime/sessions/` 持久化，支持多轮追问、语义任务解析与 trace 进度展示。目录结构见 [`dashboard/README.md`](dashboard/README.md)。
+
+```bash
+streamlit run dashboard/app.py
+```
+
+- 侧边栏展示磁盘上全部 session（含 CLI / web demo 创建的会话）
+- 刷新页面后会话不丢失
+- 同一会话内可追问（如「那 SP 州呢？」），由协调器 `resolve_conversation_context` 处理
+
 ## 可视化 Agent（作业要求）
 
 - **位置**：`agents/viz_agent/`
