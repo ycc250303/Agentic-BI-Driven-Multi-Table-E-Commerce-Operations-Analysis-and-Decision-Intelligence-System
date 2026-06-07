@@ -3,6 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 from dashboard import session_store
+from dashboard.constants import DEEPSEEK_THINKING_SESSION_KEY
 from dashboard.constants import SIDEBAR_CONV_COL_WEIGHTS
 from dashboard.models import Conversation
 from dashboard.text_utils import format_session_button_label
@@ -25,7 +26,7 @@ def _render_conversation_row(conv: Conversation, *, active_id: str | None) -> No
             label,
             key=f"conv_{conv.id}",
             type="tertiary",
-            use_container_width=True,
+            width="stretch",
             help=_session_help_text(conv),
         ):
             session_store.set_active_conversation(conv.id)
@@ -45,7 +46,22 @@ def render_sidebar() -> None:
     st.title("Agentic BI")
     st.caption("Olist 电商运营分析与决策智能系统")
 
-    if st.button("＋ 新建对话", use_container_width=True):
+    with st.expander("模型设置", expanded=False):
+        thinking = st.toggle(
+            "DeepSeek 思考模式",
+            help="开启后模型会先进行链式推理再作答，响应更慢，复杂分析可能更细致。",
+            key=DEEPSEEK_THINKING_SESSION_KEY,
+        )
+        session_store.apply_deepseek_thinking_from_session()
+        if thinking:
+            st.caption(
+                "当前：思考模式已开启（分解/路由/汇总等步骤）；"
+                "SQL 结构化步骤仍用快速模式（API 限制）"
+            )
+        else:
+            st.caption("当前：思考模式已关闭（响应更快）")
+
+    if st.button("＋ 新建对话", width="stretch"):
         conv = session_store.create_conversation()
         session_store.set_active_conversation(conv.id)
         st.rerun()

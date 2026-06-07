@@ -21,7 +21,8 @@
   - `platform`：全局口径
   - `inherit_previous`：继承前序对象（如“该州/该卖家”）
   - `explicit_filter`：显式过滤说明
-- 指标键保持稳定、可复用（示例：`gmv_total`、`on_time_rate`、`payment_popularity`、`bad_review_count`、`bad_review_rate`）。
+- 指标键保持稳定、可复用（示例：`gmv_total`、`on_time_rate`、`delay_rate`、`payment_popularity`、`bad_review_count`、`bad_review_rate`）。
+- **配送延迟排名**：用户问「哪些州延迟最严重 / 延迟排名」时，按州子问题的 `metric_key` 必须为 **`delay_rate`**（各州订单级延迟率），**不得**仅用 `delayed_orders_count` 表示「最严重」；可同时保留延迟订单绝对数作为辅助列。
 - `candidate_views` 仅允许视图白名单；并满足一致性：
   - 为空时 `hit_pre_agg_view=false`
   - 非空时 `hit_pre_agg_view=true`

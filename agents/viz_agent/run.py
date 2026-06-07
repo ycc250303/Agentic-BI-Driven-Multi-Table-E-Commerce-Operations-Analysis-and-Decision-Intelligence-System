@@ -23,6 +23,7 @@ for p in (_project_root, _viz_dir, _sql_agent_dir):
         sys.path.insert(0, str(p))
 
 from agents.sql_agent.llm import get_llm  # noqa: E402
+from agents.viz_agent.line_plan import normalize_line_plan
 from agents.viz_agent.render import render_to_png  # noqa: E402
 from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan  # noqa: E402
 
@@ -131,6 +132,16 @@ def heuristic_plan(df: pd.DataFrame, user_query: str) -> VizPlan:
                 )
 
     if time_cols and nums:
+        series_cols = [c for c in cats if c not in time_cols]
+        if len(time_cols) >= 1 and len(nums) >= 1 and len(series_cols) == 1:
+            return VizPlan(
+                chart_type="line",
+                title="趋势折线",
+                x_column=time_cols[0],
+                y_column=nums[0],
+                category_column=series_cols[0],
+                reasoning="启发式：时间 + 分系列 + 数值，多系列折线",
+            )
         return VizPlan(
             chart_type="line",
             title="趋势折线",
@@ -263,6 +274,8 @@ def run_visualization_agent(
     except Exception as e:
         plan = heuristic_plan(df, user_query)
         plan_raw = _plan_to_raw_json(plan) + f"\n<!-- llm_fallback: {e} -->"
+
+    plan = normalize_line_plan(df, plan)
 
     out_dir = output_dir or _viz_output_dir()
     ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

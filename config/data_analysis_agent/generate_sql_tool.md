@@ -34,6 +34,14 @@
 - 品类名称展示尽量使用 `COALESCE(英文映射, 原始品类名)`，避免因翻译缺失导致 `NULL` 品类聚合错误。
 - **`product_category_name_translation` 表的英文列名为 `product_category_name_english`（不是 `product_category_english`）**；别名 `AS product_category_english` 仅用于 SELECT 输出列名。
 
+### 配送：全平台准时率 + 各州延迟最严重（组合问题模板）
+
+- **q1 全平台准时率**：回退 `orders`，`SUM(签收日≤预计送达日) / COUNT(*)`，比率列名如 `on_time_rate`（0~1）或 `on_time_rate_pct`。
+- **q2 各州延迟最严重**：**必须回退 `orders` + `customers`**，按 `customer_state` 聚合；**主排序 `delay_rate DESC`**，并输出 `delayed_orders`、`total_delivered_orders`、`delay_share`（该州延迟数/全平台延迟数）。禁止仅用 `mv_delivery_perf` 的 `SUM(delayed_orders)` 排序代表「最严重」。
+- q2 参考结构（子查询 + CROSS JOIN 算全平台延迟总数，单行无换行输出）：
+
+`SELECT s.`customer_state`, s.`total_delivered_orders`, s.`delayed_orders`, s.`delay_rate`, s.`delayed_orders` / NULLIF(t.`platform_delayed_orders`, 0) AS `delay_share` FROM (SELECT c.`customer_state`, COUNT(*) AS `total_delivered_orders`, SUM(CASE WHEN o.`order_delivered_customer_date` > o.`order_estimated_delivery_date` THEN 1 ELSE 0 END) AS `delayed_orders`, SUM(CASE WHEN o.`order_delivered_customer_date` > o.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `delay_rate` FROM `orders` o INNER JOIN `customers` c ON o.`customer_id` = c.`customer_id` WHERE o.`order_status` = 'delivered' AND o.`order_delivered_customer_date` IS NOT NULL AND o.`order_estimated_delivery_date` IS NOT NULL GROUP BY c.`customer_state` HAVING COUNT(*) >= 20) s CROSS JOIN (SELECT SUM(CASE WHEN o.`order_delivered_customer_date` > o.`order_estimated_delivery_date` THEN 1 ELSE 0 END) AS `platform_delayed_orders` FROM `orders` o WHERE o.`order_status` = 'delivered' AND o.`order_delivered_customer_date` IS NOT NULL AND o.`order_estimated_delivery_date` IS NOT NULL) t ORDER BY s.`delay_rate` DESC, s.`delayed_orders` DESC LIMIT 10`
+
 ### `query_sqls` 每一项的书写格式（必须）
 
 - **表名、视图名、列名、表别名**：一律 **小写字母**，并用反引号包裹（例：`` `mv_monthly_sales` ``、`` `year_month` ``、`` `s` ``）。

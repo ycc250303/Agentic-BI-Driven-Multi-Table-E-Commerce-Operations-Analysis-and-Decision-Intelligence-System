@@ -10,3 +10,6 @@ SESSION_TITLE_MAX_CHARS = 40
 SESSION_BUTTON_MAX_CHARS = 18
 
 SIDEBAR_CONV_COL_WEIGHTS = (9, 1)
+
+# Streamlit session_state：DeepSeek 思考模式开关（Dashboard 侧边栏）
+DEEPSEEK_THINKING_SESSION_KEY = "deepseek_thinking_enabled"

@@ -9,18 +9,32 @@ from .adapters import decision_inputs_from_state, merge_decision_result_to_state
 from .schemas import DecisionInputs
 from .service import answer_decision, collect_input_warnings, run_decision
 from .state import BIState
+from agents.coordinator_agent.upstream_ensure import ensure_upstream_payloads
 
 
 def run_decision_state(state: BIState, *, model=None) -> BIState:
     """Compatibility path for orchestrator-style state input/output."""
-    inputs = decision_inputs_from_state(state)
+    working = dict(state)
+    working.update(ensure_upstream_payloads(working))
+    inputs = decision_inputs_from_state(working)
     decision_result = run_decision(inputs, model=model)
-    warnings = collect_input_warnings(inputs)
-    return merge_decision_result_to_state(
-        state,
+    warnings = collect_input_warnings(
+        inputs,
+        pipeline={
+            "suggested_agents": working.get("suggested_agents") or [],
+            "agents_done": working.get("agents_done") or {},
+            "forecast_attempted": bool(working.get("_forecast_attempted")),
+        },
+    )
+    merged = merge_decision_result_to_state(
+        working,
         decision_result,
         warnings=warnings,
     )
+    for key in ("forecast_result", "review_insights", "nlp_result", "agents_done"):
+        if working.get(key) is not None and not merged.get(key):
+            merged[key] = working[key]
+    return merged
 
 
 class DecisionAgent:

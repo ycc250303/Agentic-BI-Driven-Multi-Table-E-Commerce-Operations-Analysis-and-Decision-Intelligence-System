@@ -50,5 +50,5 @@ def render_viz_round(viz_round: VizRound, *, live: bool = False) -> None:
         st.caption(viz_round.summary_text)
     for chart in ok_charts:
         title = chart.get("title") or chart.get("chart_type") or "图表"
-        st.image(str(chart["image_path"]), caption=str(title), use_container_width=True)
+        st.image(str(chart["image_path"]), caption=str(title), width="stretch")
     st.divider()

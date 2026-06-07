@@ -13,7 +13,7 @@ from .adapters import (
     normalize_visualization_result,
     normalize_what_if_result,
 )
-from .llm import get_llm
+from .llm import get_llm, get_structured_llm
 from .prompt_builder import build_human_prompt, build_system_prompt
 from .quality import evaluate_decision_quality, quality_report_to_dict
 from .schemas import DecisionInputs, DecisionResult, RootCauseItem, ScoredProblem, WhatIfResult
@@ -23,6 +23,7 @@ from .tools import (
     run_what_if,
     score_problems,
 )
+from .warning_policy import collect_input_warnings
 
 
 class NarrativeResponse(BaseModel):
@@ -72,19 +73,6 @@ def _normalize_inputs(inputs: DecisionInputs) -> DecisionInputs:
         what_if_result=normalize_what_if_result(data.get("what_if_result")),
         conversation_history=inputs.conversation_history,
     )
-
-
-def collect_input_warnings(inputs: DecisionInputs) -> list[str]:
-    warnings: list[str] = []
-    if not inputs.analysis_result:
-        warnings.append("缺少 analysis_result，Decision-Agent 无法完成核心证据整理。")
-    if not inputs.nlp_result:
-        warnings.append("缺少 nlp_result，将无法充分解释评论与情绪相关根因。")
-    if not inputs.forecast_result:
-        warnings.append("缺少 forecast_result，将无法给出预测驱动的增长风险解释。")
-    if not inputs.visualization_result:
-        warnings.append("缺少 visualization_result，本次建议不会引用图表结论。")
-    return warnings
 
 
 def choose_what_if(
@@ -143,7 +131,7 @@ def compose_final_answer(
     problems,
     decision_result: DecisionResult,
 ) -> NarrativeResponse:
-    structured_model = model.with_structured_output(NarrativeResponse)
+    structured_model = get_structured_llm().with_structured_output(NarrativeResponse)
     messages = [
         SystemMessage(content=build_system_prompt()),
         HumanMessage(
@@ -170,7 +158,7 @@ def revise_final_answer(
     decision_result: DecisionResult,
     issues: list[str],
 ) -> NarrativeResponse:
-    structured_model = model.with_structured_output(NarrativeResponse)
+    structured_model = get_structured_llm().with_structured_output(NarrativeResponse)
     messages = [
         SystemMessage(content=build_system_prompt()),
         HumanMessage(

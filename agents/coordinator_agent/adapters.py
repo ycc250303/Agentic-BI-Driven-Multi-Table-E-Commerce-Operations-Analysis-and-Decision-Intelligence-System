@@ -156,8 +156,20 @@ def merge_sql_runs(sql_runs: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def pick_viz_csv_from_exec_payload(exec_payload: dict[str, Any]) -> str | None:
+def pick_viz_csv_from_exec_payload(
+    exec_payload: dict[str, Any],
+    *,
+    sql_result_index: int | None = None,
+    chart_type_hint: str | None = None,
+) -> str | None:
     """从 execute_sql JSON 中选取最适合出图的一条 CSV 路径。"""
+    from agents.viz_agent.viz_planner import (
+        _column_is_category,
+        _column_is_time,
+        _parse_columns_from_summary_zh,
+        _read_csv_header_columns,
+    )
+
     results = [
         r
         for r in (exec_payload.get("results") or [])
@@ -168,8 +180,48 @@ def pick_viz_csv_from_exec_payload(exec_payload: dict[str, Any]) -> str | None:
         if top_path:
             return str(top_path)
         return None
+    if sql_result_index is not None and 0 <= sql_result_index < len(results):
+        return str(results[sql_result_index]["result_csv_path"])
     if len(results) == 1:
         return str(results[0]["result_csv_path"])
+
+    def _score_result(row: dict[str, Any], *, prefer: str) -> int:
+        cols = _parse_columns_from_summary_zh(str(row.get("data_summary_zh") or ""))
+        if not cols:
+            cols = _read_csv_header_columns(str(row.get("result_csv_path") or ""))
+        if not cols:
+            cols = [
+                str(p.get("name"))
+                for p in (exec_payload.get("column_profiles") or [])
+                if p.get("name")
+            ]
+        has_time = any(_column_is_time(c) for c in cols)
+        has_category = any(_column_is_category(c) for c in cols)
+        row_count = int(row.get("row_count_returned") or 0)
+        score = row_count
+        if prefer == "bar":
+            if has_category and not has_time:
+                score += 100_000
+            if has_time:
+                score -= 50_000
+            if 5 <= row_count <= 40:
+                score += 100
+        elif prefer == "line":
+            if has_time and has_category:
+                score += 1000
+            elif has_time:
+                score += 500
+            if has_category and not has_time:
+                score -= 300
+        return score
+
+    prefer = "auto"
+    if chart_type_hint in ("bar", "line"):
+        prefer = chart_type_hint
+    if prefer != "auto":
+        best = max(results, key=lambda r: _score_result(r, prefer=prefer))
+        return str(best["result_csv_path"])
+
     return str(
         max(results, key=lambda r: int(r.get("row_count_returned") or 0))["result_csv_path"]
     )
@@ -270,12 +322,41 @@ def build_synthesis_evidence(state: dict[str, Any]) -> dict[str, Any]:
         insights.get("topic_distribution") and "见差评主题分布"
     ) or ""
 
+    forecast_raw = state.get("forecast_result") or {}
+    weekly_fc = forecast_raw.get("weekly_forecast") or []
+    if not weekly_fc and forecast_raw.get("periods"):
+        weekly_fc = [
+            {
+                "week_label": forecast_raw["periods"][i],
+                "forecast_gmv": (forecast_raw.get("values") or forecast_raw.get("forecast_values") or [None])[i],
+                "lower_95": (forecast_raw.get("lower") or [None])[i] if i < len(forecast_raw.get("lower") or []) else None,
+                "upper_95": (forecast_raw.get("upper") or [None])[i] if i < len(forecast_raw.get("upper") or []) else None,
+            }
+            for i in range(len(forecast_raw["periods"]))
+        ]
+
     return {
         "user_query": state.get("user_query"),
         "intent": state.get("intent"),
         "sub_questions": state.get("sub_questions") or [],
         "sql_results": sql_items,
         "charts": charts,
+        "forecast_detail": {
+            "summary_text": forecast_raw.get("summary_text"),
+            "method": forecast_raw.get("method"),
+            "method_zh": forecast_raw.get("method_zh"),
+            "horizon_weeks": forecast_raw.get("horizon_weeks"),
+            "lookback_weeks": forecast_raw.get("lookback_weeks"),
+            "trend_direction": forecast_raw.get("trend_direction"),
+            "trend_zh": forecast_raw.get("trend_zh"),
+            "last_actual_week": forecast_raw.get("last_actual_week"),
+            "last_actual_gmv": forecast_raw.get("last_actual_gmv"),
+            "slope_per_week": forecast_raw.get("slope_per_week"),
+            "weekly_forecast": weekly_fc,
+            "risk_flags": forecast_raw.get("risk_flags") or [],
+        }
+        if forecast_raw
+        else None,
         "review_insights_summary": review_summary,
         "review_topics_bertopic": bertopic_topics,
         "review_complaints_by_category": bertopic_complaints,

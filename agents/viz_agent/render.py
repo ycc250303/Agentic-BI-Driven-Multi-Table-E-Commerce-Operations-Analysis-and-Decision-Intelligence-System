@@ -277,6 +277,8 @@ def _human_axis_label(column: str) -> str:
         "payment_type": "支付方式",
         "payment_installments": "分期数",
         "month": "月份",
+        "year_month": "年月",
+        "customer_state": "州",
         "state": "州",
     }
     if column in mapping:
@@ -367,21 +369,174 @@ def _render_wordcloud_compare(
     return str(dest_path.resolve())
 
 
+_LINE_MAX_SERIES = 8
+
+
+def _ordered_time_categories(values: pd.Series) -> list:
+    """将时间/年月轴按时间顺序排列，避免字符串或 seaborn 默认顺序错乱。"""
+    uniq = [v for v in values.dropna().unique().tolist()]
+    if not uniq:
+        return []
+
+    as_series = pd.Series(uniq, dtype=object)
+    for fmt in ("%Y-%m", "%Y-%m-%d", "%Y/%m", "%Y%m"):
+        try:
+            parsed = pd.to_datetime(as_series.astype(str), errors="coerce", format=fmt)
+            if parsed.notna().all():
+                order = sorted(range(len(uniq)), key=lambda i: parsed.iloc[i])
+                return [uniq[i] for i in order]
+        except (ValueError, TypeError):
+            continue
+
+    try:
+        parsed = pd.to_datetime(as_series.astype(str), errors="coerce")
+        if parsed.notna().mean() >= 0.8:
+            order = sorted(
+                range(len(uniq)),
+                key=lambda i: parsed.iloc[i] if pd.notna(parsed.iloc[i]) else pd.Timestamp.min,
+            )
+            return [uniq[i] for i in order]
+    except (ValueError, TypeError):
+        pass
+
+    return sorted(uniq, key=str)
+
+
+def _resolve_line_series_column(
+    df: pd.DataFrame,
+    plan: VizPlan,
+    x_column: str,
+    y_column: str,
+) -> str | None:
+    explicit = plan.category_column or plan.hue_column
+    if (
+        explicit
+        and explicit in df.columns
+        and explicit not in (x_column, y_column)
+        and df[explicit].nunique(dropna=True) > 1
+    ):
+        return explicit
+
+    from agents.viz_agent.line_plan import infer_line_series_column
+
+    return infer_line_series_column(df, x_column, y_column)
+
+
+def _prepare_line_dataframe(
+    df: pd.DataFrame,
+    plan: VizPlan,
+) -> tuple[pd.DataFrame, str, str, str | None, list, str | None]:
+    x_c, y_c = plan.x_column, plan.y_column
+    if not x_c or not y_c:
+        raise ValueError("line 需要 x_column、y_column")
+    if x_c not in df.columns or y_c not in df.columns:
+        raise ValueError("line 列名不在 DataFrame 中")
+
+    series_col = _resolve_line_series_column(df, plan, x_c, y_c)
+    use_cols = [x_c, y_c] + ([series_col] if series_col else [])
+    plot_df = df[use_cols].copy()
+    plot_df[y_c] = pd.to_numeric(plot_df[y_c], errors="coerce")
+    plot_df = plot_df.dropna(subset=[y_c])
+    if plot_df.empty:
+        raise ValueError("line 无有效数值行")
+
+    if series_col:
+        plot_df = plot_df.groupby([x_c, series_col], as_index=False, observed=True)[
+            y_c
+        ].sum()
+        n_series = int(plot_df[series_col].nunique())
+        legend_note = None
+        if n_series > _LINE_MAX_SERIES:
+            top_groups = (
+                plot_df.groupby(series_col, observed=True)[y_c]
+                .sum()
+                .nlargest(_LINE_MAX_SERIES)
+                .index.tolist()
+            )
+            plot_df = plot_df[plot_df[series_col].isin(top_groups)]
+            legend_note = f"Top {_LINE_MAX_SERIES}"
+    else:
+        plot_df = plot_df.groupby(x_c, as_index=False)[y_c].sum()
+        legend_note = None
+
+    x_order = _ordered_time_categories(plot_df[x_c])
+    plot_df[x_c] = pd.Categorical(plot_df[x_c], categories=x_order, ordered=True)
+    if series_col:
+        plot_df = plot_df.sort_values([series_col, x_c])
+    else:
+        plot_df = plot_df.sort_values(x_c)
+
+    return plot_df, x_c, y_c, series_col, x_order, legend_note
+
+
+def _style_line_axes(
+    ax: plt.Axes,
+    *,
+    x_column: str,
+    y_column: str,
+    series_column: str | None,
+    legend_note: str | None,
+    extras: RenderExtras | None,
+) -> None:
+    ax.set_xlabel(_human_axis_label(x_column))
+    ax.set_ylabel(_human_value_label(y_column))
+    if extras and extras.value_format == "currency":
+        _format_axis_currency(ax, axis="y")
+    ax.grid(True, alpha=0.35)
+    ax.tick_params(axis="x", rotation=45)
+
+    if series_column:
+        title = _human_axis_label(series_column)
+        if legend_note:
+            title = f"{title}（{legend_note}）"
+        ax.legend(
+            title=title,
+            bbox_to_anchor=(1.02, 1),
+            loc="upper left",
+            frameon=True,
+            fontsize=8,
+        )
+    elif ax.get_legend_handles_labels()[0]:
+        ax.legend(loc="upper left", frameon=True, fontsize=9)
+
+
 def _render_line_with_forecast(
     df: pd.DataFrame,
     plan: VizPlan,
     ax: plt.Axes,
     extras: RenderExtras | None,
 ) -> None:
-    x_c, y_c = plan.x_column, plan.y_column
-    if not x_c or not y_c:
-        raise ValueError("line 需要 x_column、y_column")
+    plot_df, x_c, y_c, series_col, x_order, legend_note = _prepare_line_dataframe(
+        df, plan
+    )
 
-    plot_df = df[[x_c, y_c]].dropna().copy()
-    plot_df[y_c] = pd.to_numeric(plot_df[y_c], errors="coerce")
-    plot_df = plot_df.dropna(subset=[y_c]).sort_values(x_c)
-    hist_x = plot_df[x_c].astype(str).tolist()
-    hist_y = plot_df[y_c].tolist()
+    if series_col:
+        sns.lineplot(
+            data=plot_df,
+            x=x_c,
+            y=y_c,
+            hue=series_col,
+            marker="o",
+            linewidth=2.0,
+            markersize=4,
+            ax=ax,
+            palette="tab10",
+            sort=False,
+            errorbar=None,
+        )
+        _style_line_axes(
+            ax,
+            x_column=x_c,
+            y_column=y_c,
+            series_column=series_col,
+            legend_note=legend_note,
+            extras=extras,
+        )
+        return
+
+    hist_x = [str(v) for v in x_order]
+    indexed = plot_df.set_index(x_c)[y_c]
+    hist_y = [float(indexed.loc[cat]) for cat in x_order]
 
     ax.plot(
         hist_x,
@@ -426,11 +581,14 @@ def _render_line_with_forecast(
             ax.set_xticks(all_pos)
             ax.set_xticklabels(all_x, rotation=45, ha="right")
 
-    ax.set_ylabel("GMV")
-    if extras and extras.value_format == "currency":
-        _format_axis_currency(ax, axis="y")
-    ax.legend(loc="upper left", frameon=True, fontsize=9)
-    ax.grid(True, alpha=0.35)
+    _style_line_axes(
+        ax,
+        x_column=x_c,
+        y_column=y_c,
+        series_column=None,
+        legend_note=None,
+        extras=extras,
+    )
 
 
 def render_to_png(
@@ -604,13 +762,46 @@ def render_to_png(
         _style_title(ax, plan.title, subtitle)
 
     elif chart == "line":
+        from agents.viz_agent.line_plan import normalize_line_plan
+
+        plan = normalize_line_plan(df, plan)
+        series_col = plan.category_column or plan.hue_column
+        if (
+            series_col
+            and series_col in df.columns
+            and df[series_col].nunique(dropna=True) > 1
+        ):
+            fig.set_size_inches(12.5, 6.5)
         _render_line_with_forecast(df, plan, ax, extras)
         _style_title(ax, plan.title, subtitle)
 
     elif chart == "bar":
         cat = plan.x_column or plan.category_column
         val = plan.y_column
-        if cat and cat in df.columns and val and val in df.columns:
+        if (
+            val
+            and val in df.columns
+            and len(df) == 1
+            and (not cat or cat not in df.columns)
+        ):
+            metric = pd.to_numeric(df[val].iloc[0], errors="coerce")
+            if pd.isna(metric):
+                raise ValueError("bar 图无法读取单一汇总数值")
+            label = plan.title or _human_value_label(val)
+            kpi_df = pd.DataFrame({"指标": [label], val: [float(metric)]})
+            sns.barplot(
+                data=kpi_df,
+                x=val,
+                y="指标",
+                ax=ax,
+                orient="h",
+                color=_PALETTE["primary"],
+            )
+            if extras and extras.value_format == "currency":
+                _format_axis_currency(ax, axis="x")
+            ax.set_xlabel(_human_value_label(val))
+            ax.set_ylabel("")
+        elif cat and cat in df.columns and val and val in df.columns:
             plot_df = df[[cat, val]].dropna().copy()
             plot_df[val] = pd.to_numeric(plot_df[val], errors="coerce")
             plot_df = plot_df.dropna(subset=[val]).sort_values(val, ascending=True).tail(20)

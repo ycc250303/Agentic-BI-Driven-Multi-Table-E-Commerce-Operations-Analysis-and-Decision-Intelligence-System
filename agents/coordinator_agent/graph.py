@@ -123,6 +123,7 @@ def run_coordinator(
     use_llm_synthesize: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
     conversation_history: list[dict[str, str]] | None = None,
+    seed_state: dict[str, Any] | None = None,
     trace_collector: TraceCollector | None = None,
 ) -> dict[str, Any]:
     graph = build_coordinator_graph(
@@ -138,4 +139,8 @@ def run_coordinator(
         "question": user_query,
         "conversation_history": list(conversation_history or []),
     }
+    if seed_state:
+        for key, value in seed_state.items():
+            if value is not None and key not in initial:
+                initial[key] = value
     return graph.invoke(initial)

@@ -145,7 +145,15 @@
 - **易错口径（生成 SQL 时必须遵守）**：
   - **`on_time_rate` 为「该年-月 × 该州」单元内的比率**，不是全平台订单级比率。**禁止**用 `SELECT on_time_rate FROM mv_delivery_perf ... ORDER BY ... LIMIT 1`、`MAX(on_time_rate)` 或对 `on_time_rate` 做无权重 `GROUP BY` 冒充「全平台整体准时率」。
   - **全平台整体准时率**：须在 `orders`（并满足 `order_status='delivered'`、签收与预计送达非空）上按订单计算 `SUM(准时) / COUNT(*)`。
-  - **各州延迟严重程度**：可在本视图对 `delayed_orders` 按 `customer_state` 做 `SUM` 后排序。
+  - **各州「延迟最严重」/ 延迟排名（重要）**：
+    - **禁止**仅对 `delayed_orders` 做 `SUM` 后按绝对数量排序来代表「延迟最严重」——订单量大的州（如 SP）会天然排在前面，不能反映配送质量。
+    - **必须**回退 `orders` + `customers`，按 `customer_state` 做**订单级**聚合，输出至少：
+      - `total_delivered_orders`（该州已送达订单数）
+      - `delayed_orders`（延迟订单数）
+      - `delay_rate` = `delayed_orders / total_delivered_orders`（**主排序键**，降序 = 延迟率越高越严重）
+      - `delay_share` = `delayed_orders / 全平台 delayed_orders`（延迟占全平台比例，便于解读体量）
+    - 建议 `HAVING COUNT(*) >= 20` 过滤样本过少的州；排序 `ORDER BY delay_rate DESC, delayed_orders DESC LIMIT 10`。
+    - `mv_delivery_perf` 仅作辅助参考，**不能**代替上述订单级 delay_rate 排名。
   - **「某州 + 某年」单一准时率**：若仅用本视图，需先将该州该年的多个月份聚成一行（如 `AVG(on_time_rate)`，并注明“按月单元比率简单平均近似”）；更稳妥方式是回退 `orders` 做订单级计算。
 
 ### `mv_seller_perf`

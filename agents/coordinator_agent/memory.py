@@ -117,13 +117,13 @@ def update_memory_summary(
 
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    from agents.decision_agent.llm import get_llm
+    from agents.decision_agent.llm import get_structured_llm
 
     payload = {
         "previous_memory_summary": _clip(str(session.get("memory_summary") or ""), limit),
         "recent_turns": _compact_turns(session, max_turns=max_turns),
     }
-    llm = model or get_llm()
+    llm = model or get_structured_llm()
     structured_model = llm.with_structured_output(SessionMemorySummary)
     response = structured_model.invoke(
         [

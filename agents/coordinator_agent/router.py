@@ -59,7 +59,13 @@ def _pending_post_sql_agents(state: dict) -> list[AgentRoute]:
     suggested = set(_suggested_agents(state))
     pending: list[AgentRoute] = []
     for name in _POST_SQL_AGENT_ORDER:
-        if name in suggested and not _agent_done(state, name):
+        if _agent_done(state, name):
+            continue
+        if name in suggested:
+            pending.append(name)
+        elif name == "nlp" and _should_nlp(state):
+            pending.append(name)
+        elif name == "decision" and _should_decision(state):
             pending.append(name)
     return pending
 
@@ -96,7 +102,21 @@ def _should_decision(state: dict) -> bool:
     if intent in ("prescriptive", "what_if", "diagnostic"):
         return True
     if intent == "predictive":
-        return any(k in query for k in ("建议", "策略", "方案", "如何", "怎么", "改进", "优化"))
+        return any(
+            k in query
+            for k in (
+                "建议",
+                "策略",
+                "方案",
+                "如何",
+                "怎么",
+                "改进",
+                "优化",
+                "预警",
+                "风险",
+                "预测",
+            )
+        )
     return False
 
 

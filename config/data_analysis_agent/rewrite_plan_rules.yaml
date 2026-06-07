@@ -39,3 +39,22 @@ rules:
           - "平均评分最低"
           - "avg(review_score)"
     message: "“差评品类”被转写为“平均评分最低”口径，应改为差评数量/差评率口径。"
+
+  - id: state_delay_severity_uses_delay_rate
+    when:
+      user_query_contains_all:
+        - "延迟"
+      user_query_contains_any:
+        - "最严重"
+        - "哪些州"
+        - "哪几个州"
+        - "排名"
+    assertions:
+      - type: dimension_subquestion_metric_key_any_of
+        dimension_keywords:
+          - customer_state
+          - "州"
+        any_of:
+          - delay_rate
+          - state_delay_rate
+    message: "「哪些州延迟最严重」须按各州 delay_rate（订单级延迟率）排名，不能仅用 delayed_orders 绝对数量。"

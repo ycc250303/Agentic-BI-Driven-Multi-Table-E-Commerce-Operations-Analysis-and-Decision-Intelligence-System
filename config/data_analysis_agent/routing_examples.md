@@ -5,7 +5,7 @@
 - “每月销售额/GMV/订单趋势” -> `mv_monthly_sales`
 - “各州销售额排名/区域对比” -> `mv_state_sales`
 - “品类表现/下降品类/品类客单” -> `mv_category_sales`
-- “准时率/平均配送时长/延迟州” -> `mv_delivery_perf`
+- “准时率/平均配送时长/延迟州” -> `mv_delivery_perf`（**例外**：全平台整体准时率、各州「延迟最严重」须回退 `orders`+`customers`，见 schema_dictionary）
 - “卖家绩效/评分低卖家” -> `mv_seller_perf`
 - “支付方式占比/分期数” -> `mv_payment_dist`
 
@@ -38,6 +38,13 @@ ORDER BY year_month;
 用户问题：`2017年哪个州销售额最高？交付准时率是多少？哪种支付方式最受欢迎？`
 
 策略：拆分为 3 条 SQL，分别命中 `mv_state_sales`、`mv_delivery_perf`、`mv_payment_dist`，最终在应用层合并摘要。
+
+### 示例 D：全平台准时率 + 各州延迟最严重
+用户问题：`平台整体准时交付率是多少？哪些州延迟最严重？`
+
+策略：
+- 子查询 1：回退 `orders` 计算**订单级**全平台 `on_time_rate`（禁止对 `mv_delivery_perf.on_time_rate` 无权重聚合）。
+- 子查询 2：回退 `orders`+`customers`，按 `customer_state` 输出 `delay_rate`、`delayed_orders`、`delay_share`，**按 delay_rate 降序**取 Top 10（禁止仅用 `SUM(mv_delivery_perf.delayed_orders)` 代表「最严重」）。
 
 ### 示例 C：回退原始表
 用户问题：`产品重量、体积与运费之间有什么关系？`

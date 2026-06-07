@@ -138,14 +138,14 @@ def resolve_conversation_context(
 
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    from agents.decision_agent.llm import get_llm
+    from agents.decision_agent.llm import get_structured_llm
 
     payload = {
         "memory_summary": _clip(str(session.get("memory_summary") or "")),
         "recent_turns": _recent_turns(session),
         "current_user_query": query,
     }
-    llm = model or get_llm()
+    llm = model or get_structured_llm()
     structured_model = llm.with_structured_output(ConversationResolution)
     response = structured_model.invoke(
         [

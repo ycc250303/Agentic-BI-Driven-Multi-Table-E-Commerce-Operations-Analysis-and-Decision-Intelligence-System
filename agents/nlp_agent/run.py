@@ -61,6 +61,8 @@ def should_run_nlp(question: str = "", intent: str = "") -> bool:
     """
     if intent in _PRESCRIPTIVE_INTENTS:
         return True
+    if intent == "predictive" and _has_kw(question, _REVIEW_KEYWORDS):
+        return True
     return _has_kw(question, _REVIEW_KEYWORDS)
 
 

@@ -123,7 +123,13 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                 )
             )
 
-        if topic == "delivery" and metric in {"delayed_orders", "delayed_orders_count"}:
+        if topic == "delivery" and metric in {
+            "delayed_orders",
+            "delayed_orders_count",
+            "delay_rate",
+            "state_delay_rate",
+            "delay_share",
+        }:
             severity = 0.6
             if gap is not None and value is not None and value > 0:
                 severity = _cap_score(abs(gap) / max(value, 1.0) + 0.45)

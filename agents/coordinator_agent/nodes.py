@@ -301,6 +301,13 @@ def visualization_node(
     patch: dict[str, Any] = {}
     if viz_result.get("forecast_result") and not state.get("forecast_result"):
         patch["forecast_result"] = viz_result["forecast_result"]
+    if not state.get("forecast_result") and not patch.get("forecast_result"):
+        from agents.decision_agent.forecast_from_analysis import enrich_forecast_from_state
+
+        merged_for_fc = {**state, **patch}
+        fc_patch = enrich_forecast_from_state(merged_for_fc)
+        if fc_patch.get("forecast_result"):
+            patch["forecast_result"] = fc_patch["forecast_result"]
 
     charts = viz_result.get("charts") or []
     _emit_trace(

@@ -21,6 +21,10 @@ class VizChartTask(BaseModel):
     rationale: str = Field(default="", description="此图如何服务用户问题")
     data_source: DataSource
     sql_run_index: int | None = None
+    sql_result_index: int | None = Field(
+        default=None,
+        description="同一 sql_run 内 execute_sql results[] 的下标（多 SQL 子查询时区分排名/趋势等）",
+    )
     supplementary_question: str | None = None
     chart_type_hint: ChartHint = "auto"
     include_forecast: bool = False
@@ -264,6 +268,72 @@ def _cols_for_sql_run(
     return _summarize_sql_runs([sql_runs[index]])[0].get("columns") or []
 
 
+_TIME_COLUMN_HINTS = ("month", "year", "date", "timestamp", "week", "day")
+_CATEGORY_COLUMN_HINTS = (
+    "state",
+    "category",
+    "region",
+    "city",
+    "name",
+    "customer",
+    "product",
+    "payment",
+    "seller",
+    "州",
+    "品类",
+    "地区",
+)
+
+
+def _column_is_time(col: str) -> bool:
+    cl = col.lower()
+    return any(h in cl for h in _TIME_COLUMN_HINTS)
+
+
+def _column_is_category(col: str) -> bool:
+    cl = col.lower()
+    return any(h in cl for h in _CATEGORY_COLUMN_HINTS)
+
+
+def _result_columns(row: dict[str, Any]) -> list[str]:
+    cols = _parse_columns_from_summary_zh(str(row.get("data_summary_zh") or ""))
+    if cols:
+        return cols
+    return _read_csv_header_columns(str(row.get("result_csv_path") or ""))
+
+
+def _sql_result_rows_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    results = [
+        r for r in (payload.get("results") or []) if r.get("ok") and r.get("result_csv_path")
+    ]
+    if results:
+        return results
+    top_path = payload.get("result_csv_path")
+    if top_path:
+        return [
+            {
+                "result_csv_path": top_path,
+                "row_count_returned": payload.get("row_count_returned"),
+                "data_summary_zh": payload.get("data_summary_zh"),
+            }
+        ]
+    return []
+
+
+def _is_scalar_kpi_result(row: dict[str, Any]) -> bool:
+    row_count = int(row.get("row_count_returned") or 0)
+    if row_count != 1:
+        return False
+    cols = _result_columns(row)
+    if not cols:
+        return False
+    if len(cols) == 1:
+        return True
+    if any(_column_is_time(c) or _column_is_category(c) for c in cols):
+        return False
+    return True
+
+
 def _infer_hint_from_columns(cols: list[str], question: str) -> ChartHint:
     cl = [c.lower() for c in cols]
     ql = (question or "").lower()
@@ -273,11 +343,30 @@ def _infer_hint_from_columns(cols: list[str], question: str) -> ChartHint:
         return "wordcloud"
     if any(k in ql for k in ("热力", "矩阵", "交叉")):
         return "heatmap"
-    if any(k in c for c in cl for k in ("month", "year", "date", "timestamp")):
+    has_time = any(_column_is_time(c) for c in cols)
+    has_category = any(_column_is_category(c) for c in cols)
+    if has_time and has_category:
         return "line"
-    if any(k in ql for k in ("预测", "未来", "forecast")):
+    if has_category and not has_time:
+        return "bar"
+    if has_time or any(k in ql for k in ("预测", "未来", "forecast", "趋势", "走势", "按月")):
         return "line"
+    if has_category and any(k in ql for k in ("排名", "对比", "top", "各州")):
+        return "bar"
     if len(cols) >= 3:
+        return "bar"
+    return "auto"
+
+
+def _infer_hint_for_sql_result(row: dict[str, Any], question: str) -> ChartHint:
+    cols = _result_columns(row)
+    hint = _infer_hint_from_columns(cols, question)
+    if hint != "auto":
+        return hint
+    row_count = int(row.get("row_count_returned") or 0)
+    if row_count > 1 and any(_column_is_category(c) for c in cols):
+        if any(_column_is_time(c) for c in cols):
+            return "line"
         return "bar"
     return "auto"
 
@@ -295,9 +384,10 @@ def chart_task_fingerprint(
         return f"review_insights:{chart.insight_chart_type}"
     if chart.data_source == "sql_run":
         idx = chart.sql_run_index if chart.sql_run_index is not None else -1
+        res_idx = chart.sql_result_index if chart.sql_result_index is not None else -1
         hint = chart.chart_type_hint or "auto"
         cols = ",".join(sorted(_cols_for_sql_run(sql_runs, idx)))
-        return f"sql_run:{idx}:{hint}:{cols}"
+        return f"sql_run:{idx}:{res_idx}:{hint}:{cols}"
     if chart.data_source == "supplementary_query":
         q = (chart.supplementary_question or chart.title or "").strip()
         hint = chart.chart_type_hint or "auto"
@@ -352,6 +442,237 @@ def _dedupe_viz_charts(
     return out
 
 
+_GMV_PREDICTIVE_HINTS = ("销售额", "gmv", "销售", "营收", "营业额")
+_FORECAST_QUERY_HINTS = ("预测", "未来", "6周", "六周", "外推")
+
+
+def _is_gmv_predictive_query(user_query: str, intent: str) -> bool:
+    if intent != "predictive":
+        return False
+    q = (user_query or "").lower()
+    return any(h in user_query or h in q for h in _FORECAST_QUERY_HINTS) and any(
+        h in user_query or h in q for h in _GMV_PREDICTIVE_HINTS
+    )
+
+
+def _is_placeholder_forecast_sql_run(run: dict[str, Any]) -> bool:
+    """SQL Agent 对未来预测生成的 NULL 占位结果，不可制图。"""
+    summary = _summarize_sql_runs([run])[0]
+    cols = [c.lower() for c in summary.get("columns") or []]
+    if any("forecast" in c for c in cols):
+        return True
+    ar = run.get("analysis_result") or {}
+    text = str(ar.get("business_summary") or "")
+    if "占位" in text or ("NULL" in text and "预测" in text):
+        return True
+    return False
+
+
+def _sql_run_has_monthly_gmv(sql_runs: list[dict[str, Any]], index: int) -> bool:
+    cols = [c.lower() for c in _cols_for_sql_run(sql_runs, index)]
+    has_time = any(_column_is_time(c) for c in cols)
+    has_gmv = any(
+        any(k in c for k in ("gmv", "sales", "total_gmv", "gmv_total"))
+        for c in cols
+    )
+    return has_time and has_gmv
+
+
+def _enrich_gmv_predictive_charts(
+    *,
+    user_query: str,
+    intent: str,
+    charts: list[VizChartTask],
+    sql_runs: list[dict[str, Any]],
+) -> list[VizChartTask]:
+    """销售额预测：确保有一张带 6 周外推叠加的月度 GMV 折线图。"""
+    if not _is_gmv_predictive_query(user_query, intent):
+        return charts
+
+    out: list[VizChartTask] = []
+    forecast_assigned = False
+    for chart in charts:
+        if (
+            chart.data_source == "sql_run"
+            and chart.chart_type_hint == "line"
+            and chart.sql_run_index is not None
+            and _sql_run_has_monthly_gmv(sql_runs, chart.sql_run_index)
+            and not forecast_assigned
+        ):
+            out.append(
+                chart.model_copy(
+                    update={
+                        "include_forecast": True,
+                        "title": "历史月度 GMV 与未来 6 周预测",
+                        "rationale": "历史 mv_monthly_sales 趋势叠加周度 GMV 线性外推",
+                    }
+                )
+            )
+            forecast_assigned = True
+        else:
+            out.append(chart)
+
+    if forecast_assigned:
+        return out
+
+    for i, run in enumerate(sql_runs):
+        if _is_placeholder_forecast_sql_run(run):
+            continue
+        if not _sql_run_has_monthly_gmv(sql_runs, i):
+            continue
+        out.append(
+            VizChartTask(
+                title="历史月度 GMV 与未来 6 周预测",
+                rationale="基于 mv_monthly_sales 历史趋势叠加周度外推",
+                data_source="sql_run",
+                sql_run_index=i,
+                chart_type_hint="line",
+                include_forecast=True,
+            )
+        )
+        break
+    return out or charts
+
+
+def _sql_run_payload(sql_runs: list[dict[str, Any]], index: int) -> dict[str, Any] | None:
+    if index < 0 or index >= len(sql_runs):
+        return None
+    exec_json = str(sql_runs[index].get("execute_sql_json") or "").strip()
+    if not exec_json:
+        return None
+    try:
+        payload = json.loads(exec_json)
+    except json.JSONDecodeError:
+        return None
+    if not payload.get("ok"):
+        return None
+    return payload
+
+
+def _chart_targets_scalar_sql_run(
+    chart: VizChartTask,
+    *,
+    sql_runs: list[dict[str, Any]],
+) -> bool:
+    if chart.data_source != "sql_run" or chart.sql_run_index is None:
+        return False
+    payload = _sql_run_payload(sql_runs, chart.sql_run_index)
+    if not payload:
+        return False
+    rows = _sql_result_rows_from_payload(payload)
+    if not rows:
+        return False
+    if chart.sql_result_index is not None:
+        if chart.sql_result_index < 0 or chart.sql_result_index >= len(rows):
+            return False
+        return _is_scalar_kpi_result(rows[chart.sql_result_index])
+    if len(rows) == 1:
+        return _is_scalar_kpi_result(rows[0])
+    return False
+
+
+def _filter_scalar_sql_chart_tasks(
+    charts: list[VizChartTask],
+    *,
+    sql_runs: list[dict[str, Any]],
+) -> list[VizChartTask]:
+    """单行单一汇总指标已在文字答复中呈现，无需强行出图。"""
+    return [
+        chart
+        for chart in charts
+        if not _chart_targets_scalar_sql_run(chart, sql_runs=sql_runs)
+    ]
+
+
+def _expand_multi_result_sql_tasks(
+    charts: list[VizChartTask],
+    *,
+    sql_runs: list[dict[str, Any]],
+    user_query: str,
+    intent: str,
+) -> list[VizChartTask]:
+    """同一 sql_run 含多条 SQL 结果（如排名 + 趋势）时，为每条可制图结果补齐任务。"""
+    out = list(charts)
+    include_fc = intent == "predictive" or any(
+        k in user_query for k in ("预测", "未来", "6周", "六周")
+    )
+    existing: set[tuple[int, int]] = {
+        (int(c.sql_run_index), int(c.sql_result_index))
+        for c in out
+        if c.data_source == "sql_run"
+        and c.sql_run_index is not None
+        and c.sql_result_index is not None
+    }
+    covered_runs = _sql_run_indices_covered(out)
+
+    for i, run in enumerate(sql_runs):
+        if _is_placeholder_forecast_sql_run(run):
+            continue
+        payload = _sql_run_payload(sql_runs, i)
+        if not payload:
+            continue
+        rows = _sql_result_rows_from_payload(payload)
+        if len(rows) <= 1:
+            continue
+        question = str(run.get("question") or user_query)
+        for j, row in enumerate(rows):
+            if _is_scalar_kpi_result(row):
+                continue
+            if (i, j) in existing:
+                continue
+            hint = _infer_hint_for_sql_result(row, question)
+            title_suffix = "排名" if hint == "bar" and j == 0 else ""
+            base_title = question.rstrip("？")
+            if title_suffix and title_suffix not in base_title:
+                title = f"{base_title}（{title_suffix}）"
+            else:
+                title = base_title
+            out.append(
+                VizChartTask(
+                    title=title,
+                    rationale=f"基于子问题「{question}」第 {j + 1} 条查数结果可视化",
+                    data_source="sql_run",
+                    sql_run_index=i,
+                    sql_result_index=j,
+                    chart_type_hint=hint,
+                    include_forecast=include_fc and hint == "line",
+                )
+            )
+            existing.add((i, j))
+            covered_runs.add(i)
+    return out
+
+
+def _finalize_sql_chart_tasks(
+    charts: list[VizChartTask],
+    *,
+    sql_runs: list[dict[str, Any]],
+    user_query: str,
+    intent: str,
+) -> list[VizChartTask]:
+    charts = _normalize_chart_tasks(charts, sql_runs=sql_runs)
+    charts = _ensure_sql_run_chart_tasks(
+        charts,
+        sql_runs=sql_runs,
+        user_query=user_query,
+        intent=intent,
+    )
+    charts = _expand_multi_result_sql_tasks(
+        charts,
+        sql_runs=sql_runs,
+        user_query=user_query,
+        intent=intent,
+    )
+    charts = _filter_scalar_sql_chart_tasks(charts, sql_runs=sql_runs)
+    charts = _enrich_gmv_predictive_charts(
+        user_query=user_query,
+        intent=intent,
+        charts=charts,
+        sql_runs=sql_runs,
+    )
+    return charts
+
+
 def _sql_run_indices_covered(charts: list[VizChartTask]) -> set[int]:
     return {
         int(c.sql_run_index)
@@ -386,6 +707,8 @@ def _ensure_sql_run_chart_tasks(
     for i, run in enumerate(sql_runs):
         if i in covered:
             continue
+        if _is_placeholder_forecast_sql_run(run):
+            continue
         summary = _summarize_sql_runs([run])[0]
         if not summary.get("ok") or not summary.get("columns"):
             continue
@@ -395,6 +718,13 @@ def _ensure_sql_run_chart_tasks(
             cols
         ):
             continue
+        payload = _sql_run_payload(sql_runs, i)
+        if payload:
+            rows = _sql_result_rows_from_payload(payload)
+            if rows and all(_is_scalar_kpi_result(r) for r in rows):
+                continue
+            if len(rows) > 1:
+                continue
         hint = _infer_hint_from_columns(cols, question)
         out.append(
             VizChartTask(
@@ -406,7 +736,7 @@ def _ensure_sql_run_chart_tasks(
                 include_forecast=include_fc and hint == "line",
             )
         )
-    return _normalize_chart_tasks(out, sql_runs=sql_runs)
+    return out
 
 
 def _insight_data_available(
@@ -554,6 +884,11 @@ def heuristic_viz_suite(
         summary = _summarize_sql_runs([run])[0]
         if not summary.get("ok") or not summary.get("columns"):
             continue
+        payload = _sql_run_payload(sql_runs, i)
+        if payload:
+            rows = _sql_result_rows_from_payload(payload)
+            if rows and all(_is_scalar_kpi_result(r) for r in rows):
+                continue
         cols = summary["columns"]
         hint = _infer_hint_from_columns(cols, str(run.get("question") or user_query))
         include_fc = intent == "predictive" or any(
@@ -570,7 +905,12 @@ def heuristic_viz_suite(
             )
         )
 
-    charts = _normalize_chart_tasks(charts, sql_runs=sql_runs)
+    charts = _finalize_sql_chart_tasks(
+        charts,
+        sql_runs=sql_runs,
+        user_query=user_query,
+        intent=intent,
+    )
 
     if any(k in user_query for k in ("评论", "差评", "词云", "口碑", "review")) and not _has_global_compare_wordcloud(
         charts
@@ -630,9 +970,8 @@ def plan_viz_suite_llm(
     resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
     raw = _extract_json_object(str(resp.content))
     plan = VizSuitePlan.model_validate_json(raw)
-    charts = _normalize_chart_tasks(list(plan.charts), sql_runs=sql_runs)
-    charts = _ensure_sql_run_chart_tasks(
-        charts,
+    charts = _finalize_sql_chart_tasks(
+        list(plan.charts),
         sql_runs=sql_runs,
         user_query=user_query,
         intent=intent,

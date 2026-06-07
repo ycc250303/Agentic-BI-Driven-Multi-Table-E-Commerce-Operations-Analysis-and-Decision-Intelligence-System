@@ -153,7 +153,11 @@ class GenerateSqlRunner:
         )
 
 
-def build_generate_sql_tool(model, max_retries: int = 3):
+def build_generate_sql_tool(model=None, max_retries: int = 3):
+    if model is None:
+        from llm import get_structured_llm
+
+        model = get_structured_llm()
     runner = GenerateSqlRunner(model=model, max_retries=max_retries)
     return StructuredTool.from_function(
         func=runner.invoke,
@@ -176,11 +180,11 @@ DEMO_REWRITE_JSON = RewriteToQueryOutput(
 
 
 if __name__ == "__main__":
-    from llm import get_llm
+    from llm import get_structured_llm
 
     print("===== 演示：generate_sql_tool =====")
     print("输入 rewrite_json:\n")
     print(DEMO_REWRITE_JSON)
     print()
-    tool = build_generate_sql_tool(get_llm())
+    tool = build_generate_sql_tool(get_structured_llm())
     print(tool.invoke({"rewrite_json": DEMO_REWRITE_JSON}))

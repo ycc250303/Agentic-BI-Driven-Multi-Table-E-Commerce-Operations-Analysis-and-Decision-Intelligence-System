@@ -5,7 +5,11 @@ from agents.viz_agent.viz_planner import (
     _dedupe_viz_charts,
     _ensure_sql_run_chart_tasks,
     _enrich_diagnostic_review_charts,
+    _expand_multi_result_sql_tasks,
+    _filter_scalar_sql_chart_tasks,
+    _finalize_sql_chart_tasks,
     _infer_hint_from_columns,
+    _is_scalar_kpi_result,
     _normalize_chart_tasks,
     _strip_unrenderable_insight_charts,
     chart_task_fingerprint,
@@ -65,7 +69,7 @@ def test_allow_compare_wordcloud_and_sql_text_wordcloud():
     assert len(deduped) == 2
     fps = {chart_task_fingerprint(c, sql_runs=sql_runs) for c in deduped}
     assert "wordcloud:compare:global" in fps
-    assert any(fp.startswith("sql_run:0:wordcloud:") for fp in fps)
+    assert any(fp.startswith("sql_run:0:-1:wordcloud:") for fp in fps)
 
 
 def test_normalize_sql_run_wordcloud_without_text_to_bar():
@@ -259,3 +263,101 @@ def test_heuristic_diagnostic_at_most_one_global_compare_wordcloud():
     assert fingerprints.count("wordcloud:compare:global") <= 1
     sql_tasks = [c for c in plan.charts if c.data_source == "sql_run"]
     assert len(sql_tasks) >= 2
+
+
+def test_is_scalar_kpi_result_single_metric():
+    row = {
+        "row_count_returned": 1,
+        "data_summary_zh": "共 1 列：gmv_total_2017",
+    }
+    assert _is_scalar_kpi_result(row) is True
+
+
+def test_filter_scalar_sql_chart_tasks():
+    sql_runs = [
+        {
+            "execute_sql_json": (
+                '{"ok": true, "results": ['
+                '{"ok": true, "row_count_returned": 1, '
+                '"data_summary_zh": "共 1 列：gmv_total_2017", '
+                '"result_csv_path": "/tmp/scalar.csv"}'
+                '], "row_count_returned": 1}'
+            ),
+        }
+    ]
+    charts = [
+        VizChartTask(
+            title="2017年GMV总金额",
+            data_source="sql_run",
+            sql_run_index=0,
+            chart_type_hint="bar",
+        )
+    ]
+    filtered = _filter_scalar_sql_chart_tasks(charts, sql_runs=sql_runs)
+    assert filtered == []
+
+
+def test_expand_multi_result_sql_tasks_adds_ranking_and_trend():
+    sql_runs = [
+        {
+            "question": "2017年各州销售额排名及趋势是怎样的？",
+            "execute_sql_json": (
+                '{"ok": true, "results": ['
+                '{"ok": true, "row_count_returned": 27, '
+                '"data_summary_zh": "共 2 列：customer_state, gmv_total", '
+                '"result_csv_path": "/tmp/rank.csv"},'
+                '{"ok": true, "row_count_returned": 345, '
+                '"data_summary_zh": "共 3 列：year_month, customer_state, gmv_total", '
+                '"result_csv_path": "/tmp/trend.csv"}'
+                ']}'
+            ),
+        }
+    ]
+    expanded = _expand_multi_result_sql_tasks(
+        [],
+        sql_runs=sql_runs,
+        user_query="2017 年 GMV 是多少？按月和各州排名的趋势怎样？",
+        intent="descriptive",
+    )
+    assert len(expanded) == 2
+    hints = {c.chart_type_hint for c in expanded}
+    assert "bar" in hints
+    assert "line" in hints
+    assert {c.sql_result_index for c in expanded} == {0, 1}
+
+
+def test_heuristic_viz_suite_skips_scalar_gmv_total():
+    sql_runs = [
+        {
+            "question": "2017年GMV的总金额是多少？",
+            "execute_sql_json": (
+                '{"ok": true, "results": ['
+                '{"ok": true, "row_count_returned": 1, '
+                '"data_summary_zh": "共 1 列：gmv_total_2017", '
+                '"result_csv_path": "/tmp/scalar.csv"}'
+                '], "row_count_returned": 1, '
+                '"data_summary_zh": "共 1 列：gmv_total_2017"}'
+            ),
+            "analysis_result": {"business_summary": "全年 GMV"},
+        },
+        {
+            "question": "2017年按月统计的GMV趋势是怎样的？",
+            "execute_sql_json": (
+                '{"ok": true, "results": ['
+                '{"ok": true, "row_count_returned": 12, '
+                '"data_summary_zh": "共 2 列：year_month, gmv_total", '
+                '"result_csv_path": "/tmp/monthly.csv"}'
+                '], "row_count_returned": 12, '
+                '"data_summary_zh": "共 2 列：year_month, gmv_total"}'
+            ),
+            "analysis_result": {"business_summary": "月度趋势"},
+        },
+    ]
+    plan = heuristic_viz_suite(
+        user_query="2017 年 GMV 是多少？按月和各州排名的趋势怎样？",
+        intent="descriptive",
+        sql_runs=sql_runs,
+    )
+    titles = [c.title for c in plan.charts if c.data_source == "sql_run"]
+    assert not any("总金额" in t for t in titles)
+    assert any("按月" in t or "趋势" in t for t in titles)

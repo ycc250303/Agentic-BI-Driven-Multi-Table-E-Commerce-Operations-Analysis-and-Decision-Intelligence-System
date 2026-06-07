@@ -14,7 +14,7 @@
 
 | chart_type | 适用场景 | 必填列字段 |
 | ---------- | -------- | ---------- |
-| line | 时间序列、按月/周排序的趋势 | x_column, y_column |
+| line | 时间序列、按月/周排序的趋势；**多系列**（如各州/品类）需填 category_column 或 hue_column | x_column, y_column；多系列时另填 category_column（分线维度，如 customer_state） |
 | bar | 类别对比、排名、频次（≤40 个类别较合适） | x_column（类别）, y_column（数值）；若只有一列文本可仅用 category_column 表示类别并令 y_column 为空则由程序计数 |
 | heatmap | 两个离散维度交叉矩阵（如支付方式×分期、品类×评分区间） | pivot_row_col, pivot_col_col, pivot_value_col |
 | scatter | 两个连续变量关系，可选第三列气泡大小 | x_column, y_column；可选 size_column, hue_column |
@@ -26,6 +26,8 @@
 - **必须使用 CSV 表头中的确切列名**，大小写一致，勿臆造字段。
 - 若数据不适合任何一种高级图表（例如纯 ID 列表），选择 **bar** 或对首个类别列做 **bar**（计数），并在 title 中说明「分布概览」。
 - 时间轴尽量选明显日期/年月字段（如 year_month、order_purchase_timestamp）。
+- **多系列折线**：当 CSV 同时含「时间列 + 分系列别列 + 数值列」（如 year_month + customer_state + gmv_total）时，必须指定 `category_column`（或 `hue_column`）为分系列别列，否则所有点会被连成一条线。
+- 分系列别基数过大（>8）时，程序会自动只展示 Top 8 系列并在图例注明。
 - 热力图要求 pivot_row_col、pivot_col_col 基数不要过大（各自 ≤20 更佳）；过大则改选 bar 或对维度 Top N 截断说明写在 reasoning。
 
 ## 输出格式（极其重要）

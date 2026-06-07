@@ -103,6 +103,67 @@ def _split_compound_query(user_query: str) -> list[str]:
     return unique
 
 
+_GMV_PREDICTIVE_HINTS = ("销售额", "gmv", "销售", "营收", "营业额")
+_FORECAST_QUERY_HINTS = ("预测", "未来", "6周", "六周", "外推")
+
+
+def _is_gmv_sales_predictive(user_query: str, intent: IntentName) -> bool:
+    if intent != "predictive":
+        return False
+    q = user_query.lower()
+    has_fc = any(h in user_query or h in q for h in _FORECAST_QUERY_HINTS)
+    has_gmv = any(h in user_query or h in q for h in _GMV_PREDICTIVE_HINTS)
+    return has_fc and has_gmv
+
+
+def normalize_predictive_sub_questions(
+    user_query: str,
+    intent: IntentName,
+    sub_questions: list[str],
+) -> list[str]:
+    """销售额预测不由 SQL 直接产出未来值；统一改为查历史月度趋势供模型外推。"""
+    if not _is_gmv_sales_predictive(user_query, intent):
+        return sub_questions
+    return [
+        "查询 mv_monthly_sales 历史月度 GMV 与订单量（2016-09 至 2018-10），"
+        "用于未来 6 周销售额预测与趋势解读"
+    ]
+
+
+def finalize_suggested_agents(result: DecomposeResult, user_query: str) -> DecomposeResult:
+    """分解结果与规则对齐：该调度上的 Agent 必须写进 suggested_agents。"""
+    from agents.nlp_agent.run import should_run_nlp
+    from agents.viz_agent.viz_planner import query_suggests_visualization
+
+    agents = list(result.suggested_agents)
+    if "data_analysis" not in agents:
+        agents.insert(0, "data_analysis")
+    if should_run_nlp(user_query, result.intent) and "nlp" not in agents:
+        insert_at = agents.index("data_analysis") + 1 if "data_analysis" in agents else 0
+        agents.insert(insert_at, "nlp")
+    if (
+        query_suggests_visualization(user_query, result.intent)
+        and "visualization" not in agents
+    ):
+        agents.append("visualization")
+    if (
+        result.intent in ("prescriptive", "what_if", "diagnostic", "predictive")
+        and "decision" not in agents
+    ):
+        agents.append("decision")
+    sub_questions = normalize_predictive_sub_questions(
+        user_query, result.intent, list(result.sub_questions)
+    )
+    updates: dict[str, object] = {}
+    if agents != result.suggested_agents:
+        updates["suggested_agents"] = agents
+    if sub_questions != result.sub_questions:
+        updates["sub_questions"] = sub_questions
+    if not updates:
+        return result
+    return result.model_copy(update=updates)
+
+
 def _default_suggested_agents(intent: IntentName, user_query: str) -> list[str]:
     from agents.nlp_agent.run import should_run_nlp
     from agents.viz_agent.viz_planner import query_suggests_visualization
@@ -131,11 +192,14 @@ def decompose_query_rule(user_query: str) -> DecomposeResult:
         f"规则拆分：intent={intent}，共 {len(sub_questions)} 个单问题，"
         f"建议 Agent：{', '.join(suggested)}。"
     )
-    return DecomposeResult(
-        intent=intent,
-        sub_questions=sub_questions,
-        suggested_agents=suggested,
-        reasoning=reasoning,
+    return finalize_suggested_agents(
+        DecomposeResult(
+            intent=intent,
+            sub_questions=sub_questions,
+            suggested_agents=suggested,
+            reasoning=reasoning,
+        ),
+        user_query,
     )
 
 
@@ -151,6 +215,7 @@ def decompose_query_llm(user_query: str, *, model=None) -> DecomposeResult:
         resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
         raw = _extract_json_object(str(resp.content))
         result = DecomposeResult.model_validate_json(raw)
+        result = finalize_suggested_agents(result, user_query)
         if len(result.sub_questions) == 1:
             only = result.sub_questions[0]
             if only.rstrip("？?") == user_query.rstrip("？?"):

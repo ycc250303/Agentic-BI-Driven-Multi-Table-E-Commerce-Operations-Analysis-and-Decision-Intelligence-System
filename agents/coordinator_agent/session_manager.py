@@ -19,6 +19,7 @@ from agents.coordinator_agent.memory import (
     update_memory_summary,
 )
 from agents.coordinator_agent.conversation_resolver import resolve_conversation_context
+from agents.coordinator_agent.session_context import seed_state_from_session
 from agents.coordinator_agent.session_store import LocalSessionStore
 from agents.coordinator_agent.tracing import TraceCollector
 
@@ -213,6 +214,11 @@ class SessionManager:
                 use_llm_viz=opts.use_llm_viz,
                 use_llm_synthesize=opts.use_llm_synthesize,
                 conversation_history=history,
+                seed_state=seed_state_from_session(
+                    session,
+                    resolved_task=resolved_task,
+                    full_state=opts.full_state,
+                ),
                 trace_collector=trace,
             )
             final_answer = str(state.get("final_answer") or "")
@@ -243,6 +249,12 @@ class SessionManager:
             turn["har_path"] = str(Path(har_out))
 
         session.setdefault("turns", []).append(turn)
+        if not needs_clarification:
+            insights = (state.get("review_insights") or state.get("nlp_result")) if state else None
+            if insights:
+                session["review_insights"] = _jsonable(insights)
+            if state.get("intent"):
+                session["last_intent"] = str(state.get("intent"))
         if _should_infer_title_from_first_query(session, turn_id=turn_id) or not session.get("title"):
             session["title"] = _infer_title(query)
         session["memory_summary"] = update_memory_summary(session, model=model)

@@ -200,7 +200,11 @@ class RewriteToQueryRunner:
         )
 
 
-def build_rewrite_to_query_tool(model, max_retries: int = 3):
+def build_rewrite_to_query_tool(model=None, max_retries: int = 3):
+    if model is None:
+        from llm import get_structured_llm
+
+        model = get_structured_llm()
     runner = RewriteToQueryRunner(model=model, max_retries=max_retries)
     return StructuredTool.from_function(
         func=runner.invoke,
@@ -223,9 +227,9 @@ if __name__ == "__main__":
     if str(SQL_AGENT_DIR) not in sys.path:
         sys.path.insert(0, str(SQL_AGENT_DIR))
 
-    from llm import get_llm
+    from llm import get_structured_llm
 
     print("===== 演示：rewrite_to_query_tool =====")
     print(f"输入: {DEMO_QUESTION}\n")
-    tool = build_rewrite_to_query_tool(get_llm())
+    tool = build_rewrite_to_query_tool(get_structured_llm())
     print(tool.invoke({"query": DEMO_QUESTION}))

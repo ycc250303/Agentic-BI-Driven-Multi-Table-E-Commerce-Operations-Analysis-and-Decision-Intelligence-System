@@ -25,6 +25,7 @@ def stream_turn(
     on_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Run one coordinator turn via SessionManager; yield web_events-shaped dicts."""
+    session_store.apply_deepseek_thinking_from_session()
     manager = session_store.get_manager()
     last_result: dict[str, Any] = {}
 

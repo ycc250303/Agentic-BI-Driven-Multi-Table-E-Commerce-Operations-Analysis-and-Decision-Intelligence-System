@@ -20,7 +20,8 @@ from agents.viz_agent.forecast import forecast_weekly_gmv
 from agents.viz_agent.render import render_to_png
 from agents.viz_agent.render_context import RenderExtras
 from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
-from agents.viz_agent.viz_planner import VizChartTask, VizSuitePlan, plan_viz_suite
+from agents.viz_agent.viz_planner import VizChartTask, VizSuitePlan, plan_viz_suite, _is_scalar_kpi_result
+from agents.viz_agent.line_plan import normalize_line_plan
 
 _viz_dir = Path(__file__).resolve().parent
 _project_root = _viz_dir.parents[1]
@@ -76,7 +77,11 @@ def _run_viz_from_exec_payload(
 ) -> dict[str, Any]:
     from agents.viz_agent.run import heuristic_plan, plan_with_llm, run_visualization_agent
 
-    csv_path = pick_viz_csv_from_exec_payload(exec_payload)
+    csv_path = pick_viz_csv_from_exec_payload(
+        exec_payload,
+        sql_result_index=chart_task.sql_result_index,
+        chart_type_hint=chart_task.chart_type_hint,
+    )
     if not csv_path:
         return _viz_output(
             ok=False,
@@ -84,14 +89,30 @@ def _run_viz_from_exec_payload(
             user_query=user_query,
         )
 
-    row = next(
-        (
-            r
-            for r in (exec_payload.get("results") or [])
-            if r.get("ok") and str(r.get("result_csv_path")) == csv_path
-        ),
-        {"result_csv_path": csv_path, "data_summary_zh": exec_payload.get("data_summary_zh")},
-    )
+    results = exec_payload.get("results") or []
+    if chart_task.sql_result_index is not None and results:
+        idx = chart_task.sql_result_index
+        if 0 <= idx < len(results):
+            row = results[idx]
+        else:
+            row = results[0]
+    else:
+        row = next(
+            (
+                r
+                for r in results
+                if r.get("ok") and str(r.get("result_csv_path")) == csv_path
+            ),
+            {"result_csv_path": csv_path, "data_summary_zh": exec_payload.get("data_summary_zh")},
+        )
+    if _is_scalar_kpi_result(
+        {
+            **row,
+            "row_count_returned": row.get("row_count_returned") or 1,
+            "result_csv_path": csv_path,
+        }
+    ):
+        return {"skipped": True, "ok": False, "user_query": user_query}
     exec_json = build_viz_execute_json(exec_payload, row)
 
     hint = chart_task.chart_type_hint
@@ -115,6 +136,7 @@ def _run_viz_from_exec_payload(
             plan = heuristic_plan(df, viz_query)
             plan_raw = plan.model_dump_json()
         plan = _normalize_viz_plan(plan)
+        plan = normalize_line_plan(df, plan)
         return _render_with_plan(
             df=df,
             plan=plan,
@@ -170,6 +192,7 @@ def _render_with_plan(
     chart_task: VizChartTask,
 ) -> dict[str, Any]:
     plan = _normalize_viz_plan(plan)
+    plan = normalize_line_plan(df, plan)
     out_dir = _viz_output_dir()
     png_path = _allocate_png_path(out_dir, plan.chart_type, chart_task)
     extras = _build_render_extras(chart_task, plan)
@@ -211,10 +234,15 @@ def _build_render_extras(chart_task: VizChartTask, plan: VizPlan) -> RenderExtra
             extras.forecast = fc
     if plan.chart_type == "geo_scatter":
         extras.color_column = plan.hue_column or "total_gmv"
-    if plan.chart_type == "bar":
-        extras.value_format = "currency" if any(
-            k in (plan.y_column or "").lower() for k in ("gmv", "sales", "basket", "value")
-        ) else "auto"
+    if plan.chart_type in ("bar", "line"):
+        extras.value_format = (
+            "currency"
+            if any(
+                k in (plan.y_column or "").lower()
+                for k in ("gmv", "sales", "basket", "value", "amount", "total")
+            )
+            else "auto"
+        )
     return extras
 
 
@@ -542,6 +570,8 @@ def run_intelligent_visualization(
             use_llm=use_llm,
             on_tool_end=on_tool_end,
         )
+        if item.get("skipped"):
+            continue
         if item.get("ok"):
             rfp = rendered_chart_fingerprint(item, task)
             if rfp and rfp in rendered_fingerprints:
@@ -552,11 +582,18 @@ def run_intelligent_visualization(
         if on_tool_end:
             on_tool_end(f"visualization_{i}", json.dumps(item, ensure_ascii=False))
         if item.get("forecast_summary") and not forecast_patch:
-            forecast_patch["forecast_result"] = {
-                "summary_text": item["forecast_summary"],
-                "horizon": "6 weeks",
-                "method": "linear_regression_26w",
-            }
+            from agents.viz_agent.forecast import forecast_weekly_gmv, gmv_forecast_result_payload
+
+            fc = forecast_weekly_gmv(horizon_weeks=6)
+            payload = gmv_forecast_result_payload(fc)
+            if payload:
+                forecast_patch["forecast_result"] = payload
+            else:
+                forecast_patch["forecast_result"] = {
+                    "summary_text": item["forecast_summary"],
+                    "horizon": "6 weeks",
+                    "method": "linear_regression_26w",
+                }
 
     result = merge_visualization_results(items)
     result["viz_plan"] = suite.model_dump()

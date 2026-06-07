@@ -22,7 +22,7 @@ from typing import Any
 
 from langchain_core.runnables import RunnableLambda
 
-from llm import get_llm
+from llm import get_structured_llm
 from tools.check_sql import build_check_sql_tool
 from tools.execute_sql import build_execute_sql_tool
 from tools.generate_sql import build_generate_sql_tool
@@ -89,12 +89,12 @@ def _parse_plan_ok(validate_json: str) -> tuple[bool, str]:
 
 
 def _pipeline_tools(model=None) -> tuple[Any, Any, Any, Any, Any, Any]:
-    llm = model or get_llm()
+    structured_llm = model or get_structured_llm()
     return (
-        llm,
-        build_rewrite_to_query_tool(llm, max_retries=TOOL_MODEL_RETRIES),
+        structured_llm,
+        build_rewrite_to_query_tool(structured_llm, max_retries=TOOL_MODEL_RETRIES),
         build_validate_rewrite_plan_tool(),
-        build_generate_sql_tool(llm, max_retries=TOOL_MODEL_RETRIES),
+        build_generate_sql_tool(structured_llm, max_retries=TOOL_MODEL_RETRIES),
         build_check_sql_tool(),
         build_execute_sql_tool(),
     )

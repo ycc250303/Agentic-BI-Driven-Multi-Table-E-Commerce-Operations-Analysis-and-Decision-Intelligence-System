@@ -53,11 +53,19 @@ def _contains_all(text: str, phrases: list[str]) -> bool:
     return all((p or "").replace(" ", "").lower() in compact for p in phrases)
 
 
+def _contains_any(text: str, phrases: list[str]) -> bool:
+    compact = text.replace(" ", "").lower()
+    return any((p or "").replace(" ", "").lower() in compact for p in phrases)
+
+
 def _rule_applies(rule: dict[str, Any], user_query: str, payload: RewriteToQueryOutput) -> bool:
     when = rule.get("when") or {}
     phrases = when.get("user_query_contains_all") or []
+    any_phrases = when.get("user_query_contains_any") or []
     min_sub_questions = int(when.get("min_sub_questions") or 0)
     if phrases and not _contains_all(user_query, [str(p) for p in phrases]):
+        return False
+    if any_phrases and not _contains_any(user_query, [str(p) for p in any_phrases]):
         return False
     if len(payload.sub_questions) < min_sub_questions:
         return False
@@ -102,6 +110,27 @@ def _assert_query_for_sql_not_contains_any(
     return True
 
 
+def _assert_dimension_subquestion_metric_key_any_of(
+    payload: RewriteToQueryOutput,
+    *,
+    dimension_keywords: list[str],
+    any_of: list[str],
+) -> bool:
+    keywords = [str(k) for k in dimension_keywords]
+    allowed = set(any_of)
+    matched_dimension = False
+    for sq in payload.sub_questions:
+        dim_text = " ".join(str(d) for d in (sq.dimensions or []))
+        if not any(k in dim_text for k in keywords):
+            continue
+        matched_dimension = True
+        if sq.metric_key in allowed:
+            return True
+    if not matched_dimension:
+        return True
+    return False
+
+
 def _evaluate_assertion(assertion: dict[str, Any], payload: RewriteToQueryOutput) -> bool:
     assertion_type = str(assertion.get("type") or "").strip()
     if assertion_type == "inherit_or_filter":
@@ -122,6 +151,14 @@ def _evaluate_assertion(assertion: dict[str, Any], payload: RewriteToQueryOutput
         return _assert_query_for_sql_not_contains_any(
             payload=payload,
             phrases=[str(x) for x in (assertion.get("phrases") or [])],
+        )
+    if assertion_type == "dimension_subquestion_metric_key_any_of":
+        return _assert_dimension_subquestion_metric_key_any_of(
+            payload=payload,
+            dimension_keywords=[
+                str(x) for x in (assertion.get("dimension_keywords") or [])
+            ],
+            any_of=[str(x) for x in (assertion.get("any_of") or [])],
         )
     return True
 

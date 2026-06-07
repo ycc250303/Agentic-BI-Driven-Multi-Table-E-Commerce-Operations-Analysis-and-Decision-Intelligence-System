@@ -14,20 +14,51 @@ if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
 
 
+def _render_assistant_turn(
+    *,
+    content: str,
+    resolved_task: str | None = None,
+    trace_events: list[dict[str, Any]] | None = None,
+    decision_summary: str | None = None,
+    warnings: list[str] | None = None,
+) -> None:
+    with st.chat_message("assistant"):
+        if resolved_task:
+            st.caption(f"本轮任务：{resolved_task}")
+        if trace_events:
+            render_trace_timeline(trace_events, live=False)
+        st.markdown(content)
+        if decision_summary:
+            with st.expander("行动建议"):
+                st.markdown(decision_summary)
+        if warnings:
+            for warning in warnings:
+                st.warning(warning)
+
+
 def _render_messages(conversation: Conversation) -> None:
     for msg in conversation.messages:
-        with st.chat_message(msg.role):
-            if msg.role == "assistant" and msg.resolved_task:
-                st.caption(f"本轮任务：{msg.resolved_task}")
-            if msg.role == "assistant" and msg.trace_events:
-                render_trace_timeline(msg.trace_events, live=False)
-            st.markdown(msg.content)
-            if msg.decision_summary:
-                with st.expander("行动建议"):
-                    st.markdown(msg.decision_summary)
-            if msg.warnings:
-                for warning in msg.warnings:
-                    st.warning(warning)
+        if msg.role == "assistant":
+            _render_assistant_turn(
+                content=msg.content,
+                resolved_task=msg.resolved_task,
+                trace_events=msg.trace_events,
+                decision_summary=msg.decision_summary,
+                warnings=msg.warnings,
+            )
+        else:
+            with st.chat_message(msg.role):
+                st.markdown(msg.content)
+
+    preview = session_store.get_turn_preview(conversation.id)
+    if preview and not session_store.turn_preview_already_in_conversation(
+        conversation, preview
+    ):
+        _render_assistant_turn(
+            content=str(preview.get("final_answer") or ""),
+            resolved_task=str(preview.get("resolved_task") or "") or None,
+            trace_events=list(preview.get("trace_events") or []),
+        )
 
 
 def _run_turn(
@@ -41,15 +72,17 @@ def _run_turn(
     traces: list[dict[str, Any]] = []
     session_store.set_live_viz(conversation.id, None)
     user_query = query
+    resolved_task = query
     error_message: str | None = None
 
     def on_event(event: dict[str, Any]) -> None:
-        nonlocal user_query, error_message
+        nonlocal user_query, resolved_task, error_message
         event_type = str(event.get("type") or "")
 
         if event_type == "turn.started":
             data = event.get("data") or {}
             user_query = str(data.get("user_query") or query)
+            resolved_task = str(data.get("resolved_task") or user_query)
         elif event_type == "trace.event":
             trace = dict((event.get("data") or {}).get("trace") or {})
             if trace:
@@ -58,11 +91,30 @@ def _run_turn(
                     render_trace_timeline(traces, live=True)
         elif event_type == "answer.final":
             data = event.get("data") or {}
+            final_answer = str(data.get("final_answer") or "").strip()
             session_store.sync_live_viz_from_charts(
                 conversation.id,
                 user_query,
                 list(data.get("charts") or []),
             )
+            if final_answer:
+                session_store.set_turn_preview(
+                    conversation.id,
+                    user_query=user_query,
+                    final_answer=final_answer,
+                    resolved_task=resolved_task,
+                    trace_events=traces,
+                )
+            with progress_slot.container():
+                render_trace_timeline(traces, live=False)
+                if final_answer:
+                    st.divider()
+                    _render_assistant_turn(
+                        content=final_answer,
+                        resolved_task=resolved_task or None,
+                    )
+                else:
+                    st.warning("分析已结束，但正式回答为空；请稍后刷新或重试。")
             if viz_placeholder is not None and render_viz is not None:
                 with viz_placeholder.container():
                     render_viz()
@@ -117,6 +169,13 @@ def handle_chat_panel(
         )
         session_store.clear_pending_query(conversation.id)
         session_store.set_live_viz(conversation.id, None)
+        refreshed = session_store.get_active_conversation()
+        if refreshed and session_store.get_turn_preview(conversation.id):
+            if session_store.turn_preview_already_in_conversation(
+                refreshed,
+                session_store.get_turn_preview(conversation.id) or {},
+            ):
+                session_store.clear_turn_preview(conversation.id)
         st.rerun()
         return
 
