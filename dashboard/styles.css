@@ -12,7 +12,7 @@ section.main > div.block-container {
     box-sizing: border-box;
 }
 
-div[data-testid="column"] {
+div[data-testid="stColumn"] {
     min-width: 0;
     overflow-x: hidden;
 }
@@ -58,14 +58,14 @@ section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button {
 /* 会话标题列 */
 section[data-testid="stSidebar"]
     [data-testid="stHorizontalBlock"]
-    [data-testid="column"]:first-child {
+    [data-testid="stColumn"]:first-child {
     min-width: 0 !important;
     overflow: hidden !important;
 }
 
 section[data-testid="stSidebar"]
     [data-testid="stHorizontalBlock"]
-    [data-testid="column"]:first-child
+    [data-testid="stColumn"]:first-child
     [data-testid="stButton"] {
     margin-bottom: 0;
     max-width: 100%;
@@ -74,8 +74,8 @@ section[data-testid="stSidebar"]
 
 section[data-testid="stSidebar"]
     [data-testid="stHorizontalBlock"]
-    [data-testid="column"]:first-child
-    button {
+    [data-testid="stColumn"]:first-child
+    button[data-testid^="stBaseButton"] {
     display: flex !important;
     align-items: center !important;
     min-height: 2rem !important;
@@ -89,30 +89,68 @@ section[data-testid="stSidebar"]
     overflow: hidden !important;
     white-space: nowrap !important;
     flex-wrap: nowrap !important;
+    min-width: 0 !important;
 }
 
 section[data-testid="stSidebar"]
     [data-testid="stHorizontalBlock"]
-    [data-testid="column"]:first-child
-    button
-    * {
+    [data-testid="stColumn"]:first-child
+    button[data-testid^="stBaseButton"]
+    > div,
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="stColumn"]:first-child
+    button[data-testid^="stBaseButton"]
+    > div
+    > span {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    flex: 1 1 auto !important;
+}
+
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="stColumn"]:first-child
+    button[data-testid^="stBaseButton"]
+    [data-testid="stMarkdownContainer"] {
     overflow: hidden !important;
     white-space: nowrap !important;
     text-overflow: ellipsis !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
     min-width: 0 !important;
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
+}
+
+section[data-testid="stSidebar"]
+    [data-testid="stHorizontalBlock"]
+    [data-testid="stColumn"]:first-child
+    button[data-testid^="stBaseButton"]
+    [data-testid="stMarkdownContainer"]
+    p {
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
     margin: 0 !important;
 }
 
 section[data-testid="stSidebar"]
     [data-testid="stHorizontalBlock"]
-    [data-testid="column"]:first-child
+    [data-testid="stColumn"]:first-child
     button:hover {
     background: rgba(128, 128, 128, 0.12) !important;
 }
 
 section[data-testid="stSidebar"]
     [data-testid="stHorizontalBlock"]
-    [data-testid="column"]:first-child
+    [data-testid="stColumn"]:first-child
     button:active {
     background: rgba(128, 128, 128, 0.2) !important;
 }
@@ -120,7 +158,7 @@ section[data-testid="stSidebar"]
 /* 删除按钮列 */
 section[data-testid="stSidebar"]
     [data-testid="stHorizontalBlock"]
-    [data-testid="column"]:last-child {
+    [data-testid="stColumn"]:last-child {
     flex: 0 0 auto !important;
     width: auto !important;
     min-width: 2rem;
@@ -128,7 +166,7 @@ section[data-testid="stSidebar"]
 
 section[data-testid="stSidebar"]
     [data-testid="stHorizontalBlock"]
-    [data-testid="column"]:last-child
+    [data-testid="stColumn"]:last-child
     button {
     min-height: 1.75rem !important;
     height: 1.75rem !important;
@@ -141,14 +179,14 @@ section[data-testid="stSidebar"]
 
 section[data-testid="stSidebar"]
     [data-testid="stHorizontalBlock"]
-    [data-testid="column"]:last-child
+    [data-testid="stColumn"]:last-child
     button:hover {
     background: rgba(255, 75, 75, 0.14) !important;
 }
 
 section[data-testid="stSidebar"]
     [data-testid="stHorizontalBlock"]
-    [data-testid="column"]:last-child
+    [data-testid="stColumn"]:last-child
     button:active {
     background: rgba(255, 75, 75, 0.22) !important;
 }
