@@ -17,8 +17,16 @@ error_message 非空，则将错误摘要写入上下文并重新调用 generate
 from __future__ import annotations
 
 import json
+import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
+
+_sql_agent_dir = Path(__file__).resolve().parent
+_project_root = _sql_agent_dir.parents[1]
+for p in (_project_root, _sql_agent_dir):
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
 
 from langchain_core.runnables import RunnableLambda
 
