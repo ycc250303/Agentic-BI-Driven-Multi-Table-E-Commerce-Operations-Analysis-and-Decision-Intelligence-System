@@ -16,3 +16,6 @@ CLAUDE.md
 .idea/
 /agents/viz_agent/chart_output/
 /agents/sql_agent/test/eval_outputs
+/report
+/.cursor
+/docs/diagrams

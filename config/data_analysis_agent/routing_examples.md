@@ -21,6 +21,7 @@
 ## 3) Few-shot 示例
 
 ### 示例 A：命中单视图
+
 用户问题：`2017 年每个月 GMV 是多少？`
 
 应优先使用：`mv_monthly_sales`
@@ -35,21 +36,25 @@ ORDER BY year_month;
 ```
 
 ### 示例 B：命中多视图
+
 用户问题：`2017年哪个州销售额最高？交付准时率是多少？哪种支付方式最受欢迎？`
 
 策略：拆分为 3 条 SQL，分别命中 `mv_state_sales`、`mv_delivery_perf`、`mv_payment_dist`，最终在应用层合并摘要。
 
-### 示例 D：全平台准时率 + 各州延迟最严重
-用户问题：`平台整体准时交付率是多少？哪些州延迟最严重？`
-
-策略：
-- 子查询 1：回退 `orders` 计算**订单级**全平台 `on_time_rate`（禁止对 `mv_delivery_perf.on_time_rate` 无权重聚合）。
-- 子查询 2：回退 `orders`+`customers`，按 `customer_state` 输出 `delay_rate`、`delayed_orders`、`delay_share`，**按 delay_rate 降序**取 Top 10（禁止仅用 `SUM(mv_delivery_perf.delayed_orders)` 代表「最严重」）。
-
 ### 示例 C：回退原始表
+
 用户问题：`产品重量、体积与运费之间有什么关系？`
 
 原因：预聚合视图不含 `product_weight_g / product_length_cm / product_height_cm / product_width_cm` 等明细字段，需回退 `orders + order_items + products` 做明细抽取与聚合。
+
+### 示例 D：全平台准时率 + 各州延迟最严重
+
+用户问题：`平台整体准时交付率是多少？哪些州延迟最严重？`
+
+策略：
+
+- 子查询 1：回退 `orders` 计算**订单级**全平台 `on_time_rate`（禁止对 `mv_delivery_perf.on_time_rate` 无权重聚合）。
+- 子查询 2：回退 `orders`+`customers`，按 `customer_state` 输出 `delay_rate`、`delayed_orders`、`delay_share`，**按 delay_rate 降序**取 Top 10（禁止仅用 `SUM(mv_delivery_perf.delayed_orders)` 代表「最严重」）。
 
 ## 4) 视图优先原则（再次强调）
 
