@@ -1,11 +1,10 @@
 # =============================================================================
-# Agentic BI 项目核心依赖（所有 Agent 都需要）
+# Agentic BI 项目依赖
 # 安装：pip install -r requirements.txt
-# 体积：约 200MB
 #
-# 仅当需要重新训练 NLP 模型（情感模型 / BERTopic 离线灌库）时，再加装：
-#   pip install -r requirements-nlp.txt
-# 注意：在线读 review_sentiment / review_topics 表无需 NLP 重型依赖
+# 核心依赖约 200MB；含 NLP 重型模型（PyTorch / transformers）约 1GB+。
+# 在线读 review_sentiment / review_topics 表无需本地加载模型；
+# 仅离线灌库或重新训练情感 / BERTopic 模型时才用到下方 NLP 段。
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -43,3 +42,15 @@ pytest
 # Web 界面：dashboard/
 # -----------------------------------------------------------------------------
 streamlit>=1.41.0
+
+# -----------------------------------------------------------------------------
+# NLP Agent 重型模型（离线灌库 / 重新训练；约 1GB，含 PyTorch + transformers）
+# 触发脚本示例：
+#   python -m agents.nlp_agent.tools.sentiment   --backfill
+#   python -m agents.nlp_agent.tools.topic_model --backfill
+# 库中已有 review_sentiment / review_topics / review_topic_meta 时可跳过安装本段
+# -----------------------------------------------------------------------------
+pysentimiento
+bertopic
+sentence-transformers
+hdbscan
