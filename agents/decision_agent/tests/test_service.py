@@ -33,6 +33,11 @@ class DummyModel:
         )
 
 
+class EmptyResponseModel:
+    def with_structured_output(self, schema):
+        return DummyStructuredResponse(None)
+
+
 def test_run_decision_returns_structured_result():
     state = load_case("high_delivery_risk.json")
     inputs = DecisionInputs(
@@ -48,6 +53,53 @@ def test_run_decision_returns_structured_result():
     assert result.narrative_answer
     assert result.action_plan
     assert result.what_if_result.scenario_type == "improve_delivery_days"
+
+
+def test_run_decision_falls_back_when_narrative_llm_fails():
+    state = load_case("high_delivery_risk.json")
+    inputs = DecisionInputs(
+        user_query=state["user_query"],
+        intent=state.get("intent") or "prescriptive",
+        analysis_result=state["analysis_result"],
+        nlp_result=state.get("nlp_result") or {},
+        forecast_result=state.get("forecast_result") or {},
+        visualization_result=state.get("visualization_result") or {},
+        conversation_history=state.get("conversation_history") or [],
+    )
+
+    result = run_decision(inputs, model=EmptyResponseModel())
+
+    assert result.narrative_answer
+    assert result.action_plan
+    assert "规则层确定性摘要生成" in " ".join(result.assumptions)
+    assert any("叙述层生成失败" in issue for issue in result.quality_report["issues"])
+
+
+def test_run_decision_selects_category_quality_what_if():
+    state = load_case("category_risk.json")
+    state["analysis_result"]["simulation_inputs"] = {
+        "category_quality_impact": {
+            "category": "bed_bath_table",
+            "baseline_negative_rate": 0.31,
+            "improved_negative_rate": 0.24,
+            "baseline_bad_review_count": 240,
+            "improved_bad_review_count": 176,
+        }
+    }
+    inputs = DecisionInputs(
+        user_query=state["user_query"],
+        intent=state.get("intent") or "prescriptive",
+        analysis_result=state["analysis_result"],
+        nlp_result=state.get("nlp_result") or {},
+        forecast_result=state.get("forecast_result") or {},
+        visualization_result=state.get("visualization_result") or {},
+        conversation_history=state.get("conversation_history") or [],
+    )
+
+    result = run_decision(inputs, model=DummyModel())
+
+    assert result.what_if_result.scenario_type == "improve_category_quality"
+    assert result.what_if_result.status == "run"
 
 
 def test_answer_decision_returns_string():

@@ -69,14 +69,6 @@ python -m agents.coordinator_agent.run_session --new --query "..." --har-out run
 python -m agents.coordinator_agent.run_session --new --query "..." --sse  # 实时 SSE 事件流
 ```
 
-网页调用示例：
-
-```bash
-python examples/session_web_demo/server.py --host 127.0.0.1 --port 8010
-```
-
-打开 `http://127.0.0.1:8010/`，示例代码见 [`examples/session_web_demo/`](examples/session_web_demo/)。
-
 ## Streamlit Dashboard（多轮会话）
 
 Dashboard 与协调器共用 `SessionManager` 与 `runtime/sessions/` 持久化，支持多轮追问、语义任务解析与 trace 进度展示。目录结构见 [`dashboard/README.md`](dashboard/README.md)。

@@ -51,6 +51,30 @@ def test_what_if_remove_bad_sellers():
     assert result.simulated_metrics["avg_review_score"] > result.baseline_metrics["avg_review_score"]
 
 
+def test_what_if_improve_category_quality():
+    state = load_case("category_risk.json")
+    state["analysis_result"]["simulation_inputs"] = {
+        "category_quality_impact": {
+            "category": "bed_bath_table",
+            "baseline_negative_rate": 0.31,
+            "improved_negative_rate": 0.24,
+            "baseline_bad_review_count": 240,
+            "improved_bad_review_count": 176,
+            "baseline_gmv": 760000,
+            "projected_gmv": 778000,
+        }
+    }
+    result = run_what_if(
+        "improve_category_quality",
+        {"target_negative_rate_drop": 0.05},
+        state,
+    )
+    assert result.scenario_type == "improve_category_quality"
+    assert result.status == "run"
+    assert result.simulated_metrics["negative_rate"] < result.baseline_metrics["negative_rate"]
+    assert result.delta_metrics["gmv"] > 0
+
+
 def test_what_if_missing_inputs_does_not_fake_simulation():
     result = run_what_if(
         "improve_delivery_days",

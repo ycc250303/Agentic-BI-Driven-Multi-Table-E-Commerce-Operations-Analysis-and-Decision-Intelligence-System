@@ -13,7 +13,7 @@ from .adapters import (
     normalize_visualization_result,
     normalize_what_if_result,
 )
-from .llm import get_llm, get_structured_llm
+from .llm import get_structured_llm
 from .prompt_builder import build_human_prompt, build_system_prompt
 from .quality import evaluate_decision_quality, quality_report_to_dict
 from .schemas import DecisionInputs, DecisionResult, RootCauseItem, ScoredProblem, WhatIfResult
@@ -40,6 +40,10 @@ WHAT_IF_SCENARIOS: dict[str, dict[str, Any]] = {
     "improve_delivery_days": {
         "problem_type": "delivery",
         "default_parameters": {"improvement_days": 1.0},
+    },
+    "improve_category_quality": {
+        "problem_type": "category",
+        "default_parameters": {"target_negative_rate_drop": 0.05},
     },
 }
 
@@ -91,6 +95,8 @@ def choose_what_if(
             return "remove_top_bad_sellers", {"top_n": 20}
         if "配送" in query or "物流" in query:
             return "improve_delivery_days", {"improvement_days": 1.0}
+        if "品类" in query or "商品" in query or "sku" in query:
+            return "improve_category_quality", {"target_negative_rate_drop": 0.05}
 
     if not problems:
         return "", {}
@@ -124,6 +130,60 @@ def _select_what_if_result(
     return run_what_if(scenario_type, parameters, state_like)
 
 
+def _structured_narrative_model(model):
+    if model is not None:
+        return model.with_structured_output(NarrativeResponse)
+    return get_structured_llm().with_structured_output(NarrativeResponse)
+
+
+def _coerce_narrative_response(response: Any) -> NarrativeResponse:
+    if isinstance(response, NarrativeResponse):
+        return response
+    if isinstance(response, dict):
+        return NarrativeResponse.model_validate(response)
+    return NarrativeResponse.model_validate(response)
+
+
+def _fallback_narrative(decision_result: DecisionResult) -> NarrativeResponse:
+    evidence = []
+    for finding in decision_result.key_findings[:2]:
+        for item in finding.get("evidence") or []:
+            if item:
+                evidence.append(str(item))
+            if len(evidence) >= 2:
+                break
+        if len(evidence) >= 2:
+            break
+    action = (
+        decision_result.action_plan[0].action
+        if decision_result.action_plan
+        else "继续监控核心经营指标。"
+    )
+    evidence_text = "；".join(evidence) if evidence else "当前输入未提供足够的直接指标。"
+    narrative = (
+        f"当前优先问题是：{decision_result.problem_statement} "
+        f"主要依据包括：{evidence_text} 建议优先执行：{action}"
+    )
+    return NarrativeResponse(
+        narrative_answer=narrative,
+        risks=decision_result.risks,
+        assumptions=[
+            *decision_result.assumptions,
+            "叙述层 LLM 未成功返回结构化结果，本回答由规则层确定性摘要生成。",
+        ],
+    )
+
+
+def _append_quality_issues(report, issues: list[str]) -> None:
+    if not issues:
+        return
+    for issue in issues:
+        if issue not in report.issues:
+            report.issues.append(issue)
+    report.needs_revision = True
+    report.score = max(0.0, round(report.score - 0.2 * len(issues), 2))
+
+
 def compose_final_answer(
     *,
     model,
@@ -131,7 +191,7 @@ def compose_final_answer(
     problems,
     decision_result: DecisionResult,
 ) -> NarrativeResponse:
-    structured_model = get_structured_llm().with_structured_output(NarrativeResponse)
+    structured_model = _structured_narrative_model(model)
     messages = [
         SystemMessage(content=build_system_prompt()),
         HumanMessage(
@@ -143,11 +203,7 @@ def compose_final_answer(
         ),
     ]
     response = structured_model.invoke(messages)
-    if isinstance(response, NarrativeResponse):
-        return response
-    if isinstance(response, dict):
-        return NarrativeResponse.model_validate(response)
-    return NarrativeResponse.model_validate(response)
+    return _coerce_narrative_response(response)
 
 
 def revise_final_answer(
@@ -158,7 +214,7 @@ def revise_final_answer(
     decision_result: DecisionResult,
     issues: list[str],
 ) -> NarrativeResponse:
-    structured_model = get_structured_llm().with_structured_output(NarrativeResponse)
+    structured_model = _structured_narrative_model(model)
     messages = [
         SystemMessage(content=build_system_prompt()),
         HumanMessage(
@@ -178,16 +234,11 @@ def revise_final_answer(
         ),
     ]
     response = structured_model.invoke(messages)
-    if isinstance(response, NarrativeResponse):
-        return response
-    if isinstance(response, dict):
-        return NarrativeResponse.model_validate(response)
-    return NarrativeResponse.model_validate(response)
+    return _coerce_narrative_response(response)
 
 
 def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
     inputs = _normalize_inputs(inputs)
-    llm = model or get_llm()
     state_like = inputs.model_dump(mode="python")
 
     bundle = build_evidence_bundle(state_like)
@@ -230,12 +281,17 @@ def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
         ],
     )
 
-    narrative = compose_final_answer(
-        model=llm,
-        bundle=bundle,
-        problems=problems,
-        decision_result=decision_result,
-    )
+    narrative_issues: list[str] = []
+    try:
+        narrative = compose_final_answer(
+            model=model,
+            bundle=bundle,
+            problems=problems,
+            decision_result=decision_result,
+        )
+    except Exception as exc:
+        narrative_issues.append(f"叙述层生成失败，已使用规则层摘要兜底：{exc}")
+        narrative = _fallback_narrative(decision_result)
     decision_result.narrative_answer = narrative.narrative_answer
     if narrative.risks:
         decision_result.risks = narrative.risks
@@ -243,6 +299,7 @@ def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
         decision_result.assumptions = narrative.assumptions
 
     report = evaluate_decision_quality(bundle=bundle, decision_result=decision_result)
+    _append_quality_issues(report, narrative_issues)
     max_revisions = int(os.getenv("DECISION_AGENT_MAX_REVISIONS", "1") or "0")
     review_mode = os.getenv("DECISION_AGENT_REVIEW_MODE", "deterministic").lower()
     if (
@@ -252,7 +309,7 @@ def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
     ):
         try:
             revised = revise_final_answer(
-                model=llm,
+                model=model,
                 bundle=bundle,
                 problems=problems,
                 decision_result=decision_result,
@@ -268,6 +325,7 @@ def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
                 bundle=bundle,
                 decision_result=decision_result,
             )
+            _append_quality_issues(report, narrative_issues)
         except Exception as exc:  # pragma: no cover - defensive LLM fallback
             report.issues.append(f"质量修订失败，保留第一版回答：{exc}")
     decision_result.quality_report = quality_report_to_dict(report)

@@ -150,6 +150,76 @@ def run_what_if(
             limitations=["启发式估计，只反映当前输入快照下的方向性影响。"],
         )
 
+    if scenario_type == "improve_category_quality":
+        category_metrics = simulation_inputs.get("category_quality_impact") or {}
+        required = [
+            "category",
+            "baseline_negative_rate",
+            "improved_negative_rate",
+            "baseline_bad_review_count",
+            "improved_bad_review_count",
+        ]
+        missing = _missing_inputs(
+            group_name="category_quality_impact",
+            metrics=category_metrics,
+            keys=required,
+        )
+        if missing:
+            return _missing_result(scenario_type, parameters, missing)
+        category = str(category_metrics.get("category"))
+        baseline_negative = float(category_metrics.get("baseline_negative_rate", 0.0))
+        improved_negative = float(
+            category_metrics.get("improved_negative_rate", baseline_negative)
+        )
+        baseline_bad_reviews = float(
+            category_metrics.get("baseline_bad_review_count", 0.0)
+        )
+        improved_bad_reviews = float(
+            category_metrics.get("improved_bad_review_count", baseline_bad_reviews)
+        )
+        baseline_gmv = category_metrics.get("baseline_gmv")
+        projected_gmv = category_metrics.get("projected_gmv")
+        baseline_metrics = {
+            "category": category,
+            "negative_rate": baseline_negative,
+            "bad_review_count": baseline_bad_reviews,
+        }
+        simulated_metrics = {
+            "category": category,
+            "negative_rate": improved_negative,
+            "bad_review_count": improved_bad_reviews,
+        }
+        delta_metrics = {
+            "negative_rate": _round_delta(improved_negative - baseline_negative),
+            "bad_review_count": _round_delta(improved_bad_reviews - baseline_bad_reviews),
+        }
+        if baseline_gmv not in (None, "") and projected_gmv not in (None, ""):
+            baseline_gmv_f = float(baseline_gmv)
+            projected_gmv_f = float(projected_gmv)
+            baseline_metrics["gmv"] = baseline_gmv_f
+            simulated_metrics["gmv"] = projected_gmv_f
+            delta_metrics["gmv"] = _round_delta(projected_gmv_f - baseline_gmv_f)
+        return WhatIfResult(
+            scenario_type=scenario_type,
+            status="run",
+            parameters={
+                "target_negative_rate_drop": float(
+                    parameters.get("target_negative_rate_drop", 0.05)
+                )
+            },
+            baseline_metrics=baseline_metrics,
+            simulated_metrics=simulated_metrics,
+            delta_metrics=delta_metrics,
+            summary_text=(
+                f"若对 {category} 品类执行质检、差评 SKU 审核和详情页修正，"
+                f"负面率预计由 {baseline_negative:.2%} 降至 {improved_negative:.2%}，"
+                f"差评数变化 {improved_bad_reviews - baseline_bad_reviews:+.0f}。"
+            ),
+            limitations=[
+                "静态品类治理估计，未模拟需求迁移、库存变化或卖家退出后的替代供给。",
+            ],
+        )
+
     return WhatIfResult(
         scenario_type=scenario_type,
         status="not_applicable",
