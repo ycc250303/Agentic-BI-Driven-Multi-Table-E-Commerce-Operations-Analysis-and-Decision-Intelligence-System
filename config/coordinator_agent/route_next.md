@@ -19,6 +19,7 @@
 ## 原则（极其重要）
 
 - **禁止过早 synthesize**：若 `pending_post_sql_agents` 非空（如 `[nlp, visualization, decision]`），**不得**选择 synthesize
+- 如果 Decision Agent 的 What-if 结果为 `missing_inputs` / `directional_only`，或 SQL 结果为空/失败，且状态尚未超过补充规划次数，不得直接 synthesize；应先补充或复核 data_analysis。
 - 差评/原因/诊断类问题：典型顺序为 `data_analysis → nlp → visualization → decision → synthesize`
 - 纯描述性单指标（如「GMV 是多少」）：SQL 完成后可直接 synthesize
 - 同一 Agent 已完成时不要重复调用

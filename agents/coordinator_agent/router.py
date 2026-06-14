@@ -9,6 +9,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from agents.coordinator_agent.replanner import MAX_REPLAN_COUNT, inspect_agent_outputs
+
 AgentRoute = Literal["data_analysis", "visualization", "nlp", "decision", "synthesize"]
 
 MAX_ORCHESTRATOR_ITERATIONS = 20
@@ -122,6 +124,19 @@ def _should_decision(state: dict) -> bool:
 
 def _enforce_suggested_pipeline(decision: RouteDecision, state: dict) -> RouteDecision:
     """LLM 若过早 synthesize，或 visualization 抢在 nlp 前，用规则纠正。"""
+    status, reason = inspect_agent_outputs(state)
+    has_replan_questions = bool(state.get("replan_reason") and state.get("sub_questions"))
+    if (
+        decision.next_agent == "synthesize"
+        and status != "sufficient"
+        and int(state.get("replan_count") or 0) < MAX_REPLAN_COUNT
+        and has_replan_questions
+    ):
+        return RouteDecision(
+            next_agent="data_analysis",
+            reasoning=f"{reason} 需要先补充或复核数据分析。",
+        )
+
     if _pending_sql_count(state) > 0:
         if decision.next_agent != "data_analysis":
             return RouteDecision(
@@ -159,6 +174,18 @@ def _enforce_suggested_pipeline(decision: RouteDecision, state: dict) -> RouteDe
 
 
 def route_next_rule(state: dict) -> RouteDecision:
+    status, reason = inspect_agent_outputs(state)
+    has_replan_questions = bool(state.get("replan_reason") and state.get("sub_questions"))
+    if (
+        status != "sufficient"
+        and int(state.get("replan_count") or 0) < MAX_REPLAN_COUNT
+        and has_replan_questions
+    ):
+        return RouteDecision(
+            next_agent="data_analysis",
+            reasoning=f"{reason} 需要先补充或复核数据分析。",
+        )
+
     pending = _pending_sql_count(state)
     if pending > 0:
         return RouteDecision(

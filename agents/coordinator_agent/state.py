@@ -37,6 +37,9 @@ class AgentState(TypedDict, total=False):
     execution_log: list[dict[str, Any]]
     orchestrator_iterations: int
     next_agent: AgentName
+    replan_count: int
+    evidence_status: str
+    replan_reason: str
 
     final_answer: str
     warnings: list[str]

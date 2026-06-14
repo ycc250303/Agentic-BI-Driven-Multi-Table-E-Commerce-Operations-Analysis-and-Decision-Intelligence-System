@@ -14,6 +14,9 @@ class DecomposeResult(BaseModel):
     intent: IntentName = "descriptive"
     sub_questions: list[str] = Field(default_factory=list)
     suggested_agents: list[str] = Field(default_factory=list)
+    requires_data_analysis: bool = False
+    data_requirements: list[str] = Field(default_factory=list)
+    can_decide_without_data: bool = True
     reasoning: str = ""
     off_topic: bool = False
 
@@ -140,7 +143,7 @@ def finalize_suggested_agents(result: DecomposeResult, user_query: str) -> Decom
     from agents.viz_agent.viz_planner import query_suggests_visualization
 
     agents = list(result.suggested_agents)
-    if result.intent == "what_if":
+    if result.intent == "what_if" and not result.requires_data_analysis and not result.sub_questions:
         if "decision" not in agents:
             agents.append("decision")
         updates: dict[str, object] = {}
@@ -148,7 +151,19 @@ def finalize_suggested_agents(result: DecomposeResult, user_query: str) -> Decom
             updates["suggested_agents"] = agents
         return result.model_copy(update=updates) if updates else result
 
-    if "data_analysis" not in agents:
+    if result.intent == "what_if":
+        if "data_analysis" not in agents:
+            agents.insert(0, "data_analysis")
+        if "decision" not in agents:
+            agents.append("decision")
+        updates: dict[str, object] = {}
+        if agents != result.suggested_agents:
+            updates["suggested_agents"] = agents
+        return result.model_copy(update=updates) if updates else result
+
+    if (
+        result.requires_data_analysis or result.sub_questions or result.intent != "what_if"
+    ) and "data_analysis" not in agents:
         agents.insert(0, "data_analysis")
     if should_run_nlp(user_query, result.intent) and "nlp" not in agents:
         insert_at = agents.index("data_analysis") + 1 if "data_analysis" in agents else 0
@@ -259,12 +274,18 @@ def decompose_to_state_patch(user_query: str, result: DecomposeResult) -> dict:
         "intent": result.intent,
         "sub_questions": result.sub_questions,
         "suggested_agents": result.suggested_agents,
+        "requires_data_analysis": result.requires_data_analysis,
+        "data_requirements": result.data_requirements,
+        "can_decide_without_data": result.can_decide_without_data,
         "plan_reasoning": result.reasoning,
         "task_plan": task_plan,
         "sql_runs": [],
         "agents_done": {},
         "execution_log": [],
         "orchestrator_iterations": 0,
+        "replan_count": 0,
+        "evidence_status": "sufficient",
+        "replan_reason": "",
     }
 
 

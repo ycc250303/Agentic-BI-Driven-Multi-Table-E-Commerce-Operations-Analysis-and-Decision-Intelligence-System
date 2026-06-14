@@ -12,6 +12,7 @@
 1. 判断整体 **intent**（descriptive / diagnostic / predictive / prescriptive / what_if）
 2. 将用户输入拆成 **sub_questions**：每个元素必须是**完整、自洽、可单独查数**的一句中文问法
 3. 给出 **suggested_agents**：建议可能用到的子 Agent 名称（仅供参考，实际调度由路由模块决定）
+4. 判断是否需要先查数据基线：输出 `requires_data_analysis`、`data_requirements`、`can_decide_without_data`
 
 **诊断/差评/原因类问题**（如 Top 差评品类、主要差评原因）应建议完整链路：
 `["data_analysis", "nlp", "visualization", "decision"]`
@@ -22,6 +23,7 @@
 `["decision"]`，且 `sub_questions` 可为空数组。
 
 **需要查当前数据作为基线的 What-if**（如「如果下架当前差评率最高的卖家会怎样？」）仍应先建议 `data_analysis`，再建议 `decision`。
+这类问题必须设置 `requires_data_analysis=true`，把需要查询的基线、对照组或核心指标写入 `data_requirements`，并生成可执行的 `sub_questions`。
 
 可用子 Agent 名称：`data_analysis`、`visualization`、`nlp`、`decision`
 
@@ -43,6 +45,9 @@
   "intent": "descriptive",
   "sub_questions": ["2017年哪个州的销售额最高？"],
   "suggested_agents": ["data_analysis", "visualization"],
+  "requires_data_analysis": true,
+  "data_requirements": ["2017年各州GMV排名"],
+  "can_decide_without_data": false,
   "reasoning": "一句话说明拆分理由",
   "off_topic": false
 }

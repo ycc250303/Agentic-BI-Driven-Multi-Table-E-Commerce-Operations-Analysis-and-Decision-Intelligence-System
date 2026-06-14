@@ -66,6 +66,9 @@ def test_llm_decompose_self_contained_what_if_routes_directly_to_decision():
               "intent": "what_if",
               "sub_questions": [],
               "suggested_agents": ["decision"],
+              "requires_data_analysis": false,
+              "data_requirements": [],
+              "can_decide_without_data": true,
               "reasoning": "LLM 判断为自带假设的 What-if。",
               "off_topic": false
             }
@@ -86,6 +89,9 @@ def test_llm_decompose_data_dependent_what_if_keeps_analysis_route():
               "intent": "what_if",
               "sub_questions": ["查询当前差评率最高的卖家及其基线指标？"],
               "suggested_agents": ["data_analysis", "decision"],
+              "requires_data_analysis": true,
+              "data_requirements": ["当前差评率最高卖家的基线指标"],
+              "can_decide_without_data": false,
               "reasoning": "LLM 判断需要先查当前基线。",
               "off_topic": false
             }
@@ -95,6 +101,8 @@ def test_llm_decompose_data_dependent_what_if_keeps_analysis_route():
     assert result.intent == "what_if"
     assert result.sub_questions == ["查询当前差评率最高的卖家及其基线指标？"]
     assert result.suggested_agents == ["data_analysis", "decision"]
+    assert result.requires_data_analysis
+    assert not result.can_decide_without_data
 
 
 def test_finalize_preserves_llm_data_dependent_what_if_route():

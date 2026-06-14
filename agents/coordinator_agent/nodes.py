@@ -13,6 +13,7 @@ from agents.coordinator_agent.adapters import (
 )
 from agents.coordinator_agent.decomposer import decompose_query, decompose_to_state_patch
 from agents.coordinator_agent.guardrails import is_off_topic_query, off_topic_state_patch
+from agents.coordinator_agent.replanner import apply_replan_decision, plan_recovery_queries
 from agents.coordinator_agent.router import choose_next_agent
 from agents.coordinator_agent.state import AgentState
 from agents.coordinator_agent.synthesizer import synthesize_final_answer
@@ -167,6 +168,19 @@ def orchestrator_node(
                 },
             ),
         }
+    replan = plan_recovery_queries(state, model=model)
+    if replan.should_replan:
+        state = {**state, **apply_replan_decision(state, replan)}
+        _emit_trace(
+            trace_collector,
+            agent="coordinator_agent",
+            step="replan",
+            kind="planning",
+            title="触发补充数据规划",
+            summary=replan.reason,
+            payload=replan.model_dump(mode="json"),
+        )
+
     iterations = int(state.get("orchestrator_iterations") or 0) + 1
     decision = choose_next_agent(
         {**state, "orchestrator_iterations": iterations},
