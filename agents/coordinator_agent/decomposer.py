@@ -24,7 +24,11 @@ class DecomposeResult(BaseModel):
 
     @model_validator(mode="after")
     def _require_questions_unless_off_topic(self) -> DecomposeResult:
-        if not self.off_topic and not self.sub_questions:
+        if (
+            not self.off_topic
+            and not self.sub_questions
+            and self.intent != "what_if"
+        ):
             raise ValueError("sub_questions 不能为空（off_topic=false 时）")
         return self
 
@@ -136,6 +140,14 @@ def finalize_suggested_agents(result: DecomposeResult, user_query: str) -> Decom
     from agents.viz_agent.viz_planner import query_suggests_visualization
 
     agents = list(result.suggested_agents)
+    if result.intent == "what_if":
+        if "decision" not in agents:
+            agents.append("decision")
+        updates: dict[str, object] = {}
+        if agents != result.suggested_agents:
+            updates["suggested_agents"] = agents
+        return result.model_copy(update=updates) if updates else result
+
     if "data_analysis" not in agents:
         agents.insert(0, "data_analysis")
     if should_run_nlp(user_query, result.intent) and "nlp" not in agents:
@@ -168,6 +180,9 @@ def _default_suggested_agents(intent: IntentName, user_query: str) -> list[str]:
     from agents.nlp_agent.run import should_run_nlp
     from agents.viz_agent.viz_planner import query_suggests_visualization
 
+    if intent == "what_if":
+        return ["decision"]
+
     agents = ["data_analysis"]
     if query_suggests_visualization(user_query, intent):
         agents.append("visualization")
@@ -180,7 +195,7 @@ def _default_suggested_agents(intent: IntentName, user_query: str) -> list[str]:
 
 def decompose_query_rule(user_query: str) -> DecomposeResult:
     intent = classify_intent(user_query)
-    sub_questions = _split_compound_query(user_query)
+    sub_questions = [] if intent == "what_if" else _split_compound_query(user_query)
     if len(sub_questions) == 1:
         jiqi = _split_jiqi_query(sub_questions[0])
         if jiqi:

@@ -29,7 +29,6 @@ _BOUNDARY_TERMS = (
     "未提供",
     "基于当前证据",
 )
-_WHAT_IF_NUMERIC_TERMS = ("预计由", "预计提升", "预计下降", "可从", "提升到", "下降到")
 
 
 def _contains_metric(text: str) -> bool:
@@ -52,6 +51,11 @@ def _has_proxy_evidence(bundle: EvidenceBundle) -> bool:
 
 def _what_if_ran(decision_result: DecisionResult) -> bool:
     return decision_result.what_if_result.status == "run"
+
+
+def _what_if_has_simulated_values(decision_result: DecisionResult) -> bool:
+    result = decision_result.what_if_result
+    return bool(result.simulated_metrics or result.delta_metrics)
 
 
 def evaluate_decision_quality(
@@ -86,11 +90,10 @@ def evaluate_decision_quality(
             "回答使用了代理或部分匹配证据，但没有说明证据边界。"
         )
 
-    if not _what_if_ran(decision_result):
-        if any(term in answer for term in _WHAT_IF_NUMERIC_TERMS):
-            unsupported_claims.append(
-                "What-if 未实际运行时，回答中出现了模拟式数值结论。"
-            )
+    if not _what_if_ran(decision_result) and _what_if_has_simulated_values(decision_result):
+        unsupported_claims.append(
+            "What-if 结构化状态未标记为已运行，但包含模拟结果字段。"
+        )
 
     all_issues = issues + unsupported_claims + missing_evidence_notes
     score = max(0.0, round(1.0 - 0.2 * len(all_issues), 2))

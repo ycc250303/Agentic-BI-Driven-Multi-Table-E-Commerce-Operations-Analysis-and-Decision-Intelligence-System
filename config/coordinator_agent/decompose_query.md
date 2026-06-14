@@ -18,6 +18,11 @@
 
 **纯描述性单指标**（如「2017 GMV 是多少」）建议：`["data_analysis"]` 或最多加 `visualization`（仅当需要趋势图）
 
+**自带假设/广义策略假设的 What-if**（如「如果 GMV 基线 100 万、转化提升 10%，GMV 会怎样？」或「如果加大 SP 州运营投入会怎样？」）不要强行生成 SQL 子问题，建议：
+`["decision"]`，且 `sub_questions` 可为空数组。
+
+**需要查当前数据作为基线的 What-if**（如「如果下架当前差评率最高的卖家会怎样？」）仍应先建议 `data_analysis`，再建议 `decision`。
+
 可用子 Agent 名称：`data_analysis`、`visualization`、`nlp`、`decision`
 
 ## 拆分原则
@@ -27,6 +32,7 @@
 - `suggested_agents` 必须完整：差评/原因/诊断类问题应含 `data_analysis`, `nlp`, `visualization`, `decision`
 - 每条只保留**一个核心指标或一个分析维度**，不要合并多个 unrelated 指标
 - 若原问题已是单一问法，`sub_questions` 只含 1 条
+- 自带假设/广义策略假设的 What-if 可以没有可查数子问题，`sub_questions` 使用空数组
 - 不要生成用户没问的内容
 - **销售额/GMV 未来预测**：数据库只有历史快照，**不要**拆出「用 SQL 直接查未来 6 周销售额」子问题；应拆为 1 条「查 `mv_monthly_sales` 历史月度 GMV/订单量用于预测解读」。未来周度预测由预测模型（线性外推）在可视化/决策阶段完成
 

@@ -7,7 +7,6 @@ IntentName = Literal[
 ]
 
 _INTENT_RULES: list[tuple[IntentName, tuple[str, ...]]] = [
-    ("what_if", ("what-if", "what if", "如果", "假设", "下架", "统一下架", "模拟")),
     (
         "prescriptive",
         (

@@ -57,6 +57,20 @@ def _coerce_existing_what_if(raw: dict[str, Any]) -> WhatIfResult:
     return result
 
 
+_LEGACY_WHAT_IF_SCENARIOS = {
+    "remove_top_bad_sellers",
+    "improve_delivery_days",
+    "improve_category_quality",
+}
+
+
+def _is_legacy_what_if(raw: dict[str, Any]) -> bool:
+    scenario = str(raw.get("scenario_type") or raw.get("scenario") or "").lower()
+    if scenario in _LEGACY_WHAT_IF_SCENARIOS:
+        return True
+    return "delist top" in scenario
+
+
 def _select_what_if_result(
     inputs: DecisionInputs,
     bundle,
@@ -64,14 +78,16 @@ def _select_what_if_result(
     state_like: dict[str, Any],
     model=None,
 ) -> WhatIfResult:
-    if inputs.what_if_result:
-        return _coerce_existing_what_if(inputs.what_if_result)
     plan = plan_what_if(
         inputs=inputs,
         bundle=bundle,
         problems=problems,
         model=model,
     )
+    if inputs.what_if_result and not (
+        plan.has_what_if_intent and _is_legacy_what_if(inputs.what_if_result)
+    ):
+        return _coerce_existing_what_if(inputs.what_if_result)
     return run_what_if(plan, state_like)
 
 

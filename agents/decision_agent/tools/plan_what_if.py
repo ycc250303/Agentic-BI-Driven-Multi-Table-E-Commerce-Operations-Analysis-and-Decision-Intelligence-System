@@ -10,26 +10,6 @@ from ..llm import get_structured_llm
 from ..schemas import DecisionInputs, EvidenceBundle, ScoredProblem, WhatIfPlan
 
 
-_WHAT_IF_TERMS = (
-    "如果",
-    "假如",
-    "假设",
-    "模拟",
-    "what-if",
-    "what if",
-    "会怎样",
-    "会如何",
-    "变化",
-)
-
-
-def has_what_if_intent(user_query: str, intent: str = "") -> bool:
-    query = user_query.lower()
-    if str(intent).lower() == "what_if":
-        return True
-    return any(term in query for term in _WHAT_IF_TERMS)
-
-
 def _project_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
@@ -90,23 +70,17 @@ def _human_prompt(
 
 
 def _fallback_plan(inputs: DecisionInputs, reason: str = "") -> WhatIfPlan:
-    if not has_what_if_intent(inputs.user_query, inputs.intent):
-        return WhatIfPlan(
-            has_what_if_intent=False,
-            question=inputs.user_query,
-            reasoning_summary="用户本轮没有提出明确的 What-if 模拟问题。",
-        )
     return WhatIfPlan(
-        has_what_if_intent=True,
+        has_what_if_intent=False,
         plan_type="generic_what_if",
         question=inputs.user_query,
         target_metrics=[],
         computations=[],
         can_quantify=False,
-        directional_only=True,
-        missing_inputs=["what_if_plan.computations"],
+        directional_only=False,
+        missing_inputs=[],
         reasoning_summary=(
-            "已识别为 What-if 问题，但结构化规划失败，无法安全生成定量模拟。"
+            "What-if 结构化规划失败，未运行模拟；系统未使用关键词规则推断意图。"
         ),
         limitations=[reason] if reason else [],
     )
@@ -119,8 +93,6 @@ def plan_what_if(
     problems: list[ScoredProblem],
     model=None,
 ) -> WhatIfPlan:
-    if not has_what_if_intent(inputs.user_query, inputs.intent):
-        return _fallback_plan(inputs)
     try:
         planner = _structured_planner_model(model)
         response = planner.invoke(

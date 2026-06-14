@@ -71,7 +71,10 @@ def _not_run_result(plan: WhatIfPlan) -> WhatIfResult:
         scenario_type="generic_what_if",
         status="not_run",
         parameters=_plan_parameters(plan),
-        summary_text="用户本轮没有提出明确的 What-if 模拟问题。",
+        summary_text=(
+            plan.reasoning_summary or "用户本轮没有提出明确的 What-if 模拟问题。"
+        ),
+        limitations=list(plan.limitations),
     )
 
 
@@ -170,4 +173,3 @@ def run_what_if(plan: WhatIfPlan | Mapping[str, Any], state: Mapping[str, Any] |
             *plan.limitations,
         ],
     )
-

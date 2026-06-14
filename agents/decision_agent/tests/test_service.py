@@ -124,6 +124,45 @@ def test_run_decision_runs_generic_quantified_what_if():
     assert result.what_if_result.simulated_metrics["gmv"] == 1_100_000
 
 
+def test_run_decision_current_what_if_ignores_legacy_snapshot():
+    state = load_case("category_risk.json")
+    inputs = DecisionInputs(
+        user_query="如果 GMV 基线 100 万、转化提升 10%，GMV 会怎样？",
+        intent="what_if",
+        analysis_result=state["analysis_result"],
+        nlp_result=state.get("nlp_result") or {},
+        forecast_result=state.get("forecast_result") or {},
+        visualization_result=state.get("visualization_result") or {},
+        what_if_result={
+            "scenario_type": "remove_top_bad_sellers",
+            "status": "run",
+            "summary_text": "历史固定场景快照。",
+        },
+        conversation_history=state.get("conversation_history") or [],
+    )
+    plan = WhatIfPlan(
+        has_what_if_intent=True,
+        question=inputs.user_query,
+        can_quantify=True,
+        computations=[
+            WhatIfComputation(
+                target_metric="gmv",
+                baseline_value=1_000_000,
+                change_value=0.10,
+                formula="percent_change",
+                baseline_source="用户假设",
+                change_source="用户假设",
+            )
+        ],
+    )
+
+    result = run_decision(inputs, model=DummyModel(plan.model_dump(mode="json")))
+
+    assert result.what_if_result.scenario_type == "quantified_what_if"
+    assert result.what_if_result.status == "run"
+    assert result.what_if_result.summary_text != "历史固定场景快照。"
+
+
 def test_run_decision_degrades_when_what_if_planner_fails():
     state = load_case("category_risk.json")
     inputs = DecisionInputs(
@@ -138,7 +177,8 @@ def test_run_decision_degrades_when_what_if_planner_fails():
 
     result = run_decision(inputs, model=FailingPlanModel())
 
-    assert result.what_if_result.status == "directional_only"
+    assert result.what_if_result.status == "not_run"
+    assert "规划失败" in result.what_if_result.summary_text
     assert result.what_if_result.baseline_metrics == {}
     assert result.what_if_result.simulated_metrics == {}
 
