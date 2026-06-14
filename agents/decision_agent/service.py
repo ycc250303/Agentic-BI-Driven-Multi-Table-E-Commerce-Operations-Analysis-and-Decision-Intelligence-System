@@ -20,6 +20,7 @@ from .schemas import DecisionInputs, DecisionResult, RootCauseItem, ScoredProble
 from .tools import (
     build_evidence_bundle,
     generate_action_plan,
+    plan_what_if,
     run_what_if,
     score_problems,
 )
@@ -30,39 +31,6 @@ class NarrativeResponse(BaseModel):
     narrative_answer: str = Field(description="面向用户展示的业务建议总结")
     risks: list[str] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
-
-
-WHAT_IF_SCENARIOS: dict[str, dict[str, Any]] = {
-    "remove_top_bad_sellers": {
-        "problem_type": "seller",
-        "default_parameters": {"top_n": 20},
-    },
-    "improve_delivery_days": {
-        "problem_type": "delivery",
-        "default_parameters": {"improvement_days": 1.0},
-    },
-    "improve_category_quality": {
-        "problem_type": "category",
-        "default_parameters": {"target_negative_rate_drop": 0.05},
-    },
-}
-
-_EXPLICIT_WHAT_IF_TERMS = (
-    "如果",
-    "假如",
-    "模拟",
-    "what-if",
-    "what if",
-    "会怎样",
-    "变化",
-    "干预",
-    "提升",
-    "降低",
-    "减少",
-    "缩短",
-    "下架",
-    "剔除",
-)
 
 
 def _normalize_inputs(inputs: DecisionInputs) -> DecisionInputs:
@@ -78,36 +46,6 @@ def _normalize_inputs(inputs: DecisionInputs) -> DecisionInputs:
         conversation_history=inputs.conversation_history,
     )
 
-
-def choose_what_if(
-    inputs: DecisionInputs,
-    problems: list[ScoredProblem],
-) -> tuple[str, dict[str, Any]]:
-    query = inputs.user_query.lower()
-    explicit = any(term in query for term in _EXPLICIT_WHAT_IF_TERMS)
-
-    if explicit:
-        for scenario_type, spec in WHAT_IF_SCENARIOS.items():
-            problem_type = spec["problem_type"]
-            if problem_type in query:
-                return scenario_type, dict(spec["default_parameters"])
-        if "卖家" in query:
-            return "remove_top_bad_sellers", {"top_n": 20}
-        if "配送" in query or "物流" in query:
-            return "improve_delivery_days", {"improvement_days": 1.0}
-        if "品类" in query or "商品" in query or "sku" in query:
-            return "improve_category_quality", {"target_negative_rate_drop": 0.05}
-
-    if not problems:
-        return "", {}
-
-    top_problem_type = problems[0].problem_type
-    for scenario_type, spec in WHAT_IF_SCENARIOS.items():
-        if spec["problem_type"] == top_problem_type:
-            return scenario_type, dict(spec["default_parameters"])
-    return "", {}
-
-
 def _coerce_existing_what_if(raw: dict[str, Any]) -> WhatIfResult:
     result = WhatIfResult.model_validate(raw)
     if result.status == "not_run" and (
@@ -121,13 +59,20 @@ def _coerce_existing_what_if(raw: dict[str, Any]) -> WhatIfResult:
 
 def _select_what_if_result(
     inputs: DecisionInputs,
+    bundle,
     problems: list[ScoredProblem],
     state_like: dict[str, Any],
+    model=None,
 ) -> WhatIfResult:
     if inputs.what_if_result:
         return _coerce_existing_what_if(inputs.what_if_result)
-    scenario_type, parameters = choose_what_if(inputs, problems)
-    return run_what_if(scenario_type, parameters, state_like)
+    plan = plan_what_if(
+        inputs=inputs,
+        bundle=bundle,
+        problems=problems,
+        model=model,
+    )
+    return run_what_if(plan, state_like)
 
 
 def _structured_narrative_model(model):
@@ -245,7 +190,13 @@ def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
     problems = score_problems(bundle)
     action_plan = generate_action_plan(problems)
 
-    what_if_result = _select_what_if_result(inputs, problems, state_like)
+    what_if_result = _select_what_if_result(
+        inputs,
+        bundle,
+        problems,
+        state_like,
+        model=model,
+    )
 
     root_causes = [
         RootCauseItem(

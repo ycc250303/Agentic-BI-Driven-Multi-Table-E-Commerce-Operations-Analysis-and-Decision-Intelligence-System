@@ -8,6 +8,20 @@ from pydantic import BaseModel, Field
 SeverityLevel = Literal["high", "medium", "low"]
 DecisionTheme = Literal["物流优化", "卖家治理", "品类治理", "区域运营", "综合运营"]
 DomainName = Literal["delivery", "seller", "category", "region", "forecast", "general"]
+WhatIfStatus = Literal[
+    "not_run",
+    "run",
+    "missing_inputs",
+    "directional_only",
+    "not_applicable",
+]
+WhatIfFormula = Literal[
+    "add",
+    "subtract",
+    "multiply",
+    "percent_change",
+    "percentage_point_change",
+]
 
 
 class DecisionInputs(BaseModel):
@@ -68,9 +82,42 @@ class RootCauseItem(BaseModel):
     supporting_evidence: list[str]
 
 
+class WhatIfIntervention(BaseModel):
+    domain: str = "general"
+    target: str = ""
+    action: str = ""
+    assumption_text: str = ""
+    parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class WhatIfComputation(BaseModel):
+    target_metric: str
+    baseline_value: float | None = None
+    change_value: float | None = None
+    formula: WhatIfFormula = "add"
+    baseline_source: str = ""
+    change_source: str = ""
+    unit: str = ""
+
+
+class WhatIfPlan(BaseModel):
+    has_what_if_intent: bool = False
+    plan_type: str = "generic_what_if"
+    question: str = ""
+    interventions: list[WhatIfIntervention] = Field(default_factory=list)
+    target_metrics: list[str] = Field(default_factory=list)
+    computations: list[WhatIfComputation] = Field(default_factory=list)
+    missing_inputs: list[str] = Field(default_factory=list)
+    can_quantify: bool = False
+    directional_only: bool = False
+    reasoning_summary: str = ""
+    limitations: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+
+
 class WhatIfResult(BaseModel):
     scenario_type: str = ""
-    status: str = "not_run"
+    status: WhatIfStatus = "not_run"
     parameters: dict[str, Any] = Field(default_factory=dict)
     baseline_metrics: dict[str, Any] = Field(default_factory=dict)
     simulated_metrics: dict[str, Any] = Field(default_factory=dict)

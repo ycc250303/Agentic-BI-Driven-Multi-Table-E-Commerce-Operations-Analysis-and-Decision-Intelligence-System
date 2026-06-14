@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from agents.decision_agent.schemas import WhatIfComputation, WhatIfPlan
 from agents.decision_agent.tools.build_evidence_bundle import build_evidence_bundle
 from agents.decision_agent.tools.score_problems import score_problems
 from agents.decision_agent.tools.run_what_if import run_what_if
@@ -43,45 +44,59 @@ def test_category_rule_triggers():
     assert category_problem.decision_theme == "品类治理"
 
 
-def test_what_if_remove_bad_sellers():
-    state = load_case("high_seller_risk.json")
-    result = run_what_if("remove_top_bad_sellers", {"top_n": 20}, state)
-    assert result.scenario_type == "remove_top_bad_sellers"
-    assert result.status == "run"
-    assert result.simulated_metrics["avg_review_score"] > result.baseline_metrics["avg_review_score"]
-
-
-def test_what_if_improve_category_quality():
-    state = load_case("category_risk.json")
-    state["analysis_result"]["simulation_inputs"] = {
-        "category_quality_impact": {
-            "category": "bed_bath_table",
-            "baseline_negative_rate": 0.31,
-            "improved_negative_rate": 0.24,
-            "baseline_bad_review_count": 240,
-            "improved_bad_review_count": 176,
-            "baseline_gmv": 760000,
-            "projected_gmv": 778000,
-        }
-    }
-    result = run_what_if(
-        "improve_category_quality",
-        {"target_negative_rate_drop": 0.05},
-        state,
+def test_what_if_generic_quantified_percent_change():
+    plan = WhatIfPlan(
+        has_what_if_intent=True,
+        question="如果 GMV 基线 100 万、转化提升 10%，GMV 会怎样？",
+        can_quantify=True,
+        computations=[
+            WhatIfComputation(
+                target_metric="gmv",
+                baseline_value=1_000_000,
+                change_value=0.10,
+                formula="percent_change",
+                baseline_source="用户假设",
+                change_source="用户假设",
+            )
+        ],
     )
-    assert result.scenario_type == "improve_category_quality"
+
+    result = run_what_if(plan, {})
+
+    assert result.scenario_type == "quantified_what_if"
     assert result.status == "run"
-    assert result.simulated_metrics["negative_rate"] < result.baseline_metrics["negative_rate"]
+    assert result.simulated_metrics["gmv"] == 1_100_000
     assert result.delta_metrics["gmv"] > 0
 
 
 def test_what_if_missing_inputs_does_not_fake_simulation():
-    result = run_what_if(
-        "improve_delivery_days",
-        {"improvement_days": 1.0},
-        {"analysis_result": {"simulation_inputs": {}}},
+    plan = WhatIfPlan(
+        has_what_if_intent=True,
+        question="如果差评率降低 5 个百分点，销售额会怎样？",
+        can_quantify=False,
+        missing_inputs=["negative_rate_to_gmv_elasticity"],
     )
+
+    result = run_what_if(plan, {})
+
     assert result.status == "missing_inputs"
     assert result.baseline_metrics == {}
     assert result.simulated_metrics == {}
     assert result.missing_inputs
+
+
+def test_what_if_directional_only_does_not_fake_numbers():
+    plan = WhatIfPlan(
+        has_what_if_intent=True,
+        question="如果加大 SP 州运营投入会怎样？",
+        can_quantify=False,
+        directional_only=True,
+        missing_inputs=["investment_amount", "expected_conversion_lift"],
+        reasoning_summary="当前只能判断投入可能影响转化与履约压力，但缺少投入产出参数。",
+    )
+
+    result = run_what_if(plan, {})
+
+    assert result.status == "directional_only"
+    assert result.baseline_metrics == {}
+    assert result.simulated_metrics == {}

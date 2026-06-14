@@ -23,6 +23,13 @@ class DummyStructuredResponse:
 
 class DummyModel:
     def with_structured_output(self, schema):
+        if schema.__name__ == "WhatIfPlan":
+            return DummyStructuredResponse(
+                {
+                    "has_what_if_intent": False,
+                    "question": "",
+                }
+            )
         return DummyStructuredResponse(
             {
                 "narrative_answer": "这是联调节点测试输出。",
@@ -70,7 +77,7 @@ def test_langgraph_node_consumes_sql_only_seller_state():
     node = build_decision_node(model=DummyModel())
     out = node(state)
     assert out["decision_result"]["decision_theme"] == "卖家治理"
-    assert out["decision_result"]["what_if_result"]["scenario_type"] == "remove_top_bad_sellers"
+    assert out["decision_result"]["what_if_result"]["status"] == "not_run"
 
 
 def test_langgraph_node_consumes_sql_only_category_state():

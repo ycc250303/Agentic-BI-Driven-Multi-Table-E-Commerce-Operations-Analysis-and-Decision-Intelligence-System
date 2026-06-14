@@ -26,6 +26,13 @@ class DummyModel:
         self.first = True
 
     def with_structured_output(self, schema):
+        if schema.__name__ == "WhatIfPlan":
+            return DummyStructuredResponse(
+                {
+                    "has_what_if_intent": False,
+                    "question": "",
+                }
+            )
         if self.first:
             self.first = False
             return DummyStructuredResponse(
@@ -52,7 +59,7 @@ def test_decision_agent_smoke():
     assert result["final_answer"]
     assert "warnings" in result
     assert result["decision_result"]["action_plan"]
-    assert result["decision_result"]["what_if_result"]["scenario_type"] == "improve_delivery_days"
+    assert result["decision_result"]["what_if_result"]["status"] == "not_run"
 
 
 def test_run_decision_state_smoke():

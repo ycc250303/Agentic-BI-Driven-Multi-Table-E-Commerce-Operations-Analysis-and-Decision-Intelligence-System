@@ -40,26 +40,8 @@ Path('agents/decision_agent/tests/fixtures/upstream_review_insights_from_agent_t
 '@ | .venv\Scripts\python.exe -
 ```
 
-```powershell
-@'
-import json
-import sys
-from pathlib import Path
-root = Path('.worktrees/agent-tpc').resolve()
-sys.path.insert(0, str(root))
-from dotenv import load_dotenv
-load_dotenv(Path('.env').resolve())
-from agents.decision_agent.tools.what_if import run_what_if
-out = run_what_if(top_n=20, min_reviews=20)
-Path('agents/decision_agent/tests/fixtures/upstream_what_if_from_agent_tpc.json').write_text(
-    json.dumps(out, ensure_ascii=False, indent=2),
-    encoding='utf-8',
-)
-'@ | .venv\Scripts\python.exe -
-```
-
 说明：
 
 - `upstream_review_insights_from_agent_tpc.json` 中的 `sentiment` 和 `topics_bertopic` 当前为降级结果，因为本地数据库没有 `review_sentiment` 与 `review_topic_meta` 表。
-- `upstream_what_if_from_agent_tpc.json` 来自旧分支固定 SQL 查询，会访问 MySQL 原始业务表；当前 Decision-Agent 只消费其输出快照，不直接访问原始表。
+- `upstream_what_if_from_agent_tpc.json` 来自旧分支固定 SQL 查询，会访问 MySQL 原始业务表；当前 Decision-Agent 只为兼容旧 state 消费其输出快照，新的 What-if 主路径使用通用 `WhatIfPlan`。
 - `upstream_state_from_agent_tpc.json` 是将上述真实快照与当前标准 `analysis_result` / `forecast_result` 组合后的联调 state。

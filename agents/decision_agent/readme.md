@@ -59,28 +59,25 @@ CLI 示例：
 
 ## What-if 覆盖范围
 
-当前内置三个场景：
+What-if 不再以固定业务场景作为主入口。当前流程是：
 
-- `remove_top_bad_sellers`：基于 `analysis_result.simulation_inputs.seller_quality_impact`，估计剔除 Top N 高差评卖家的评分、负面率和 GMV 变化。
-- `improve_delivery_days`：基于 `analysis_result.simulation_inputs.delivery_improvement`，估计配送时长缩短后的准时率和配送负面主题占比变化。
-- `improve_category_quality`：基于 `analysis_result.simulation_inputs.category_quality_impact`，估计问题品类完成质检、差评 SKU 审核和详情页修正后的负面率、差评数和可选 GMV 变化。
+1. `plan_what_if` 先判断用户是否提出反事实问题，并用结构化 `WhatIfPlan` 表达干预对象、目标指标、变化假设和缺失输入。
+2. `run_what_if` 只执行计划中明确给出的安全计算，不从常识猜测 GMV 弹性、转化率、投入产出比等业务参数。
+3. 若缺少 baseline、change 或业务弹性，返回 `status="missing_inputs"` 或 `status="directional_only"`，不会用 0 或经验值伪造模拟。
 
-若缺少模拟输入，Agent 会返回 `status="missing_inputs"`，不会用 0 或默认值伪造模拟结果。
+当前通用计算支持：
 
-`category_quality_impact` 至少需要：
+- `add`：`simulated = baseline + change`
+- `subtract`：`simulated = baseline - change`
+- `multiply`：`simulated = baseline * change`
+- `percent_change`：`simulated = baseline * (1 + change)`
+- `percentage_point_change`：`simulated = baseline + change`
 
-- `category`
-- `baseline_negative_rate`
-- `improved_negative_rate`
-- `baseline_bad_review_count`
-- `improved_bad_review_count`
+示例：
 
-可选提供 `baseline_gmv` 与 `projected_gmv`，用于估计 GMV 变化。
-
-后续可扩展方向：
-
-- 区域运营模拟：重点州履约资源加配、客服补偿策略。
-- 增长策略模拟：促销、库存、卖家供给调整。
+- “如果 GMV 基线 100 万、转化提升 10%，GMV 会怎样？”可以规划为 `percent_change`，输出定量 `baseline_metrics`、`simulated_metrics` 和 `delta_metrics`。
+- “如果差评率降低 5 个百分点，销售额会怎样？”若缺少差评率到 GMV 的弹性，会返回 `missing_inputs`。
+- “如果加大 SP 州运营投入会怎样？”若缺少投入金额、转化提升或履约容量假设，会返回方向性说明或缺口说明。
 
 ## LLM 与 fallback
 
