@@ -82,6 +82,28 @@ docker compose logs -f mysql
 
 ## 5 测试连接
 
+账号与库名以 compose 中的 `MYSQL_USER` / `MYSQL_PASSWORD` / `MYSQL_DATABASE` 为准（下文示例为 `agentic_bi`）。本机连 Docker 用 `127.0.0.1`；远程把主机换成云服务器公网 IP，并确认 3306 已监听、安全组已放行。
+
+```
+# 容器是否在跑、3306 是否在听
+docker compose ps
+ss -lntp | grep 3306
+
+# 容器内
+docker exec -it mysql8 mysql -uagentic_bi -pagentic_bi -e "SELECT VERSION(); SHOW DATABASES;"
+
+# 宿主机 / 本机客户端（需已安装 mysql client）
+mysql -h 127.0.0.1 -P 3306 -u agentic_bi -pagentic_bi -e "SELECT 1 AS ok;"
+
+# 远程（把 HOST 换成公网 IP）
+mysql -h HOST -P 3306 -u agentic_bi -pagentic_bi -e "SELECT 1 AS ok;"
+
+# 项目脚本（读取仓库根目录 .env 的 AGENTIC_BI_DB_*）
+python utils/init_database.py
+```
+
+`SELECT 1` 或打印出版本 / 库列表即连接成功。若出现 `Connection refused`，先查容器和 `ss`，再查云安全组是否放行 3306。
+
 ## 6 常用运维命令
 
 ```

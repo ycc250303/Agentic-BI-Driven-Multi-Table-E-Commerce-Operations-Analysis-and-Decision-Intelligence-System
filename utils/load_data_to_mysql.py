@@ -15,7 +15,7 @@ if str(ROOT_DIR) not in sys.path:
 from db_env import pymysql_config
 
 DATA_DIR = ROOT_DIR / "data"
-SCHEMA_SQL = ROOT_DIR / "utils" / "origin_table.sql"
+SCHEMA_SQL = ROOT_DIR / "utils" / "create_origin_table.sql"
 
 BATCH_SIZE = 5000
 

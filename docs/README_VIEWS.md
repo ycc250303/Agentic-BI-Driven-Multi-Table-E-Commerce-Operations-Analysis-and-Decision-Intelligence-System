@@ -36,7 +36,7 @@
 Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System/
 │
 ├── utils/
-│   ├── origin_table.sql              # 原始表创建脚本（已存在）
+│   ├── create_origin_table.sql       # 原始表创建脚本（已存在）
 │   ├── load_data_to_mysql.py         # 数据导入脚本（已存在）
 │   ├── create_materialized_views.sql # ✨ 预聚合视图创建SQL脚本（新增）
 │   ├── refresh_views.py              # ✨ 视图刷新脚本（新增）

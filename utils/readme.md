@@ -86,7 +86,7 @@ NLP 衍生表（独立 DDL，需离线灌库）：
 
 数据导入主脚本，完成两件事：
 
-1. 执行 `create_origin_table.sql`（代码内路径为 `origin_table.sql`，与磁盘文件名 `create_origin_table.sql` 对应同一脚本）
+1. 执行 `create_origin_table.sql`
 2. 从 `data/` 读取 9 个 CSV，按表配置做类型转换后 **批量 `INSERT IGNORE`** 入库（每批 5000 行，主键重复自动跳过）
 
 | 目标表 | CSV 文件 |
