@@ -5,19 +5,11 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-_sql_agent_dir = Path(__file__).resolve().parents[1]
-if str(_sql_agent_dir) not in sys.path:
-    sys.path.insert(0, str(_sql_agent_dir))
-
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from tools.generate_sql import GenerateSqlOutput
-from tools.sql_format_rules import (
-    normalize_sql,
+from agents.sql_agent.tools.generate_sql import GenerateSqlOutput
+from agents.sql_agent.tools.sql_format_rules import (
     query_sql_format_ok,
     read_only_select_ok,
 )

@@ -58,9 +58,8 @@ def synthesize_final_answer(
     if not use_llm:
         return _format_rows_fallback(evidence)
 
-    from agents.decision_agent.llm import get_llm
+    from agents.common.llm import invoke_chat
 
-    llm = model or get_llm()
     system = _load_prompt()
     human = (
         "【结构化证据】\n"
@@ -68,8 +67,10 @@ def synthesize_final_answer(
         + "\n\n请撰写面向业务人员的最终回答。"
     )
     try:
-        resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
-        text = str(resp.content).strip()
+        text = invoke_chat(
+            [SystemMessage(content=system), HumanMessage(content=human)],
+            model=model,
+        ).strip()
         if text:
             return text
     except Exception:

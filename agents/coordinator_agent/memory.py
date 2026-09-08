@@ -117,15 +117,14 @@ def update_memory_summary(
 
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    from agents.decision_agent.llm import get_structured_llm
+    from agents.common.llm import invoke_structured
 
     payload = {
         "previous_memory_summary": _clip(str(session.get("memory_summary") or ""), limit),
         "recent_turns": _compact_turns(session, max_turns=max_turns),
     }
-    llm = model or get_structured_llm()
-    structured_model = llm.with_structured_output(SessionMemorySummary)
-    response = structured_model.invoke(
+    response = invoke_structured(
+        SessionMemorySummary,
         [
             SystemMessage(content=_load_summary_prompt()),
             HumanMessage(
@@ -133,7 +132,8 @@ def update_memory_summary(
                 + json.dumps(payload, ensure_ascii=False, indent=2)
                 + "\n\n请输出更新后的会话摘要。"
             ),
-        ]
+        ],
+        model=model,
     )
     if isinstance(response, SessionMemorySummary):
         out = response

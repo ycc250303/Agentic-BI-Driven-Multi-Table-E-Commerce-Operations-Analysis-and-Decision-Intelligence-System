@@ -1,7 +1,14 @@
+"""全项目唯一 DeepSeek / Chat 入口。
+
+自由文本用 ``get_llm`` / ``invoke_chat``（可跟随思考开关）；
+结构化 JSON 用 ``get_structured_llm`` / ``invoke_structured``（始终关思考）。
+"""
+
 from __future__ import annotations
 
 import os
 from functools import lru_cache
+from typing import Any
 
 from dotenv import load_dotenv
 from langchain_deepseek import ChatDeepSeek
@@ -67,3 +74,23 @@ def get_structured_llm() -> ChatDeepSeek:
     因此结构化步骤始终关闭思考模式。
     """
     return _get_llm_cached(False)
+
+
+def invoke_chat(messages: Any, *, model: Any | None = None) -> str:
+    """调用自由文本模型一次，返回 ``content`` 字符串。
+
+    ``model`` 非空时用注入模型（测试），否则 ``get_llm()``。
+    """
+    llm = model if model is not None else get_llm()
+    resp = llm.invoke(messages)
+    content = getattr(resp, "content", resp)
+    return str(content)
+
+
+def invoke_structured(schema: Any, messages: Any, *, model: Any | None = None) -> Any:
+    """用 ``with_structured_output(schema)`` 调用一次并返回结构化结果。
+
+    ``model`` 非空时用注入模型，否则 ``get_structured_llm()``。
+    """
+    llm = model if model is not None else get_structured_llm()
+    return llm.with_structured_output(schema).invoke(messages)

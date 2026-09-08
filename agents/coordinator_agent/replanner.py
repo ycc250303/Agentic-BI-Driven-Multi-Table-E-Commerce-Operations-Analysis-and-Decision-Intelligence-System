@@ -120,23 +120,17 @@ def _replan_context(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _structured_replanner_model(model):
-    if model is not None:
-        return model.with_structured_output(ReplanDecision)
-    from agents.decision_agent.llm import get_structured_llm
-
-    return get_structured_llm().with_structured_output(ReplanDecision)
-
-
 def plan_recovery_queries(state: dict[str, Any], *, model=None) -> ReplanDecision:
+    from agents.common.llm import invoke_structured
+
     status, reason = inspect_agent_outputs(state)
     if status == "sufficient":
         return ReplanDecision(should_replan=False, evidence_status=status, reason=reason)
     if int(state.get("replan_count") or 0) >= MAX_REPLAN_COUNT:
         return ReplanDecision(should_replan=False, evidence_status=status, reason=reason)
     try:
-        replanner = _structured_replanner_model(model)
-        response = replanner.invoke(
+        response = invoke_structured(
+            ReplanDecision,
             [
                 SystemMessage(content=_load_prompt()),
                 HumanMessage(
@@ -145,7 +139,8 @@ def plan_recovery_queries(state: dict[str, Any], *, model=None) -> ReplanDecisio
                         f"【当前状态】\n{json.dumps(_replan_context(state), ensure_ascii=False, indent=2)}"
                     )
                 ),
-            ]
+            ],
+            model=model,
         )
         decision = (
             response if isinstance(response, ReplanDecision)

@@ -37,7 +37,6 @@ import argparse
 import json
 import logging
 import os
-import sys
 import time
 from typing import Any
 
@@ -105,23 +104,8 @@ def _bulk_upsert_topic_meta(rows: list[tuple]) -> int:
 
 
 def _executemany(sql: str, rows: list[tuple]) -> int:
-    """与 sentiment.py 相同的写库套路：复用 sql_agent 环境变量解析。"""
-    import pymysql
-    from pymysql.cursors import DictCursor
-
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from agents.sql_agent.tools.execute_sql import _db_config_from_env  # type: ignore
-
-    cfg = _db_config_from_env()
-    cfg["cursorclass"] = DictCursor
-    conn = pymysql.connect(**cfg)
-    try:
-        with conn.cursor() as cur:
-            cur.executemany(sql, rows)
-        conn.commit()
-        return len(rows)
-    finally:
-        conn.close()
+    """批量写库，走 NLP db 封装（db_env）。"""
+    return db.executemany(sql, rows)
 
 
 # ---------------------------------------------------------------------------

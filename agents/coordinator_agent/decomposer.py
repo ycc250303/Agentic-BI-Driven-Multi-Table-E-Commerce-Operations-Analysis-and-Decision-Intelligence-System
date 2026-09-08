@@ -236,14 +236,17 @@ def decompose_query_rule(user_query: str) -> DecomposeResult:
 def decompose_query_llm(user_query: str, *, model=None) -> DecomposeResult:
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    from agents.decision_agent.llm import get_llm
+    from agents.common.llm import invoke_chat
 
-    llm = model or get_llm()
     system = _load_prompt("decompose_query.md")
     human = f"【用户问题】\n{user_query}\n\n请输出 JSON。"
     try:
-        resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
-        raw = _extract_json_object(str(resp.content))
+        raw = _extract_json_object(
+            invoke_chat(
+                [SystemMessage(content=system), HumanMessage(content=human)],
+                model=model,
+            )
+        )
         result = DecomposeResult.model_validate_json(raw)
         result = finalize_suggested_agents(result, user_query)
         if len(result.sub_questions) == 1:

@@ -13,7 +13,8 @@ from .adapters import (
     normalize_visualization_result,
     normalize_what_if_result,
 )
-from .llm import get_structured_llm
+from agents.common.llm import invoke_structured
+
 from .prompt_builder import build_human_prompt, build_system_prompt
 from .quality import evaluate_decision_quality, quality_report_to_dict
 from .schemas import DecisionInputs, DecisionResult, RootCauseItem, ScoredProblem, WhatIfResult
@@ -91,12 +92,6 @@ def _select_what_if_result(
     return run_what_if(plan, state_like)
 
 
-def _structured_narrative_model(model):
-    if model is not None:
-        return model.with_structured_output(NarrativeResponse)
-    return get_structured_llm().with_structured_output(NarrativeResponse)
-
-
 def _coerce_narrative_response(response: Any) -> NarrativeResponse:
     if isinstance(response, NarrativeResponse):
         return response
@@ -152,7 +147,6 @@ def compose_final_answer(
     problems,
     decision_result: DecisionResult,
 ) -> NarrativeResponse:
-    structured_model = _structured_narrative_model(model)
     messages = [
         SystemMessage(content=build_system_prompt()),
         HumanMessage(
@@ -163,7 +157,7 @@ def compose_final_answer(
             )
         ),
     ]
-    response = structured_model.invoke(messages)
+    response = invoke_structured(NarrativeResponse, messages, model=model)
     return _coerce_narrative_response(response)
 
 
@@ -175,7 +169,6 @@ def revise_final_answer(
     decision_result: DecisionResult,
     issues: list[str],
 ) -> NarrativeResponse:
-    structured_model = _structured_narrative_model(model)
     messages = [
         SystemMessage(content=build_system_prompt()),
         HumanMessage(
@@ -194,7 +187,7 @@ def revise_final_answer(
             )
         ),
     ]
-    response = structured_model.invoke(messages)
+    response = invoke_structured(NarrativeResponse, messages, model=model)
     return _coerce_narrative_response(response)
 
 

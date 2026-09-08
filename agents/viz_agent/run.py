@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -15,17 +14,12 @@ from typing import Any
 import pandas as pd
 from langchain_core.messages import HumanMessage, SystemMessage
 
-_viz_dir = Path(__file__).resolve().parent
-_project_root = _viz_dir.parents[1]
-_sql_agent_dir = _viz_dir.parent / "sql_agent"
-for p in (_project_root, _viz_dir, _sql_agent_dir):
-    if str(p) not in sys.path:
-        sys.path.insert(0, str(p))
-
-from agents.sql_agent.llm import get_llm  # noqa: E402
+from agents.common.llm import invoke_chat
 from agents.viz_agent.line_plan import normalize_line_plan
-from agents.viz_agent.render import render_to_png  # noqa: E402
-from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan  # noqa: E402
+from agents.viz_agent.render import render_to_png
+from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
+
+_viz_dir = Path(__file__).resolve().parent
 
 
 def _project_root() -> Path:
@@ -197,11 +191,14 @@ def plan_with_llm(
     *,
     model=None,
 ) -> tuple[VizPlan, str]:
-    llm = model or get_llm()
     system = _load_plan_prompt()
     human = _build_human_prompt(user_query, df, column_profiles, data_summary_zh)
-    resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
-    raw = _extract_json_object(str(resp.content))
+    raw = _extract_json_object(
+        invoke_chat(
+            [SystemMessage(content=system), HumanMessage(content=human)],
+            model=model,
+        )
+    )
     plan = VizPlan.model_validate_json(raw)
     return plan, raw
 
@@ -313,15 +310,7 @@ def run_sql_then_visualize(
     use_llm: bool = True,
 ) -> dict[str, Any]:
     """串联数据分析流水线 + 可视化（需数据库环境与 DEEPSEEK_API_KEY）。"""
-    import importlib.util
-
-    sql_run_path = _sql_agent_dir / "run.py"
-    spec = importlib.util.spec_from_file_location("agentic_bi_sql_agent_run", sql_run_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"无法加载 SQL Agent：{sql_run_path}")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    run_sql_pipeline_with_feedback = mod.run_sql_pipeline_with_feedback
+    from agents.sql_agent.run import run_sql_pipeline_with_feedback
 
     sql_out = run_sql_pipeline_with_feedback(user_query, model=model)
     viz_out = run_visualization_agent(

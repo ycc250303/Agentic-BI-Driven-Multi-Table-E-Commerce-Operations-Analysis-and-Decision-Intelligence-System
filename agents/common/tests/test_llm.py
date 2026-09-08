@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from agents.decision_agent.llm import (
+from agents.common.llm import (
     get_llm,
     get_structured_llm,
+    invoke_chat,
+    invoke_structured,
     is_deepseek_thinking_enabled,
     set_deepseek_thinking_enabled,
 )
@@ -43,3 +45,31 @@ def test_thinking_mode_rejects_structured_output():
     assert "400" in str(exc.value) or "tool_choice" in str(exc.value).lower()
 
     set_deepseek_thinking_enabled(False)
+
+
+def test_invoke_chat_uses_injected_model():
+    class _Resp:
+        content = "hello"
+
+    class _Fake:
+        def invoke(self, messages):
+            assert messages == ["x"]
+            return _Resp()
+
+    assert invoke_chat(["x"], model=_Fake()) == "hello"
+
+
+def test_invoke_structured_uses_injected_model():
+    class Out:
+        pass
+
+    class _Fake:
+        def with_structured_output(self, schema):
+            assert schema is Out
+            return self
+
+        def invoke(self, messages):
+            assert messages == ["y"]
+            return {"ok": True}
+
+    assert invoke_structured(Out, ["y"], model=_Fake()) == {"ok": True}

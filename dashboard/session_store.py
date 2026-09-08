@@ -84,7 +84,7 @@ def set_deepseek_thinking_enabled(enabled: bool) -> None:
 
 
 def apply_deepseek_thinking_from_session() -> None:
-    from agents.decision_agent.llm import set_deepseek_thinking_enabled as sync_llm
+    from agents.common.llm import set_deepseek_thinking_enabled as sync_llm
 
     sync_llm(is_deepseek_thinking_enabled())
 

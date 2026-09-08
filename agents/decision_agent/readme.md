@@ -81,7 +81,7 @@ What-if 不再以固定业务场景作为主入口。当前流程是：
 
 ## LLM 与 fallback
 
-`run_decision(..., model=...)` 支持注入测试模型或外部模型。叙述生成会优先使用传入模型的 `with_structured_output(NarrativeResponse)`；未传入模型时使用默认 DeepSeek 结构化模型。
+`run_decision(..., model=...)` 支持注入测试模型或外部模型。叙述生成经 `agents.common.llm.invoke_structured`；未传入模型时使用默认 DeepSeek 结构化模型。
 
 如果叙述层 LLM 返回空值、非结构化结果或抛出异常，Decision Agent 会：
 

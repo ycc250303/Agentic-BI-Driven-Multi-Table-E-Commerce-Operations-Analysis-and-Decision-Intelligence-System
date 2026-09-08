@@ -22,7 +22,7 @@ cd Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Int
 pip install -r requirements.txt
 ```
 
-- 设置环境变量（项目根目录的 `.env` 若包含 `DEEPSEEK_API_KEY` 及 `AGENTIC_BI_DB_*`，从项目根执行下方 Python 命令时，`get_llm()` 会先加载该文件写入进程环境，`execute_sql` 即可读到数据库配置；也可仅用 PowerShell 的 `$env:...=` 逐项设置）
+- 设置环境变量（项目根目录 `.env` 含 `DEEPSEEK_API_KEY` 及 `AGENTIC_BI_DB_*` 时，从项目根执行 Python 即可；`db_env` 负责读库配置，`agents.common.llm` 负责读 API Key。也可仅用 shell 导出逐项设置）
 
 ```bash
 export DEEPSEEK_API_KEY='your_api_key'

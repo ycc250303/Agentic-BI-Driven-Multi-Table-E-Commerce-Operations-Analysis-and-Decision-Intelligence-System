@@ -138,16 +138,15 @@ def resolve_conversation_context(
 
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    from agents.decision_agent.llm import get_structured_llm
+    from agents.common.llm import invoke_structured
 
     payload = {
         "memory_summary": _clip(str(session.get("memory_summary") or "")),
         "recent_turns": _recent_turns(session),
         "current_user_query": query,
     }
-    llm = model or get_structured_llm()
-    structured_model = llm.with_structured_output(ConversationResolution)
-    response = structured_model.invoke(
+    response = invoke_structured(
+        ConversationResolution,
         [
             SystemMessage(content=_load_prompt()),
             HumanMessage(
@@ -155,7 +154,8 @@ def resolve_conversation_context(
                 + json.dumps(payload, ensure_ascii=False, indent=2)
                 + "\n\n请只输出结构化解析结果。"
             ),
-        ]
+        ],
+        model=model,
     )
     if isinstance(response, ConversationResolution):
         resolution = response

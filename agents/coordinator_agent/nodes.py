@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import importlib.util
 import json
-import sys
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
 from agents.coordinator_agent.adapters import (
@@ -20,19 +17,7 @@ from agents.coordinator_agent.synthesizer import synthesize_final_answer
 from agents.coordinator_agent.tracing import TraceCollector
 from agents.decision_agent.run import run_decision_state
 from agents.nlp_agent.run import ReviewInsightAgent
-
-
-def _load_sql_run_pipeline():
-    sql_dir = Path(__file__).resolve().parents[1] / "sql_agent"
-    run_path = sql_dir / "run.py"
-    if str(sql_dir) not in sys.path:
-        sys.path.insert(0, str(sql_dir))
-    spec = importlib.util.spec_from_file_location("agentic_bi_sql_agent_run", run_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"无法加载 SQL Agent：{run_path}")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.run_sql_pipeline_with_feedback
+from agents.sql_agent.run import run_sql_pipeline_with_feedback
 
 
 def _append_warning(state: AgentState, message: str) -> list[str]:
@@ -226,8 +211,7 @@ def data_analysis_node(
         return {**state, "agents_done": _mark_done(state, "data_analysis")}
 
     question = sub_questions[idx]
-    run_sql = _load_sql_run_pipeline()
-    sql_out = run_sql(question, model=model, on_tool_end=on_tool_end)
+    sql_out = run_sql_pipeline_with_feedback(question, model=model, on_tool_end=on_tool_end)
     analysis = build_analysis_result_from_sql_pipeline(
         user_query=question,
         sql_pipeline=sql_out,

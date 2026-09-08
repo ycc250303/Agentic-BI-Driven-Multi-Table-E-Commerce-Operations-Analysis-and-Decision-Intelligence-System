@@ -1,7 +1,6 @@
 import argparse
 import json
 import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 import time
@@ -9,17 +8,13 @@ from typing import Any
 
 from dotenv import load_dotenv
 from langchain_deepseek import ChatDeepSeek
+from langchain_core.messages import HumanMessage, SystemMessage
 
-_sql_agent_dir = Path(__file__).resolve().parents[1]
-if str(_sql_agent_dir) not in sys.path:
-    sys.path.insert(0, str(_sql_agent_dir))
-
-from tools.rewrite_to_query import (
+from agents.sql_agent.tools.rewrite_to_query import (
     RewriteToQueryOutput,
     _load_prompt,
     build_rewrite_to_query_tool,
 )
-from langchain_core.messages import HumanMessage, SystemMessage
 
 
 KNOWN_VIEWS = {
@@ -123,6 +118,16 @@ EVAL_CONFIGS: list[dict[str, Any]] = [
 
 
 def make_llm(model: str, thinking: str) -> ChatDeepSeek:
+    """评估脚本专用：对比不同模型名/思考开关。
+
+    与应用默认一致的配置（flash + 关思考）走 ``get_structured_llm``；
+    其它模型名仍直接构造 ChatDeepSeek。
+    """
+    from agents.common.llm import get_structured_llm
+
+    if model == "deepseek-v4-flash" and thinking == "disabled":
+        return get_structured_llm()
+
     load_dotenv()
     if not os.getenv("DEEPSEEK_API_KEY"):
         raise RuntimeError(

@@ -3,7 +3,7 @@
 面向 **Agentic BI** 5-Agent 方案中的 NLP 节点：将 `order_reviews` 评论文本（葡萄牙语）
 转化为**结构化指标**，供下游决策智能 Agent 直接消费。
 
-> **职责定位**：只做"非结构化文本 → 结构化指标"的转换，**不**做 SQL 业务查询、**不**画图、**不**写决策建议。
+> **职责定位**：只做"非结构化文本 → 结构化指标"的转换，**不**做 SQL 业务查询、**不**画图、**不**写决策建议。在线路径不调用 LLM；若以后加模型调用，必须走 `agents.common.llm`。
 
 ---
 
@@ -12,7 +12,7 @@
 ```
 agents/nlp_agent/
 ├── __init__.py
-├── db.py                       # 复用 sql_agent 环境变量的 PyMySQL 查询封装（独立，不依赖 decision_agent）
+├── db.py                       # PyMySQL 封装，连接参数来自 db_env
 ├── state.py                    # ReviewInsightState / ReviewInsightsPayload TypedDict
 ├── run.py                      # ReviewInsightAgent + nlp_node(state) + CLI
 ├── tools/

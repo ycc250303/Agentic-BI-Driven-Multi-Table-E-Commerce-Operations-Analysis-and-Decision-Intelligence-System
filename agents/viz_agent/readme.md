@@ -21,13 +21,10 @@
 | `heuristic_plan(df, user_query)` | 不调用 LLM 的兜底选型（字段规则 + 关键词）。 |
 | `run_sql_then_visualize(user_query, ...)` | 串联 `sql_agent` 全链路后再可视化（需数据库）。 |
 
-Python 导入示例（需在路径中包含包或通过 `sys.path` 加载 `agents/viz_agent`，与运行 `sql_agent` 方式一致）：
+Python 导入示例（在仓库根执行）：
 
 ```python
-from pathlib import Path
-import sys
-sys.path.insert(0, str(Path("agents/viz_agent").resolve()))
-from run import run_visualization_agent, run_sql_then_visualize
+from agents.viz_agent.run import run_visualization_agent, run_sql_then_visualize
 ```
 
 ---
@@ -39,7 +36,7 @@ from run import run_visualization_agent, run_sql_then_visualize
 | `user_query` | `str` | 用户业务问题，用于指导图表类型与语义标题。 |
 | `execute_sql_json` | `str \| None` | **`execute_sql_tool` 返回的完整 JSON 字符串**。要求 `ok=true`，内含 `result_csv_path`、`column_profiles`、`data_summary_zh`。 |
 | `csv_path` | `str \| Path \| None` | 直接指定查询结果 CSV；无列画像时 LLM 仍可根据表头与样本推断。 |
-| `model` | 可选 | 传入自定义 LangChain Chat 模型；默认 `sql_agent.llm.get_llm()`（DeepSeek）。 |
+| `model` | 可选 | 传入自定义 LangChain Chat 模型；默认 `agents.common.llm.invoke_chat` / `get_llm()`（DeepSeek）。 |
 | `use_llm` | `bool`，默认 `True` | `False` 时仅用 `heuristic_plan`，无需 API Key（适合离线联调）。 |
 | `output_dir` | `Path \| None` | 覆盖 PNG 输出目录。 |
 
@@ -84,7 +81,7 @@ python agents/viz_agent/run.py --sql-then-viz --query "2017 年各州订单量 T
 ## 6. 与数据分析 Agent 串联
 
 ```python
-from run import run_sql_then_visualize
+from agents.viz_agent.run import run_sql_then_visualize
 
 out = run_sql_then_visualize("2017 年各月 GMV 趋势如何？", use_llm=True)
 # out["sql_pipeline"] — 与 sql_agent 流水线输出一致

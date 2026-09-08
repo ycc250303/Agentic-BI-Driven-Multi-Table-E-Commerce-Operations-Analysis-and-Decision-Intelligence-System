@@ -957,9 +957,8 @@ def plan_viz_suite_llm(
 ) -> VizSuitePlan:
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    from agents.decision_agent.llm import get_llm
+    from agents.common.llm import invoke_chat
 
-    llm = model or get_llm()
     system = _load_suite_prompt()
     human = (
         f"【用户问题】\n{user_query}\n\n"
@@ -967,8 +966,12 @@ def plan_viz_suite_llm(
         f"【已完成分析】\n{_build_planner_context(user_query=user_query, intent=intent, sql_runs=sql_runs, review_insights=review_insights)}\n\n"
         "请输出 JSON。"
     )
-    resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
-    raw = _extract_json_object(str(resp.content))
+    raw = _extract_json_object(
+        invoke_chat(
+            [SystemMessage(content=system), HumanMessage(content=human)],
+            model=model,
+        )
+    )
     plan = VizSuitePlan.model_validate_json(raw)
     charts = _finalize_sql_chart_tasks(
         list(plan.charts),

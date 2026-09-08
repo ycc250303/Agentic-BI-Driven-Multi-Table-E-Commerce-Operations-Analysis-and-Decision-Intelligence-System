@@ -5,20 +5,15 @@
 
 from __future__ import annotations
 
-import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
-
-_sql_agent_dir = Path(__file__).resolve().parents[1]
-if str(_sql_agent_dir) not in sys.path:
-    sys.path.insert(0, str(_sql_agent_dir))
 
 import yaml
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from tools.rewrite_to_query import RewriteToQueryOutput
+from agents.sql_agent.tools.rewrite_to_query import RewriteToQueryOutput
 
 
 class ValidateRewritePlanOutput(BaseModel):

@@ -38,7 +38,6 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import sys
 import time
 from typing import Any, Iterable
 
@@ -243,21 +242,7 @@ def _bulk_upsert(rows: Iterable[tuple]) -> int:
     rows = list(rows)
     if not rows:
         return 0
-    import pymysql
-    from pymysql.cursors import DictCursor
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from agents.sql_agent.tools.execute_sql import _db_config_from_env  # type: ignore
-
-    cfg = _db_config_from_env()
-    cfg["cursorclass"] = DictCursor
-    conn = pymysql.connect(**cfg)
-    try:
-        with conn.cursor() as cur:
-            cur.executemany(_UPSERT_SQL, rows)
-        conn.commit()
-        return len(rows)
-    finally:
-        conn.close()
+    return db.executemany(_UPSERT_SQL, rows)
 
 
 # ---------------------------------------------------------------------------

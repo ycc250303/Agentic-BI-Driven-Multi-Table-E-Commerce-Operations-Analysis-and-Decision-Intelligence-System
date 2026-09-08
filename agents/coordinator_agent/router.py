@@ -243,14 +243,17 @@ def _build_router_context(state: dict) -> str:
 def route_next_llm(state: dict, *, model=None) -> RouteDecision:
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    from agents.decision_agent.llm import get_llm
+    from agents.common.llm import invoke_chat
 
-    llm = model or get_llm()
     system = _load_prompt()
     human = f"【当前状态】\n{_build_router_context(state)}\n\n请输出 JSON。"
     try:
-        resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
-        raw = _extract_json_object(str(resp.content))
+        raw = _extract_json_object(
+            invoke_chat(
+                [SystemMessage(content=system), HumanMessage(content=human)],
+                model=model,
+            )
+        )
         decision = RouteDecision.model_validate_json(raw)
         return _enforce_suggested_pipeline(decision, state)
     except Exception:

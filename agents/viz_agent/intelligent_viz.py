@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -22,11 +21,9 @@ from agents.viz_agent.render_context import RenderExtras
 from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
 from agents.viz_agent.viz_planner import VizChartTask, VizSuitePlan, plan_viz_suite, _is_scalar_kpi_result
 from agents.viz_agent.line_plan import normalize_line_plan
+from agents.sql_agent.run import run_sql_pipeline_with_feedback
 
 _viz_dir = Path(__file__).resolve().parent
-_project_root = _viz_dir.parents[1]
-if str(_project_root) not in sys.path:
-    sys.path.insert(0, str(_project_root))
 
 
 def _normalize_viz_plan(plan: VizPlan | dict[str, Any]) -> VizPlan:
@@ -50,21 +47,6 @@ def _viz_output_dir() -> Path:
     if raw:
         return Path(raw).expanduser().resolve()
     return (_viz_dir / "chart_output").resolve()
-
-
-def _load_sql_pipeline():
-    import importlib.util
-
-    sql_dir = _viz_dir.parent / "sql_agent"
-    run_path = sql_dir / "run.py"
-    if str(sql_dir) not in sys.path:
-        sys.path.insert(0, str(sql_dir))
-    spec = importlib.util.spec_from_file_location("agentic_bi_sql_agent_run", run_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"无法加载 SQL Agent：{run_path}")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.run_sql_pipeline_with_feedback
 
 
 def _run_viz_from_exec_payload(
@@ -444,8 +426,7 @@ def _execute_chart_task(
                 error_message="supplementary_query 缺少问题文本",
                 user_query=chart_task.title,
             )
-        run_sql = _load_sql_pipeline()
-        sql_out = run_sql(question, model=model, on_tool_end=on_tool_end)
+        sql_out = run_sql_pipeline_with_feedback(question, model=model, on_tool_end=on_tool_end)
         try:
             exec_payload = json.loads(sql_out.get("execute_sql_json") or "{}")
         except json.JSONDecodeError:

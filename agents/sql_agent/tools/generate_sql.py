@@ -1,18 +1,14 @@
-import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
-
-_sql_agent_dir = Path(__file__).resolve().parents[1]
-if str(_sql_agent_dir) not in sys.path:
-    sys.path.insert(0, str(_sql_agent_dir))
 
 from langchain_core.tools import StructuredTool
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from tools.rewrite_to_query import RewriteToQueryOutput
-from tools.sql_format_rules import query_sql_format_ok
+from agents.common.llm import get_structured_llm
+from agents.sql_agent.tools.rewrite_to_query import RewriteToQueryOutput
+from agents.sql_agent.tools.sql_format_rules import query_sql_format_ok
 
 
 class GenerateSqlOutput(BaseModel):
@@ -155,8 +151,6 @@ class GenerateSqlRunner:
 
 def build_generate_sql_tool(model=None, max_retries: int = 3):
     if model is None:
-        from llm import get_structured_llm
-
         model = get_structured_llm()
     runner = GenerateSqlRunner(model=model, max_retries=max_retries)
     return StructuredTool.from_function(
@@ -180,8 +174,6 @@ DEMO_REWRITE_JSON = RewriteToQueryOutput(
 
 
 if __name__ == "__main__":
-    from llm import get_structured_llm
-
     print("===== 演示：generate_sql_tool =====")
     print("输入 rewrite_json:\n")
     print(DEMO_REWRITE_JSON)

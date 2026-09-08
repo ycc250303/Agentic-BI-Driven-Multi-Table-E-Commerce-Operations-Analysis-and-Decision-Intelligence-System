@@ -9,51 +9,29 @@ from __future__ import annotations
 
 import csv
 import os
-import sys
 import time
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-_sql_agent_dir = Path(__file__).resolve().parents[1]
-if str(_sql_agent_dir) not in sys.path:
-    sys.path.insert(0, str(_sql_agent_dir))
-
 import pymysql
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from pymysql.cursors import DictCursor
 
-from tools.generate_sql import GenerateSqlOutput
-from tools.sql_format_rules import normalize_sql
+from db_env import pymysql_config
+from agents.sql_agent.tools.generate_sql import GenerateSqlOutput
+from agents.sql_agent.tools.sql_format_rules import normalize_sql
+
+_sql_agent_dir = Path(__file__).resolve().parents[1]
 
 
 def _db_config_from_env() -> dict[str, Any]:
     """仅从环境变量读取连接参数，不设代码内默认值。"""
-    keys = [
-        "AGENTIC_BI_DB_HOST",
-        "AGENTIC_BI_DB_PORT",
-        "AGENTIC_BI_DB_USER",
-        "AGENTIC_BI_DB_PASSWORD",
-        "AGENTIC_BI_DB_NAME",
-    ]
-    missing = [k for k in keys if os.environ.get(k) in (None, "")]
-    if missing:
-        raise ValueError("缺少或未设置数据库环境变量：" + ", ".join(missing))
-    try:
-        port = int(os.environ["AGENTIC_BI_DB_PORT"])
-    except ValueError as e:
-        raise ValueError("AGENTIC_BI_DB_PORT 须为整数") from e
-    return {
-        "host": os.environ["AGENTIC_BI_DB_HOST"],
-        "port": port,
-        "user": os.environ["AGENTIC_BI_DB_USER"],
-        "password": os.environ["AGENTIC_BI_DB_PASSWORD"],
-        "database": os.environ["AGENTIC_BI_DB_NAME"],
-        "charset": "utf8mb4",
-        "cursorclass": DictCursor,
-    }
+    cfg = pymysql_config(autocommit=False)
+    cfg["cursorclass"] = DictCursor
+    return cfg
 
 
 DEFAULT_MAX_ROWS = int(os.environ.get("AGENTIC_BI_SQL_MAX_ROWS", "5000"))

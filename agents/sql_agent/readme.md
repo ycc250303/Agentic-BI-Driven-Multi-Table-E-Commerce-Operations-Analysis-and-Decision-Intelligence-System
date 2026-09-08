@@ -11,9 +11,8 @@ export DEEPSEEK_API_KEY=...
 export AGENTIC_BI_DB_HOST=... AGENTIC_BI_DB_PORT=3306
 export AGENTIC_BI_DB_USER=... AGENTIC_BI_DB_PASSWORD=... AGENTIC_BI_DB_NAME=...
 
-cd agents/sql_agent
-python run.py "2017年哪个州的销售额最高？"
-python run.py   # 无参数时跑内置 TEST_QUESTIONS
+python -m agents.sql_agent.run "2017年哪个州的销售额最高？"
+python -m agents.sql_agent.run   # 无参数时跑内置 TEST_QUESTIONS
 ```
 
 经协调器调用（推荐）：
@@ -83,7 +82,7 @@ flowchart TD
 | `check_sql_tool` | 否 | 格式与安全校验 |
 | `execute_sql_tool` | 否 | 连库执行，写 CSV |
 
-共享规则：`tools/sql_format_rules.py`。LLM：`llm.py` → `get_llm()`（DeepSeek）。
+共享规则：`tools/sql_format_rules.py`。LLM：`agents.common.llm.get_structured_llm()`（DeepSeek，关思考）。
 
 ---
 
@@ -102,8 +101,8 @@ flowchart TD
 
 ```
 agents/sql_agent/
-├── run.py              # 流水线入口
-├── llm.py
+├── __init__.py
+├── run.py              # 流水线入口：python -m agents.sql_agent.run
 ├── tools/              # 五个 StructuredTool
 └── test/eval_rewrite_to_query.py
 

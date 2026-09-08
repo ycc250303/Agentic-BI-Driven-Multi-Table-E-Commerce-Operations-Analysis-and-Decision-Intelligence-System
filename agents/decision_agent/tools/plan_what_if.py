@@ -6,7 +6,8 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from ..llm import get_structured_llm
+from agents.common.llm import invoke_structured
+
 from ..schemas import DecisionInputs, EvidenceBundle, ScoredProblem, WhatIfPlan
 
 
@@ -18,12 +19,6 @@ def _load_prompt() -> str:
     return (
         _project_root() / "config" / "decision_agent" / "plan_what_if.md"
     ).read_text(encoding="utf-8")
-
-
-def _structured_planner_model(model):
-    if model is not None:
-        return model.with_structured_output(WhatIfPlan)
-    return get_structured_llm().with_structured_output(WhatIfPlan)
 
 
 def _problem_payload(problems: list[ScoredProblem]) -> list[dict[str, Any]]:
@@ -94,8 +89,8 @@ def plan_what_if(
     model=None,
 ) -> WhatIfPlan:
     try:
-        planner = _structured_planner_model(model)
-        response = planner.invoke(
+        response = invoke_structured(
+            WhatIfPlan,
             [
                 SystemMessage(content=_load_prompt()),
                 HumanMessage(
@@ -105,7 +100,8 @@ def plan_what_if(
                         problems=problems,
                     )
                 ),
-            ]
+            ],
+            model=model,
         )
         if isinstance(response, WhatIfPlan):
             return response

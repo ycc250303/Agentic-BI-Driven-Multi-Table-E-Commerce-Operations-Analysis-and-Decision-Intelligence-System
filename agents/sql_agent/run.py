@@ -17,25 +17,17 @@ error_message 非空，则将错误摘要写入上下文并重新调用 generate
 from __future__ import annotations
 
 import json
-import sys
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
-
-_sql_agent_dir = Path(__file__).resolve().parent
-_project_root = _sql_agent_dir.parents[1]
-for p in (_project_root, _sql_agent_dir):
-    if str(p) not in sys.path:
-        sys.path.insert(0, str(p))
 
 from langchain_core.runnables import RunnableLambda
 
-from llm import get_structured_llm
-from tools.check_sql import build_check_sql_tool
-from tools.execute_sql import build_execute_sql_tool
-from tools.generate_sql import build_generate_sql_tool
-from tools.rewrite_to_query import build_rewrite_to_query_tool
-from tools.validate_rewrite_plan import build_validate_rewrite_plan_tool
+from agents.common.llm import get_structured_llm
+from agents.sql_agent.tools.check_sql import build_check_sql_tool
+from agents.sql_agent.tools.execute_sql import build_execute_sql_tool
+from agents.sql_agent.tools.generate_sql import build_generate_sql_tool
+from agents.sql_agent.tools.rewrite_to_query import build_rewrite_to_query_tool
+from agents.sql_agent.tools.validate_rewrite_plan import build_validate_rewrite_plan_tool
 
 MAX_REWRITE_ATTEMPTS = 3
 MAX_GENERATE_ATTEMPTS = 3
