@@ -28,7 +28,7 @@ agents/nlp_agent/
 
 ```
 config/nlp_agent/
-├── system_core.md              # NLP Agent 角色边界与方法分层
+├── system_core.md              # NLP Agent 角色边界与方法分层（给人看，在线不注入 LLM）
 ├── topic_keywords.yaml         # 葡语主题关键词词典（关键词法用，可热更新）
 └── stopwords_pt.txt            # 葡语停用词词典（词云生成时过滤）
 ```
