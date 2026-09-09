@@ -1,37 +1,22 @@
 from __future__ import annotations
 
 import json
-from functools import lru_cache
-from pathlib import Path
 
+from agents.common.paths import load_config_text
 from .schemas import DecisionResult, EvidenceBundle, ScoredProblem
-
-
-def _project_root() -> Path:
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "config" / "decision_agent").exists():
-            return parent
-    raise RuntimeError("未找到项目根目录下的 config/decision_agent 目录。")
-
-
-@lru_cache(maxsize=8)
-def _load_prompt(name: str) -> str:
-    prompt_path = _project_root() / "config" / "decision_agent" / name
-    return prompt_path.read_text(encoding="utf-8")
 
 
 def build_system_prompt() -> str:
     return "\n\n".join(
         [
             "# 核心规则",
-            _load_prompt("system_core.md"),
+            load_config_text("decision_agent", "system_core.md"),
             "# 决策规则",
-            _load_prompt("decision_rules.md"),
+            load_config_text("decision_agent", "decision_rules.md"),
             "# 内容质量规则",
-            _load_prompt("quality_rules.md"),
+            load_config_text("decision_agent", "quality_rules.md"),
             "# 输出格式",
-            _load_prompt("output_schema.md"),
+            load_config_text("decision_agent", "output_schema.md"),
         ]
     )
 

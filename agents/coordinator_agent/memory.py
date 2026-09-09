@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
+
+from agents.common.paths import load_config_text
 
 
 DEFAULT_RECENT_TURNS = 3
@@ -20,16 +21,6 @@ class SessionMemorySummary(BaseModel):
     @classmethod
     def _strip_text(cls, value: str) -> str:
         return str(value or "").strip()
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _load_summary_prompt() -> str:
-    return (_project_root() / "config" / "coordinator_agent" / "summarize_session_memory.md").read_text(
-        encoding="utf-8"
-    )
 
 
 def _clip(text: str, limit: int) -> str:
@@ -126,7 +117,7 @@ def update_memory_summary(
     response = invoke_structured(
         SessionMemorySummary,
         [
-            SystemMessage(content=_load_summary_prompt()),
+            SystemMessage(content=load_config_text("coordinator_agent", "summarize_session_memory.md")),
             HumanMessage(
                 content="【会话记忆输入】\n"
                 + json.dumps(payload, ensure_ascii=False, indent=2)

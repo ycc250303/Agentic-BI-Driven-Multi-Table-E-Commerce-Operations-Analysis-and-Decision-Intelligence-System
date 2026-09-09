@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
+
+from agents.common.paths import load_config_text
 
 
 RECENT_TURN_LIMIT = 4
@@ -45,16 +46,6 @@ class ConversationResolution(BaseModel):
         if not isinstance(value, list):
             return [str(value).strip()] if str(value).strip() else []
         return [str(item).strip() for item in value if str(item or "").strip()]
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _load_prompt() -> str:
-    return (_project_root() / "config" / "coordinator_agent" / "resolve_conversation_context.md").read_text(
-        encoding="utf-8"
-    )
 
 
 def _clip(text: str, limit: int = TEXT_LIMIT) -> str:
@@ -148,7 +139,7 @@ def resolve_conversation_context(
     response = invoke_structured(
         ConversationResolution,
         [
-            SystemMessage(content=_load_prompt()),
+            SystemMessage(content=load_config_text("coordinator_agent", "resolve_conversation_context.md")),
             HumanMessage(
                 content="【会话语义解析输入】\n"
                 + json.dumps(payload, ensure_ascii=False, indent=2)

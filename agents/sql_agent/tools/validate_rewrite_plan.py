@@ -6,13 +6,13 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
 import yaml
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+from agents.common.paths import load_config_text
 from agents.sql_agent.tools.rewrite_to_query import RewriteToQueryOutput
 
 
@@ -21,20 +21,9 @@ class ValidateRewritePlanOutput(BaseModel):
     brief: str = Field(description="通过/失败原因简述")
 
 
-def _project_root() -> Path:
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "config" / "data_analysis_agent").exists():
-            return parent
-    raise RuntimeError("未找到项目根目录下的 config/data_analysis_agent 目录。")
-
-
 @lru_cache(maxsize=1)
 def _load_rules() -> dict[str, Any]:
-    rules_path = (
-        _project_root() / "config" / "data_analysis_agent" / "rewrite_plan_rules.yaml"
-    )
-    raw = yaml.safe_load(rules_path.read_text(encoding="utf-8")) or {}
+    raw = yaml.safe_load(load_config_text("data_analysis_agent", "rewrite_plan_rules.yaml")) or {}
     if not isinstance(raw, dict):
         return {"rules": []}
     rules = raw.get("rules") or []

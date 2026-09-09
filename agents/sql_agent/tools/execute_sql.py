@@ -20,7 +20,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from pymysql.cursors import DictCursor
 
-from db_env import pymysql_config
+from db_env import json_safe_value, pymysql_config
 from agents.sql_agent.tools.generate_sql import GenerateSqlOutput
 from agents.sql_agent.tools.sql_format_rules import normalize_sql
 
@@ -66,20 +66,6 @@ def _write_query_result_csv(
         for r in rows:
             writer.writerow({c: r.get(c) if r.get(c) is not None else "" for c in columns})
     return path.resolve()
-
-
-def _json_safe_value(v: Any) -> Any:
-    if v is None:
-        return None
-    if isinstance(v, Decimal):
-        return float(v)
-    if isinstance(v, datetime):
-        return v.isoformat(sep=" ", timespec="seconds")
-    if isinstance(v, date):
-        return v.isoformat()
-    if isinstance(v, (bytes, bytearray)):
-        return v.decode("utf-8", errors="replace")
-    return v
 
 
 def _infer_type(v: Any) -> str:
@@ -174,7 +160,7 @@ def _profile_columns(
                     inferred = "mixed"
                     break
         sample_raw = non_null[:3]
-        sample = [_json_safe_value(x) for x in sample_raw]
+        sample = [json_safe_value(x) for x in sample_raw]
         profiles.append(
             ColumnProfile(
                 name=col,
@@ -295,7 +281,7 @@ class ExecuteSqlRunner:
                             truncated = True
                             batch = batch[: self.max_rows]
                         for raw in batch:
-                            row = {k: _json_safe_value(raw[k]) for k in raw}
+                            row = {k: json_safe_value(raw[k]) for k in raw}
                             rows_out.append(row)
                     except Exception as e:
                         elapsed = (time.perf_counter() - t0) * 1000

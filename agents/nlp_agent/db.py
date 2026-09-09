@@ -7,28 +7,12 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
-from decimal import Decimal
 from typing import Any
 
 import pymysql
 from pymysql.cursors import DictCursor
 
-from db_env import pymysql_config
-
-
-def _json_safe_value(v: Any) -> Any:
-    if v is None:
-        return None
-    if isinstance(v, Decimal):
-        return float(v)
-    if isinstance(v, datetime):
-        return v.isoformat(sep=" ", timespec="seconds")
-    if isinstance(v, date):
-        return v.isoformat()
-    if isinstance(v, (bytes, bytearray)):
-        return v.decode("utf-8", errors="replace")
-    return v
+from db_env import json_safe_value, pymysql_config
 
 
 def _connect() -> pymysql.connections.Connection:
@@ -46,7 +30,7 @@ def query(sql: str, params: tuple | None = None) -> list[dict[str, Any]]:
             rows = cur.fetchall() or []
     finally:
         conn.close()
-    return [{k: _json_safe_value(v) for k, v in r.items()} for r in rows]
+    return [{k: json_safe_value(v) for k, v in r.items()} for r in rows]
 
 
 def execute(sql: str, params: tuple | None = None) -> int:

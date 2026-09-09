@@ -12,9 +12,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.sql_agent.tools.rewrite_to_query import (
     RewriteToQueryOutput,
-    _load_prompt,
     build_rewrite_to_query_tool,
 )
+from agents.common.paths import load_config_text
 
 
 KNOWN_VIEWS = {
@@ -168,9 +168,9 @@ def _normalize_thinking_json(data: Any) -> Any:
 
 
 def _build_rewrite_messages(query: str) -> list[Any]:
-    background_prompt = _load_prompt("system_core.md")
-    schema_prompt = _load_prompt("schema_dictionary.md")
-    rewrite_prompt = _load_prompt("rewrite_to_query_tool.md")
+    background_prompt = load_config_text("data_analysis_agent", "system_core.md")
+    schema_prompt = load_config_text("data_analysis_agent", "schema_dictionary.md")
+    rewrite_prompt = load_config_text("data_analysis_agent", "rewrite_to_query_tool.md")
     system_prompt = "\n\n".join(
         [
             "# Agent 背景规则",

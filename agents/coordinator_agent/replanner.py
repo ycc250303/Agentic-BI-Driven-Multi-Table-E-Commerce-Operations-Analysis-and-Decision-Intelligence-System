@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
+
+from agents.common.paths import load_config_text
 
 
 MAX_REPLAN_COUNT = 1
@@ -18,16 +19,6 @@ class ReplanDecision(BaseModel):
     sub_questions: list[str] = Field(default_factory=list)
     suggested_agents: list[str] = Field(default_factory=list)
     reason: str = ""
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _load_prompt() -> str:
-    return (
-        _project_root() / "config" / "coordinator_agent" / "replan_query.md"
-    ).read_text(encoding="utf-8")
 
 
 def _extract_json_object(text: str) -> str:
@@ -132,7 +123,7 @@ def plan_recovery_queries(state: dict[str, Any], *, model=None) -> ReplanDecisio
         response = invoke_structured(
             ReplanDecision,
             [
-                SystemMessage(content=_load_prompt()),
+                SystemMessage(content=load_config_text("coordinator_agent", "replan_query.md")),
                 HumanMessage(
                     content=(
                         "请审查当前状态，判断是否需要补充数据分析。\n\n"

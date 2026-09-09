@@ -15,20 +15,12 @@ import pandas as pd
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.common.llm import invoke_chat
+from agents.common.paths import load_config_text
 from agents.viz_agent.line_plan import normalize_line_plan
 from agents.viz_agent.render import render_to_png
 from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
 
 _viz_dir = Path(__file__).resolve().parent
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _load_plan_prompt() -> str:
-    path = _project_root() / "config" / "visualization_agent" / "plan_chart.md"
-    return path.read_text(encoding="utf-8")
 
 
 def _extract_json_object(text: str) -> str:
@@ -191,7 +183,7 @@ def plan_with_llm(
     *,
     model=None,
 ) -> tuple[VizPlan, str]:
-    system = _load_plan_prompt()
+    system = load_config_text("visualization_agent", "plan_chart.md")
     human = _build_human_prompt(user_query, df, column_profiles, data_summary_zh)
     raw = _extract_json_object(
         invoke_chat(

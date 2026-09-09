@@ -1,21 +1,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from agents.common.paths import load_config_text
 from agents.coordinator_agent.adapters import build_synthesis_evidence
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _load_prompt() -> str:
-    return (_project_root() / "config" / "coordinator_agent" / "synthesize_answer.md").read_text(
-        encoding="utf-8"
-    )
 
 
 def _format_rows_fallback(evidence: dict) -> str:
@@ -60,7 +50,7 @@ def synthesize_final_answer(
 
     from agents.common.llm import invoke_chat
 
-    system = _load_prompt()
+    system = load_config_text("coordinator_agent", "synthesize_answer.md")
     human = (
         "【结构化证据】\n"
         + json.dumps(evidence, ensure_ascii=False, indent=2)

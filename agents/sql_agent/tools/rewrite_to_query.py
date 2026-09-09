@@ -1,5 +1,3 @@
-from pathlib import Path
-from functools import lru_cache
 from typing import Any, Literal
 
 from langchain_core.tools import StructuredTool
@@ -7,6 +5,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field, model_validator
 
 from agents.common.llm import get_structured_llm
+from agents.common.paths import load_config_text
 
 
 class QueryScope(BaseModel):
@@ -125,20 +124,6 @@ class RewriteToQueryOutput(BaseModel):
         return self
 
 
-def _project_root() -> Path:
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "config" / "data_analysis_agent").exists():
-            return parent
-    raise RuntimeError("未找到项目根目录下的 config/data_analysis_agent 目录。")
-
-
-@lru_cache(maxsize=8)
-def _load_prompt(name: str) -> str:
-    prompt_path = _project_root() / "config" / "data_analysis_agent" / name
-    return prompt_path.read_text(encoding="utf-8")
-
-
 class RewriteToQueryRunner:
     def __init__(self, model, max_retries: int = 3):
         self.structured_model = model.with_structured_output(RewriteToQueryOutput)
@@ -146,9 +131,9 @@ class RewriteToQueryRunner:
 
     def invoke(self, query: str, correction_context: str = "") -> str:
         """将自然语言问题转换为查询工具输入。"""
-        background_prompt = _load_prompt("system_core.md")
-        schema_prompt = _load_prompt("schema_dictionary.md")
-        rewrite_prompt = _load_prompt("rewrite_to_query_tool.md")
+        background_prompt = load_config_text("data_analysis_agent", "system_core.md")
+        schema_prompt = load_config_text("data_analysis_agent", "schema_dictionary.md")
+        rewrite_prompt = load_config_text("data_analysis_agent", "rewrite_to_query_tool.md")
         system_prompt = "\n\n".join(
             [
                 "# Agent 背景规则",

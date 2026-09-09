@@ -1,8 +1,10 @@
-"""从环境变量读取数据库连接参数，不设代码内默认值。"""
+"""从环境变量读取数据库连接参数，并提供 MySQL 结果的 JSON 安全转换。"""
 
 from __future__ import annotations
 
 import os
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -63,3 +65,18 @@ def mysql_connector_config(*, autocommit: bool = True) -> dict[str, Any]:
     cfg["charset"] = "utf8mb4"
     cfg["autocommit"] = autocommit
     return cfg
+
+
+def json_safe_value(v: Any) -> Any:
+    """把 MySQL 驱动常见类型转成 JSON 可序列化值；其余原样返回。"""
+    if v is None:
+        return None
+    if isinstance(v, Decimal):
+        return float(v)
+    if isinstance(v, datetime):
+        return v.isoformat(sep=" ", timespec="seconds")
+    if isinstance(v, date):
+        return v.isoformat()
+    if isinstance(v, (bytes, bytearray)):
+        return v.decode("utf-8", errors="replace")
+    return v

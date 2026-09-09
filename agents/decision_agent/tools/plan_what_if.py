@@ -1,24 +1,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.common.llm import invoke_structured
+from agents.common.paths import load_config_text
 
 from ..schemas import DecisionInputs, EvidenceBundle, ScoredProblem, WhatIfPlan
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[3]
-
-
-def _load_prompt() -> str:
-    return (
-        _project_root() / "config" / "decision_agent" / "plan_what_if.md"
-    ).read_text(encoding="utf-8")
 
 
 def _problem_payload(problems: list[ScoredProblem]) -> list[dict[str, Any]]:
@@ -92,7 +82,7 @@ def plan_what_if(
         response = invoke_structured(
             WhatIfPlan,
             [
-                SystemMessage(content=_load_prompt()),
+                SystemMessage(content=load_config_text("decision_agent", "plan_what_if.md")),
                 HumanMessage(
                     content=_human_prompt(
                         inputs=inputs,

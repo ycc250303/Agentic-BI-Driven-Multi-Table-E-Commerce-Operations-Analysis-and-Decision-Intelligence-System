@@ -9,6 +9,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from agents.common.paths import load_config_text
+
 DataSource = Literal["sql_run", "supplementary_query", "wordcloud", "review_insights"]
 InsightChartType = Literal["topic_distribution", "complaints_by_category"]
 ChartHint = Literal[
@@ -40,16 +42,6 @@ class VizSuitePlan(BaseModel):
     @classmethod
     def _validate_tasks(cls, charts: list[VizChartTask]) -> list[VizChartTask]:
         return charts
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _load_suite_prompt() -> str:
-    return (_project_root() / "config" / "visualization_agent" / "plan_suite.md").read_text(
-        encoding="utf-8"
-    )
 
 
 def _extract_json_object(text: str) -> str:
@@ -959,7 +951,7 @@ def plan_viz_suite_llm(
 
     from agents.common.llm import invoke_chat
 
-    system = _load_suite_prompt()
+    system = load_config_text("visualization_agent", "plan_suite.md")
     human = (
         f"【用户问题】\n{user_query}\n\n"
         f"【intent】\n{intent}\n\n"

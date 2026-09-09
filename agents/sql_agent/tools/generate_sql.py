@@ -1,5 +1,3 @@
-from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
 from langchain_core.tools import StructuredTool
@@ -7,6 +5,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from agents.common.llm import get_structured_llm
+from agents.common.paths import load_config_text
 from agents.sql_agent.tools.rewrite_to_query import RewriteToQueryOutput
 from agents.sql_agent.tools.sql_format_rules import query_sql_format_ok
 
@@ -53,20 +52,6 @@ class GenerateSqlOutput(BaseModel):
         return out
 
 
-def _project_root() -> Path:
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "config" / "data_analysis_agent").exists():
-            return parent
-    raise RuntimeError("未找到项目根目录下的 config/data_analysis_agent 目录。")
-
-
-@lru_cache(maxsize=8)
-def _load_prompt(name: str) -> str:
-    prompt_path = _project_root() / "config" / "data_analysis_agent" / name
-    return prompt_path.read_text(encoding="utf-8")
-
-
 class GenerateSqlRunner:
     def __init__(self, model, max_retries: int = 3):
         self.structured_model = model.with_structured_output(GenerateSqlOutput)
@@ -79,9 +64,9 @@ class GenerateSqlRunner:
         """
         payload = RewriteToQueryOutput.model_validate_json(rewrite_json.strip())
 
-        background_prompt = _load_prompt("system_core.md")
-        schema_prompt = _load_prompt("schema_dictionary.md")
-        sql_task_prompt = _load_prompt("generate_sql_tool.md")
+        background_prompt = load_config_text("data_analysis_agent", "system_core.md")
+        schema_prompt = load_config_text("data_analysis_agent", "schema_dictionary.md")
+        sql_task_prompt = load_config_text("data_analysis_agent", "generate_sql_tool.md")
         system_prompt = "\n\n".join(
             [
                 "# Agent 背景规则",

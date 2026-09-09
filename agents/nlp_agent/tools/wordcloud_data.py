@@ -32,9 +32,9 @@ import json
 import re
 from collections import Counter
 from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
+from agents.common.paths import load_config_text
 from agents.nlp_agent import db
 
 
@@ -67,22 +67,12 @@ _DEFAULT_STOPWORDS: set[str] = {
 }
 
 
-def _project_root() -> Path:
-    p = Path(__file__).resolve()
-    for parent in p.parents:
-        if (parent / "config" / "nlp_agent").exists():
-            return parent
-    raise RuntimeError("未找到项目根目录下的 config/nlp_agent 目录。")
-
-
 @lru_cache(maxsize=1)
 def _load_stopwords() -> set[str]:
     try:
-        path = _project_root() / "config" / "nlp_agent" / "stopwords_pt.txt"
-        if not path.exists():
-            return set(_DEFAULT_STOPWORDS)
+        text = load_config_text("nlp_agent", "stopwords_pt.txt")
         words: set[str] = set()
-        for line in path.read_text(encoding="utf-8").splitlines():
+        for line in text.splitlines():
             s = line.strip()
             if not s or s.startswith("#"):
                 continue

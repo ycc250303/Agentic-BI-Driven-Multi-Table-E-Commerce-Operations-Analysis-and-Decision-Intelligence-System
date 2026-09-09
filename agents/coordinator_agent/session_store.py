@@ -7,12 +7,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from agents.common.paths import project_root
+
 
 SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
 
 
 def _now_iso() -> str:
@@ -43,7 +41,7 @@ class LocalSessionStore:
     """JSON file based session storage for local CLI and demos."""
 
     def __init__(self, root: Path | str | None = None) -> None:
-        self.root = Path(root) if root is not None else _project_root() / "runtime" / "sessions"
+        self.root = Path(root) if root is not None else project_root() / "runtime" / "sessions"
 
     def _path(self, session_id: str) -> Path:
         sid = _validate_session_id(session_id)

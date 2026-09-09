@@ -19,12 +19,12 @@ from __future__ import annotations
 
 from collections import Counter
 from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+from agents.common.paths import load_config_text
 from agents.nlp_agent import db
 
 
@@ -79,15 +79,6 @@ _DEFAULT_TOPIC_KEYWORDS: dict[str, list[str]] = {
 # ---------------------------------------------------------------------------
 # 词典加载：优先 PyYAML；缺失时用极简内置解析；都失败时回退默认词典
 # ---------------------------------------------------------------------------
-
-
-def _project_root() -> Path:
-    """从当前文件向上找含 `config/nlp_agent` 的项目根。"""
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "config" / "nlp_agent").exists():
-            return parent
-    raise RuntimeError("未找到项目根目录下的 config/nlp_agent 目录。")
 
 
 def _parse_simple_yaml(text: str) -> dict[str, list[str]]:
@@ -158,11 +149,7 @@ def _parse_simple_yaml(text: str) -> dict[str, list[str]]:
 def _load_topic_keywords() -> dict[str, list[str]]:
     """加载葡语主题关键词词典。失败时回退到内置默认词典。"""
     try:
-        yaml_path = _project_root() / "config" / "nlp_agent" / "topic_keywords.yaml"
-        if not yaml_path.exists():
-            return dict(_DEFAULT_TOPIC_KEYWORDS)
-
-        text = yaml_path.read_text(encoding="utf-8")
+        text = load_config_text("nlp_agent", "topic_keywords.yaml")
         # 优先尝试 PyYAML，可选依赖
         try:
             import yaml  # type: ignore  # noqa: WPS433

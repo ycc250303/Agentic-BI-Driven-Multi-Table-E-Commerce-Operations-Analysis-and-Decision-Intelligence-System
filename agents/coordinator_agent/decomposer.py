@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from agents.common.paths import load_config_text
 from agents.coordinator_agent.planner import IntentName, classify_intent
 
 
@@ -34,16 +34,6 @@ class DecomposeResult(BaseModel):
         ):
             raise ValueError("sub_questions 不能为空（off_topic=false 时）")
         return self
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _load_prompt(name: str) -> str:
-    return (_project_root() / "config" / "coordinator_agent" / name).read_text(
-        encoding="utf-8"
-    )
 
 
 def _extract_json_object(text: str) -> str:
@@ -238,7 +228,7 @@ def decompose_query_llm(user_query: str, *, model=None) -> DecomposeResult:
 
     from agents.common.llm import invoke_chat
 
-    system = _load_prompt("decompose_query.md")
+    system = load_config_text("coordinator_agent", "decompose_query.md")
     human = f"【用户问题】\n{user_query}\n\n请输出 JSON。"
     try:
         raw = _extract_json_object(

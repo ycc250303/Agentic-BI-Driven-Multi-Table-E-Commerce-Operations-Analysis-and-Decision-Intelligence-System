@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel
 
+from agents.common.paths import load_config_text
 from agents.coordinator_agent.replanner import MAX_REPLAN_COUNT, inspect_agent_outputs
 
 AgentRoute = Literal["data_analysis", "visualization", "nlp", "decision", "synthesize"]
@@ -22,16 +22,6 @@ _POST_SQL_AGENT_ORDER: tuple[AgentRoute, ...] = ("nlp", "visualization", "decisi
 class RouteDecision(BaseModel):
     next_agent: AgentRoute
     reasoning: str = ""
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _load_prompt() -> str:
-    return (_project_root() / "config" / "coordinator_agent" / "route_next.md").read_text(
-        encoding="utf-8"
-    )
 
 
 def _extract_json_object(text: str) -> str:
@@ -245,7 +235,7 @@ def route_next_llm(state: dict, *, model=None) -> RouteDecision:
 
     from agents.common.llm import invoke_chat
 
-    system = _load_prompt()
+    system = load_config_text("coordinator_agent", "route_next.md")
     human = f"【当前状态】\n{_build_router_context(state)}\n\n请输出 JSON。"
     try:
         raw = _extract_json_object(
