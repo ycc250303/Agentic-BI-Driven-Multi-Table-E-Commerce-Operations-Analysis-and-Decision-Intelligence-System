@@ -28,9 +28,7 @@ python -m agents.coordinator_agent.run --query "2017年哪个州的销售额最�
 ```mermaid
 flowchart TD
   A["user_query"] --> B["rewrite 转写"]
-  B --> C["validate_rewrite 校验"]
-  C -->|失败重试| B
-  C -->|通过| D["generate_sql"]
+  B --> D["generate_sql"]
   D --> E["check_sql"]
   E -->|失败重试| D
   E -->|通过| F["execute_sql"]
@@ -38,12 +36,11 @@ flowchart TD
   F -->|成功| G["CSV 结果"]
 ```
 
-> rewrite 与 generate 各最多重试 3 次；失败时错误写入 `correction_context`。
+> rewrite 与 generate 各最多重试 3 次；失败时错误写入 `correction_context`。rewrite 结构一致性由 Pydantic schema 保证。
 
 | 阶段 | 说明 |
 |------|------|
 | **rewrite** | 拆 `sub_questions`，标注 `hit_pre_agg_view` / `candidate_views` |
-| **validate_rewrite** | 规则校验（`rewrite_plan_rules.yaml`），防口径漂移 |
 | **generate** | 输出 `query_sqls[]`，一子问题一条 `SELECT`，单条内禁止分号 |
 | **check** | 本地校验格式、反引号小写、只读安全（不连库） |
 | **execute** | 顺序执行，每条 SQL 一个 CSV；明细不进 LLM 上下文 |
@@ -77,7 +74,6 @@ flowchart TD
 | 工具 | LLM | 职责 |
 |------|-----|------|
 | `rewrite_to_query_tool` | 是 | NL → 结构化计划 + 视图命中 |
-| `validate_rewrite_plan_tool` | 否 | 语义规则校验 |
 | `generate_sql_tool` | 是 | 计划 → `query_sqls` |
 | `check_sql_tool` | 否 | 格式与安全校验 |
 | `execute_sql_tool` | 否 | 连库执行，写 CSV |
@@ -103,19 +99,17 @@ flowchart TD
 agents/sql_agent/
 ├── __init__.py
 ├── run.py              # 流水线入口：python -m agents.sql_agent.run
-├── tools/              # 五个 StructuredTool
+├── tools/              # 四个 StructuredTool
 └── test/eval_rewrite_to_query.py
 
 config/data_analysis_agent/
 ├── system_core.md              # 视图优先策略
-├── schema_dictionary.md        # 表 + 视图字典
+├── schema_dictionary.md        # 表 + 视图字典 + 通用指标语义
 ├── rewrite_to_query_tool.md
-├── generate_sql_tool.md
-├── rewrite_plan_rules.yaml
-└── routing_examples.md
+└── generate_sql_tool.md
 ```
 
-预聚合视图说明见根目录 `assignment.md`、`config/view_metadata.json`。
+预聚合视图说明见根目录 `assignment.md`、`config/view_metadata.json`（视图文档，运行时 Prompt 只注入 `schema_dictionary.md`）。
 
 ---
 

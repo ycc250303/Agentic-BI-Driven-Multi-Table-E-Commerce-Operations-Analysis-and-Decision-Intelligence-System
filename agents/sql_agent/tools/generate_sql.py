@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from agents.common.llm import get_structured_llm
 from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt_parts
 from agents.sql_agent.tools.rewrite_to_query import RewriteToQueryOutput
 from agents.sql_agent.tools.sql_format_rules import query_sql_format_ok
 
@@ -64,18 +65,13 @@ class GenerateSqlRunner:
         """
         payload = RewriteToQueryOutput.model_validate_json(rewrite_json.strip())
 
-        background_prompt = load_config_text("data_analysis_agent", "system_core.md")
-        schema_prompt = load_config_text("data_analysis_agent", "schema_dictionary.md")
-        sql_task_prompt = load_config_text("data_analysis_agent", "generate_sql_tool.md")
-        system_prompt = "\n\n".join(
-            [
-                "# Agent 背景规则",
-                background_prompt,
-                "# 数据库表结构与视图字典",
-                schema_prompt,
-                "# SQL 生成工具规则",
-                sql_task_prompt,
-            ]
+        system_prompt = compose_system_prompt_parts(
+            "# Agent 背景规则\n\n"
+            + load_config_text("data_analysis_agent", "system_core.md"),
+            "# 数据库表结构与视图字典\n\n"
+            + load_config_text("data_analysis_agent", "schema_dictionary.md"),
+            "# SQL 生成工具规则\n\n"
+            + load_config_text("data_analysis_agent", "generate_sql_tool.md"),
         )
 
         human_content = (

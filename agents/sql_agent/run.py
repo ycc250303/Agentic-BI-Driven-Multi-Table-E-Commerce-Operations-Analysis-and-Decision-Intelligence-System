@@ -1,12 +1,10 @@
 """
 SQL Agent 入口：用 LangChain Runnable 将流程固定为
-用户自然语言 → rewrite_to_query_tool → validate_rewrite_plan_tool → generate_sql_tool
-→ check_sql_tool → execute_sql_tool。
+用户自然语言 → rewrite_to_query_tool → generate_sql_tool → check_sql_tool → execute_sql_tool。
 
 `generate_sql` 可输出多条 `query_sqls`；`execute_sql` 依次执行并为每条结果写独立 CSV。
 
-rewrite_to_query 最多尝试 3 次（含首次）：若 validate_rewrite_plan_tool 的 plan_ok 为 false，
-则将语义校验反馈写入 correction_context 重新调用 rewrite_to_query_tool。
+rewrite_to_query 最多尝试 3 次（含首次）：结构化输出失败时将错误写入 correction_context 重试。
 
 generate_sql 最多尝试 3 次（含首次）：若 check_sql 的 syntax_ok 为 false，或 execute_sql 的
 error_message 非空，则将错误摘要写入上下文并重新调用 generate_sql_tool；最多额外重试 2 次。
@@ -27,7 +25,6 @@ from agents.sql_agent.tools.check_sql import build_check_sql_tool
 from agents.sql_agent.tools.execute_sql import build_execute_sql_tool
 from agents.sql_agent.tools.generate_sql import build_generate_sql_tool
 from agents.sql_agent.tools.rewrite_to_query import build_rewrite_to_query_tool
-from agents.sql_agent.tools.validate_rewrite_plan import build_validate_rewrite_plan_tool
 
 MAX_REWRITE_ATTEMPTS = 3
 MAX_GENERATE_ATTEMPTS = 3
@@ -79,39 +76,26 @@ def _execute_error_message_nonempty(exec_json: str) -> tuple[bool, str]:
     return bool(s), s
 
 
-def _parse_plan_ok(validate_json: str) -> tuple[bool, str]:
-    d = _json_load_dict(validate_json)
-    if d is None:
-        return False, "validate_rewrite_plan_tool 返回非合法 JSON"
-    ok = d.get("plan_ok") is True
-    brief = str(d.get("brief") or "")
-    return ok, brief
-
-
-def _pipeline_tools(model=None) -> tuple[Any, Any, Any, Any, Any, Any]:
+def _pipeline_tools(model=None) -> tuple[Any, Any, Any, Any, Any]:
     structured_llm = model or get_structured_llm()
     return (
         structured_llm,
         build_rewrite_to_query_tool(structured_llm, max_retries=TOOL_MODEL_RETRIES),
-        build_validate_rewrite_plan_tool(),
         build_generate_sql_tool(structured_llm, max_retries=TOOL_MODEL_RETRIES),
         build_check_sql_tool(),
         build_execute_sql_tool(),
     )
 
 
-def _run_rewrite_with_validation(
+def _run_rewrite(
     user_query: str,
     *,
     rewrite_tool: Any,
-    validate_tool: Any,
     emit: Callable[[str, str], None] | None,
-) -> tuple[str, str, int, list[str]]:
+) -> tuple[str, int, list[str]]:
     rewrite_json = ""
-    validate_json = ""
     attempts_used = 0
     feedback_lines: list[str] = []
-    last_rewrite_error = ""
 
     for _ in range(MAX_REWRITE_ATTEMPTS):
         attempts_used += 1
@@ -123,22 +107,11 @@ def _run_rewrite_with_validation(
                 }
             )
         except Exception as e:
-            last_rewrite_error = str(e)
-            feedback_lines.append(f"[rewrite_to_query 失败] {last_rewrite_error}")
+            feedback_lines.append(f"[rewrite_to_query 失败] {e}")
             continue
         if emit:
             emit("rewrite_to_query_tool", rewrite_json)
-
-        validate_json = validate_tool.invoke(
-            {"user_query": user_query, "rewrite_json": rewrite_json}
-        )
-        if emit:
-            emit("validate_rewrite_plan_tool", validate_json)
-
-        ok, brief = _parse_plan_ok(validate_json)
-        if ok:
-            return rewrite_json, validate_json, attempts_used, []
-        feedback_lines.append(f"[validate_rewrite_plan 未通过] {brief}")
+        return rewrite_json, attempts_used, []
 
     if not rewrite_json.strip():
         rewrite_json = json.dumps(
@@ -151,14 +124,7 @@ def _run_rewrite_with_validation(
             },
             ensure_ascii=False,
         )
-    if not validate_json.strip():
-        msg = (
-            "rewrite_to_query_tool 连续失败，未获得可校验计划。"
-            + (f" 最近错误：{last_rewrite_error}" if last_rewrite_error else "")
-        )
-        validate_json = json.dumps({"plan_ok": False, "brief": msg}, ensure_ascii=False)
-
-    return rewrite_json, validate_json, attempts_used, feedback_lines
+    return rewrite_json, attempts_used, feedback_lines
 
 
 def _run_retry_loop(
@@ -239,7 +205,6 @@ def run_sql_pipeline_with_feedback(
     (
         _,
         rewrite_tool,
-        validate_tool,
         generate_tool,
         check_tool,
         execute_tool,
@@ -250,13 +215,10 @@ def run_sql_pipeline_with_feedback(
         if on_tool_end:
             on_tool_end(tool_name, payload)
 
-    rewrite_json, validate_json, rewrite_attempts, rewrite_feedback = (
-        _run_rewrite_with_validation(
-            uq,
-            rewrite_tool=rewrite_tool,
-            validate_tool=validate_tool,
-            emit=emit,
-        )
+    rewrite_json, rewrite_attempts, rewrite_feedback = _run_rewrite(
+        uq,
+        rewrite_tool=rewrite_tool,
+        emit=emit,
     )
 
     sql_json, check_json, exec_json, attempts_used = _run_retry_loop(
@@ -271,7 +233,6 @@ def run_sql_pipeline_with_feedback(
     return {
         "user_query": uq,
         "rewrite_json": rewrite_json,
-        "validate_rewrite_json": validate_json,
         "rewrite_attempts": rewrite_attempts,
         "generate_sql_json": sql_json,
         "check_sql_json": check_json,
@@ -289,7 +250,7 @@ def _coerce_pipeline_input(x: str | dict[str, Any]) -> dict[str, Any]:
 def build_sql_pipeline(model=None):
     """
     返回 Runnable：`invoke(str | {"user_query": str})` → dict，包含
-    `user_query`、`rewrite_json`、`validate_rewrite_json`、`rewrite_attempts`、
+    `user_query`、`rewrite_json`、`rewrite_attempts`、
     `generate_sql_json`、`check_sql_json`、`execute_sql_json`、`generate_sql_attempts`。
 
     Web 端实时进度请使用 `run_sql_pipeline_with_feedback(..., on_tool_end=...)`。
@@ -297,7 +258,6 @@ def build_sql_pipeline(model=None):
     (
         _,
         rewrite_tool,
-        validate_tool,
         generate_tool,
         check_tool,
         execute_tool,
@@ -305,13 +265,10 @@ def build_sql_pipeline(model=None):
 
     def pipeline_step(state: dict[str, Any]) -> dict[str, Any]:
         user_query = state["user_query"]
-        rewrite_json, validate_json, rewrite_attempts, rewrite_feedback = (
-            _run_rewrite_with_validation(
-                user_query,
-                rewrite_tool=rewrite_tool,
-                validate_tool=validate_tool,
-                emit=None,
-            )
+        rewrite_json, rewrite_attempts, rewrite_feedback = _run_rewrite(
+            user_query,
+            rewrite_tool=rewrite_tool,
+            emit=None,
         )
 
         sql_json, check_json, exec_json, attempts_used = _run_retry_loop(
@@ -326,7 +283,6 @@ def build_sql_pipeline(model=None):
         return {
             "user_query": user_query,
             "rewrite_json": rewrite_json,
-            "validate_rewrite_json": validate_json,
             "rewrite_attempts": rewrite_attempts,
             "generate_sql_json": sql_json,
             "check_sql_json": check_json,

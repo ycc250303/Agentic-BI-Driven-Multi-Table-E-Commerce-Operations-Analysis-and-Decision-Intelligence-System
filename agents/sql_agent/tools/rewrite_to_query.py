@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from agents.common.llm import get_structured_llm
 from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt_parts
 
 
 class QueryScope(BaseModel):
@@ -131,18 +132,13 @@ class RewriteToQueryRunner:
 
     def invoke(self, query: str, correction_context: str = "") -> str:
         """将自然语言问题转换为查询工具输入。"""
-        background_prompt = load_config_text("data_analysis_agent", "system_core.md")
-        schema_prompt = load_config_text("data_analysis_agent", "schema_dictionary.md")
-        rewrite_prompt = load_config_text("data_analysis_agent", "rewrite_to_query_tool.md")
-        system_prompt = "\n\n".join(
-            [
-                "# Agent 背景规则",
-                background_prompt,
-                "# 数据库表结构与视图字典",
-                schema_prompt,
-                "# 转写工具规则",
-                rewrite_prompt,
-            ]
+        system_prompt = compose_system_prompt_parts(
+            "# Agent 背景规则\n\n"
+            + load_config_text("data_analysis_agent", "system_core.md"),
+            "# 数据库表结构与视图字典\n\n"
+            + load_config_text("data_analysis_agent", "schema_dictionary.md"),
+            "# 转写工具规则\n\n"
+            + load_config_text("data_analysis_agent", "rewrite_to_query_tool.md"),
         )
 
         human_content = str(query)

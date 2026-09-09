@@ -73,7 +73,6 @@ def _tool_agent(tool_name: str) -> str:
         return "visualization_agent"
     if tool_name in {
         "rewrite_to_query_tool",
-        "validate_rewrite_plan_tool",
         "generate_sql_tool",
         "check_sql_tool",
         "execute_sql_tool",
@@ -101,11 +100,6 @@ def summarize_tool_payload(tool_name: str, payload: str) -> str:
         views = data.get("candidate_views") or []
         view_text = f"，候选视图 {len(views)} 个" if isinstance(views, list) else ""
         return f"完成查询意图结构化{view_text}：{_truncate(query_for_sql, 120)}"
-
-    if tool_name == "validate_rewrite_plan_tool":
-        ok = data.get("plan_ok")
-        brief = str(data.get("brief") or "").strip()
-        return f"语义校验 {'通过' if ok else '未通过'}：{_truncate(brief, 140)}"
 
     if tool_name == "generate_sql_tool":
         sqls = _extract_sqls(data)

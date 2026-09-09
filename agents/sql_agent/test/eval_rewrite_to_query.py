@@ -15,6 +15,7 @@ from agents.sql_agent.tools.rewrite_to_query import (
     build_rewrite_to_query_tool,
 )
 from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt_parts
 
 
 KNOWN_VIEWS = {
@@ -168,18 +169,13 @@ def _normalize_thinking_json(data: Any) -> Any:
 
 
 def _build_rewrite_messages(query: str) -> list[Any]:
-    background_prompt = load_config_text("data_analysis_agent", "system_core.md")
-    schema_prompt = load_config_text("data_analysis_agent", "schema_dictionary.md")
-    rewrite_prompt = load_config_text("data_analysis_agent", "rewrite_to_query_tool.md")
-    system_prompt = "\n\n".join(
-        [
-            "# Agent 背景规则",
-            background_prompt,
-            "# 数据库表结构与视图字典",
-            schema_prompt,
-            "# 转写工具规则",
-            rewrite_prompt,
-        ]
+    system_prompt = compose_system_prompt_parts(
+        "# Agent 背景规则\n\n"
+        + load_config_text("data_analysis_agent", "system_core.md"),
+        "# 数据库表结构与视图字典\n\n"
+        + load_config_text("data_analysis_agent", "schema_dictionary.md"),
+        "# 转写工具规则\n\n"
+        + load_config_text("data_analysis_agent", "rewrite_to_query_tool.md"),
     )
     return [
         SystemMessage(content=system_prompt),

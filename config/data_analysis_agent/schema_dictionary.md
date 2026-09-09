@@ -142,19 +142,7 @@
   - `on_time_rate`
   - `delayed_orders`
 - 用途：配送时效、延迟诊断、准时率分析
-- **易错口径（生成 SQL 时必须遵守）**：
-  - **`on_time_rate` 为「该年-月 × 该州」单元内的比率**，不是全平台订单级比率。**禁止**用 `SELECT on_time_rate FROM mv_delivery_perf ... ORDER BY ... LIMIT 1`、`MAX(on_time_rate)` 或对 `on_time_rate` 做无权重 `GROUP BY` 冒充「全平台整体准时率」。
-  - **全平台整体准时率**：须在 `orders`（并满足 `order_status='delivered'`、签收与预计送达非空）上按订单计算 `SUM(准时) / COUNT(*)`。
-  - **各州「延迟最严重」/ 延迟排名（重要）**：
-    - **禁止**仅对 `delayed_orders` 做 `SUM` 后按绝对数量排序来代表「延迟最严重」——订单量大的州（如 SP）会天然排在前面，不能反映配送质量。
-    - **必须**回退 `orders` + `customers`，按 `customer_state` 做**订单级**聚合，输出至少：
-      - `total_delivered_orders`（该州已送达订单数）
-      - `delayed_orders`（延迟订单数）
-      - `delay_rate` = `delayed_orders / total_delivered_orders`（**主排序键**，降序 = 延迟率越高越严重）
-      - `delay_share` = `delayed_orders / 全平台 delayed_orders`（延迟占全平台比例，便于解读体量）
-    - 建议 `HAVING COUNT(*) >= 20` 过滤样本过少的州；排序 `ORDER BY delay_rate DESC, delayed_orders DESC LIMIT 10`。
-    - `mv_delivery_perf` 仅作辅助参考，**不能**代替上述订单级 delay_rate 排名。
-  - **「某州 + 某年」单一准时率**：若仅用本视图，需先将该州该年的多个月份聚成一行（如 `AVG(on_time_rate)`，并注明“按月单元比率简单平均近似”）；更稳妥方式是回退 `orders` 做订单级计算。
+- **grain 注意**：`on_time_rate` 是「年-月 × 州」单元内比率，不是全平台订单级比率；`delayed_orders` 是同 grain 的延迟单量。跨 grain 汇总或改维度时按下方「指标语义」处理。
 
 ### `mv_seller_perf`
 - 粒度：`year_month + seller_id + seller_state`
@@ -185,3 +173,18 @@
 - 默认 GMV 口径优先采用：`price + freight_value`（若问题要求仅商品金额，改用 `price`）。
 - 订单数口径优先：`COUNT(DISTINCT order_id)`。
 - 客户数口径优先：`COUNT(DISTINCT customer_unique_id)`。
+- 差评：`review_score <= 2` 的计数或比率；`avg_review_score` 是另一指标，用户问「差评」时不得改写成平均评分。
+
+## 4) 指标语义（通用）
+
+- 每个比率 / 均值字段都有固定 **grain**（见各视图「粒度」）。跨 grain 汇总时按分母加权（如 `SUM(rate * n) / SUM(n)`）；禁止无权重 `AVG` / `MAX` 冒充更粗粒度。所需维度或 grain 对不上视图时，回退原始表按原子事件重算。
+- 质量 / 风险类指标若同时有「率」和「量」：用户问排名、最严重、最差时，**主排序用率**，量作辅助列；大基数实体的绝对量高不代表比率高。
+- 延迟率 = 延迟订单 / 已送达订单（订单须 `order_status='delivered'` 且签收日、预计送达日非空）；准时率同口径按「签收日 ≤ 预计送达日」计算。
+
+## 5) 常用 JOIN 键
+
+- `orders.customer_id` → `customers.customer_id`（客户州/城）
+- `orders.order_id` → `order_items.order_id` → `products.product_id` / `sellers.seller_id`
+- `orders.order_id` → `payments.order_id` / `order_reviews.order_id`
+- `customers.customer_zip_code_prefix` → `geolocation.geolocation_zip_code_prefix`
+- `products.product_category_name` → `product_category_name_translation.product_category_name`（英文列名为 `product_category_name_english`）
