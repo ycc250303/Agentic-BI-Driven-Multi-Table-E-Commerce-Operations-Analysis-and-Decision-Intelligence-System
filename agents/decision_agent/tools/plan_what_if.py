@@ -6,7 +6,7 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.common.llm import invoke_structured
-from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt
 
 from ..schemas import DecisionInputs, EvidenceBundle, ScoredProblem, WhatIfPlan
 
@@ -82,7 +82,7 @@ def plan_what_if(
         response = invoke_structured(
             WhatIfPlan,
             [
-                SystemMessage(content=load_config_text("decision_agent", "plan_what_if.md")),
+                SystemMessage(content=compose_system_prompt("decision_agent", "plan_what_if.md")),
                 HumanMessage(
                     content=_human_prompt(
                         inputs=inputs,

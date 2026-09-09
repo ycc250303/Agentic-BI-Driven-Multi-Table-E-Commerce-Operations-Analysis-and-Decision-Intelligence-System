@@ -3,21 +3,15 @@ from __future__ import annotations
 import json
 
 from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt_parts
 from .schemas import DecisionResult, EvidenceBundle, ScoredProblem
 
 
 def build_system_prompt() -> str:
-    return "\n\n".join(
-        [
-            "# 核心规则",
-            load_config_text("decision_agent", "system_core.md"),
-            "# 决策规则",
-            load_config_text("decision_agent", "decision_rules.md"),
-            "# 内容质量规则",
-            load_config_text("decision_agent", "quality_rules.md"),
-            "# 输出格式",
-            load_config_text("decision_agent", "output_schema.md"),
-        ]
+    return compose_system_prompt_parts(
+        "# 核心规则\n\n" + load_config_text("decision_agent", "system_core.md"),
+        "# 决策规则\n\n" + load_config_text("decision_agent", "decision_rules.md"),
+        "# 输出格式\n\n" + load_config_text("decision_agent", "output_schema.md"),
     )
 
 
