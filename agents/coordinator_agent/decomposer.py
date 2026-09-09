@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt
 from agents.coordinator_agent.planner import IntentName, classify_intent
 
 
@@ -228,7 +228,7 @@ def decompose_query_llm(user_query: str, *, model=None) -> DecomposeResult:
 
     from agents.common.llm import invoke_chat
 
-    system = load_config_text("coordinator_agent", "decompose_query.md")
+    system = compose_system_prompt("coordinator_agent", "decompose_query.md")
     human = f"【用户问题】\n{user_query}\n\n请输出 JSON。"
     try:
         raw = _extract_json_object(

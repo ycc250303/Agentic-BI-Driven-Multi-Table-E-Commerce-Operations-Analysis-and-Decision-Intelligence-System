@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt
 
 
 RECENT_TURN_LIMIT = 4
@@ -139,7 +139,7 @@ def resolve_conversation_context(
     response = invoke_structured(
         ConversationResolution,
         [
-            SystemMessage(content=load_config_text("coordinator_agent", "resolve_conversation_context.md")),
+            SystemMessage(content=compose_system_prompt("coordinator_agent", "resolve_conversation_context.md")),
             HumanMessage(
                 content="【会话语义解析输入】\n"
                 + json.dumps(payload, ensure_ascii=False, indent=2)

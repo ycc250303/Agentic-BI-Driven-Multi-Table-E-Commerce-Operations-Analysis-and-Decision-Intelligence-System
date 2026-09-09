@@ -8,7 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt
 from agents.coordinator_agent.replanner import MAX_REPLAN_COUNT, inspect_agent_outputs
 
 AgentRoute = Literal["data_analysis", "visualization", "nlp", "decision", "synthesize"]
@@ -235,7 +235,7 @@ def route_next_llm(state: dict, *, model=None) -> RouteDecision:
 
     from agents.common.llm import invoke_chat
 
-    system = load_config_text("coordinator_agent", "route_next.md")
+    system = compose_system_prompt("coordinator_agent", "route_next.md")
     human = f"【当前状态】\n{_build_router_context(state)}\n\n请输出 JSON。"
     try:
         raw = _extract_json_object(

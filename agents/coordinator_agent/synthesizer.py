@@ -4,7 +4,7 @@ import json
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt
 from agents.coordinator_agent.adapters import build_synthesis_evidence
 
 
@@ -50,7 +50,7 @@ def synthesize_final_answer(
 
     from agents.common.llm import invoke_chat
 
-    system = load_config_text("coordinator_agent", "synthesize_answer.md")
+    system = compose_system_prompt("coordinator_agent", "synthesize_answer.md")
     human = (
         "【结构化证据】\n"
         + json.dumps(evidence, ensure_ascii=False, indent=2)

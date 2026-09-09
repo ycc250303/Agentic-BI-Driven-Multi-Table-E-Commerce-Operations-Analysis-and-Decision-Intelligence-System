@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt
 
 
 DEFAULT_RECENT_TURNS = 3
@@ -117,7 +117,7 @@ def update_memory_summary(
     response = invoke_structured(
         SessionMemorySummary,
         [
-            SystemMessage(content=load_config_text("coordinator_agent", "summarize_session_memory.md")),
+            SystemMessage(content=compose_system_prompt("coordinator_agent", "summarize_session_memory.md")),
             HumanMessage(
                 content="【会话记忆输入】\n"
                 + json.dumps(payload, ensure_ascii=False, indent=2)

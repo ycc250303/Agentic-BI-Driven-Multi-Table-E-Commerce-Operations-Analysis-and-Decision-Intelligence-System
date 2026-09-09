@@ -7,7 +7,7 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
-from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt
 
 
 MAX_REPLAN_COUNT = 1
@@ -123,7 +123,7 @@ def plan_recovery_queries(state: dict[str, Any], *, model=None) -> ReplanDecisio
         response = invoke_structured(
             ReplanDecision,
             [
-                SystemMessage(content=load_config_text("coordinator_agent", "replan_query.md")),
+                SystemMessage(content=compose_system_prompt("coordinator_agent", "replan_query.md")),
                 HumanMessage(
                     content=(
                         "请审查当前状态，判断是否需要补充数据分析。\n\n"
