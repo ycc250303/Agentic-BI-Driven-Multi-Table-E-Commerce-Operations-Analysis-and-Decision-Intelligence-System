@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from agents.common.paths import load_config_text
+from agents.common.prompts import compose_system_prompt
 
 DataSource = Literal["sql_run", "supplementary_query", "wordcloud", "review_insights"]
 InsightChartType = Literal["topic_distribution", "complaints_by_category"]
@@ -951,7 +951,7 @@ def plan_viz_suite_llm(
 
     from agents.common.llm import invoke_chat
 
-    system = load_config_text("visualization_agent", "plan_suite.md")
+    system = compose_system_prompt("visualization_agent", "plan_suite.md")
     human = (
         f"【用户问题】\n{user_query}\n\n"
         f"【intent】\n{intent}\n\n"
