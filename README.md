@@ -20,6 +20,8 @@ conda activate agentic_bi
 git clone https://github.com/ycc250303/Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System.git
 cd Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System
 pip install -r requirements.txt
+# 仅离线灌库 / 重训情感与 BERTopic 时：
+# pip install -r requirements-nlp.txt
 ```
 
 - 设置环境变量（项目根目录 `.env` 含 `DEEPSEEK_API_KEY` 及 `AGENTIC_BI_DB_*` 时，从项目根执行 Python 即可；`db_env` 负责读库配置，`agents.common.llm` 负责读 API Key。也可仅用 shell 导出逐项设置）

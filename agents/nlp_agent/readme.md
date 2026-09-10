@@ -275,14 +275,14 @@ python -m agents.nlp_agent.tools.topic_keyword
 # 情感聚合（读 review_sentiment 表，毫秒级）
 python -m agents.nlp_agent.tools.sentiment --aggregate
 
-# 情感离线灌库（首次 ~7 分钟，下载 ~500MB 模型；MPS GPU 加速）
+# 情感离线灌库（首次需 pip install -r requirements-nlp.txt；约 7 分钟，下载 ~500MB 模型）
 python -m agents.nlp_agent.tools.sentiment --backfill
 python -m agents.nlp_agent.tools.sentiment --backfill --limit 200   # 试水
 
 # BERTopic 主题建模聚合（读 review_topics 表，毫秒级）
 python -m agents.nlp_agent.tools.topic_model --aggregate
 
-# BERTopic 离线训练 + 灌库（首次 ~1 分钟，下载 ~120MB embedding 模型）
+# BERTopic 离线训练 + 灌库（首次需 pip install -r requirements-nlp.txt；约 1 分钟）
 python -m agents.nlp_agent.tools.topic_model --backfill --min-topic-size 30
 
 # 好评 / 差评对比词云数据

@@ -4,7 +4,7 @@
 
 ## 前置条件
 
-1. 已安装项目依赖（`pip install -r requirements.txt`）
+1. 已安装项目依赖（`pip install -r requirements.txt`；离线 NLP 灌库另装 `requirements-nlp.txt`）
 2. 已配置数据库环境变量（项目根目录 `.env` 或 shell 导出均可）：
 
 | 变量 | 说明 |

@@ -1,56 +1,43 @@
 # =============================================================================
-# Agentic BI 项目依赖
+# Agentic BI 项目依赖（在线路径 / CI）
 # 安装：pip install -r requirements.txt
 #
-# 核心依赖约 200MB；含 NLP 重型模型（PyTorch / transformers）约 1GB+。
-# 在线读 review_sentiment / review_topics 表无需本地加载模型；
-# 仅离线灌库或重新训练情感 / BERTopic 模型时才用到下方 NLP 段。
+# 核心依赖约 200MB。在线读 review_sentiment / review_topics 表无需本地加载模型。
+# 仅离线灌库或重新训练情感 / BERTopic 时另装：pip install -r requirements-nlp.txt
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# LangChain / LangGraph：sql_agent / nlp_agent / decision_agent 共用
+# LangChain / LangGraph：sql_agent / coordinator / decision_agent 共用
 # -----------------------------------------------------------------------------
-langchain
-langchain-core
-langchain-deepseek
-langgraph
-pydantic>=2.11.0  # LangChain 调用 model_dump_json(ensure_ascii=...)；2.8 及以下会 TypeError
-python-dotenv
+langchain==1.4.0
+langchain-core==1.6.2
+langchain-deepseek==1.1.0
+langgraph==1.2.11
+pydantic==2.13.4
+python-dotenv==1.2.2
 
 # -----------------------------------------------------------------------------
 # 数据库连接：sql_agent / nlp_agent / decision_agent 共用
 # -----------------------------------------------------------------------------
-PyMySQL                 # 各 Agent 在线查询主用
-mysql-connector-python  # utils/load_data_to_mysql.py 等管理脚本用
+PyMySQL==1.2.0                 # 各 Agent 在线查询主用
+mysql-connector-python==26.7.0  # utils/load_data_to_mysql.py 等管理脚本用
 
 # -----------------------------------------------------------------------------
 # 数据处理与可视化：viz_agent + 预聚合性能对比作图
 # -----------------------------------------------------------------------------
-pandas
-matplotlib
-seaborn
-wordcloud
-pillow
+pandas==3.0.5
+matplotlib==3.11.1
+seaborn==0.13.2
+wordcloud==1.9.6
+pillow==12.3.0
 
 # -----------------------------------------------------------------------------
 # nlp_agent 关键词主题分类：YAML 词典加载（可选，缺省时回退兜底解析器）
 # -----------------------------------------------------------------------------
-PyYAML
-pytest
+PyYAML==6.0.3
+pytest==9.1.1
 
 # -----------------------------------------------------------------------------
 # Web 界面：dashboard/
 # -----------------------------------------------------------------------------
-streamlit>=1.41.0
-
-# -----------------------------------------------------------------------------
-# NLP Agent 重型模型（离线灌库 / 重新训练；约 1GB，含 PyTorch + transformers）
-# 触发脚本示例：
-#   python -m agents.nlp_agent.tools.sentiment   --backfill
-#   python -m agents.nlp_agent.tools.topic_model --backfill
-# 库中已有 review_sentiment / review_topics / review_topic_meta 时可跳过安装本段
-# -----------------------------------------------------------------------------
-pysentimiento
-bertopic
-sentence-transformers
-hdbscan
+streamlit==1.63.0

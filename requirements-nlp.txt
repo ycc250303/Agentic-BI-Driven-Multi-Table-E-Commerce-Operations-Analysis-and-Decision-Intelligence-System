@@ -1,0 +1,13 @@
+# NLP Agent 重型模型（离线灌库 / 重新训练；约 1GB，含 PyTorch + transformers）
+# 在线路径不需要本文件；先安装核心依赖：pip install -r requirements.txt
+#
+# 安装：pip install -r requirements-nlp.txt
+#
+# 触发脚本示例：
+#   python -m agents.nlp_agent.tools.sentiment   --backfill
+#   python -m agents.nlp_agent.tools.topic_model --backfill
+# 库中已有 review_sentiment / review_topics / review_topic_meta 时可跳过
+pysentimiento
+bertopic
+sentence-transformers
+hdbscan
