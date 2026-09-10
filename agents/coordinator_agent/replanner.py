@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -19,14 +18,6 @@ class ReplanDecision(BaseModel):
     sub_questions: list[str] = Field(default_factory=list)
     suggested_agents: list[str] = Field(default_factory=list)
     reason: str = ""
-
-
-def _extract_json_object(text: str) -> str:
-    s = text.strip()
-    if s.startswith("```"):
-        s = re.sub(r"^```(?:json)?\s*", "", s, flags=re.IGNORECASE)
-        s = re.sub(r"\s*```$", "", s)
-    return s.strip()
 
 
 def _what_if_result(state: dict[str, Any]) -> dict[str, Any]:

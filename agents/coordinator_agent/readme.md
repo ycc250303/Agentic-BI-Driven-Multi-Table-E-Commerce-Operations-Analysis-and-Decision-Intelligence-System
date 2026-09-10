@@ -2,7 +2,7 @@
 
 解析用户问题 → **拆分为多个单问题** → **迭代式**调度子 Agent → **LLM 撰写**面向业务的 `final_answer`。
 
-调模型只经 `agents.common.llm`（分解 / 路由 / 汇总用 `invoke_chat`，会话解析 / 记忆 / 重规划用 `invoke_structured`）。查数经 `from agents.sql_agent.run import run_sql_pipeline_with_feedback`。
+调模型只经 `agents.common.llm`（汇总用 `invoke_chat`，分解 / 路由 / 会话解析 / 记忆 / 重规划用 `invoke_structured`）。查数经 `from agents.sql_agent.run import run_sql_pipeline_with_feedback`。
 
 ## 核心设计
 

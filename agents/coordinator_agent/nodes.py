@@ -8,10 +8,17 @@ from agents.coordinator_agent.adapters import (
     build_analysis_result_from_sql_pipeline,
     merge_sql_runs,
 )
-from agents.coordinator_agent.decomposer import decompose_query, decompose_to_state_patch
+from agents.coordinator_agent.decomposer import (
+    LLM_STRUCTURED_FALLBACK,
+    decompose_query,
+    decompose_to_state_patch,
+)
 from agents.coordinator_agent.guardrails import is_off_topic_query, off_topic_state_patch
 from agents.coordinator_agent.replanner import apply_replan_decision, plan_recovery_queries
-from agents.coordinator_agent.router import choose_next_agent
+from agents.coordinator_agent.router import (
+    LLM_STRUCTURED_FALLBACK as ROUTE_LLM_FALLBACK,
+    choose_next_agent,
+)
 from agents.coordinator_agent.state import AgentState
 from agents.coordinator_agent.synthesizer import synthesize_final_answer
 from agents.coordinator_agent.tracing import TraceCollector
@@ -107,6 +114,12 @@ def decompose_node(
         )
         return {**state, **off_topic_state_patch(user_query)}
     patch = decompose_to_state_patch(user_query, result)
+    next_state: AgentState = {**state, **patch}
+    if LLM_STRUCTURED_FALLBACK in (result.reasoning or ""):
+        next_state["warnings"] = _append_warning(
+            next_state,
+            result.reasoning.split("；", 1)[0],
+        )
     _emit_trace(
         trace_collector,
         agent="coordinator_agent",
@@ -119,7 +132,7 @@ def decompose_node(
         ),
         payload=result.model_dump(),
     )
-    return {**state, **patch}
+    return next_state
 
 
 def orchestrator_node(
@@ -189,12 +202,18 @@ def orchestrator_node(
             "reasoning": decision.reasoning,
         },
     )
-    return {
+    next_state: AgentState = {
         **state,
         "orchestrator_iterations": iterations,
         "next_agent": decision.next_agent,
         "execution_log": log,
     }
+    if ROUTE_LLM_FALLBACK in (decision.reasoning or ""):
+        next_state["warnings"] = _append_warning(
+            next_state,
+            decision.reasoning.split("；", 1)[0],
+        )
+    return next_state
 
 
 def data_analysis_node(
@@ -394,7 +413,14 @@ def synthesize_node(
             summary=str(state.get("final_answer") or ""),
         )
         return {**state, "agents_done": _mark_done(state, "synthesize")}
-    answer = synthesize_final_answer(state, model=model, use_llm=use_llm)
+    answer, synth_warning = synthesize_final_answer(state, model=model, use_llm=use_llm)
+    next_state: AgentState = {
+        **state,
+        "final_answer": answer,
+        "agents_done": _mark_done(state, "synthesize"),
+    }
+    if synth_warning:
+        next_state["warnings"] = _append_warning(next_state, synth_warning)
     _emit_trace(
         trace_collector,
         agent="coordinator_agent",
@@ -403,7 +429,7 @@ def synthesize_node(
         title="最终回答完成",
         summary=answer,
     )
-    return {**state, "final_answer": answer, "agents_done": _mark_done(state, "synthesize")}
+    return next_state
 
 
 def route_from_state(state: AgentState) -> str:

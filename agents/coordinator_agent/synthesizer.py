@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.common.prompts import compose_system_prompt
 from agents.coordinator_agent.adapters import build_synthesis_evidence
+
+logger = logging.getLogger(__name__)
+
+EMPTY_FINAL_ANSWER = "未能生成回答，请查看 warnings。"
 
 
 def _format_rows_fallback(evidence: dict) -> str:
@@ -43,10 +48,14 @@ def synthesize_final_answer(
     *,
     model=None,
     use_llm: bool = True,
-) -> str:
+) -> tuple[str, str | None]:
+    """撰写最终回答。返回 ``(answer, warning)``；warning 非空表示已回退或空结果。"""
     evidence = build_synthesis_evidence(state)
     if not use_llm:
-        return _format_rows_fallback(evidence)
+        text = _format_rows_fallback(evidence)
+        if text:
+            return text, None
+        return EMPTY_FINAL_ANSWER, "规则汇总没有可用证据。"
 
     from agents.common.llm import invoke_chat
 
@@ -62,7 +71,14 @@ def synthesize_final_answer(
             model=model,
         ).strip()
         if text:
-            return text
-    except Exception:
-        pass
-    return _format_rows_fallback(evidence)
+            return text, None
+        fallback = _format_rows_fallback(evidence)
+        warning = "汇总 LLM 返回空文本，已回退规则摘要。"
+        return fallback or EMPTY_FINAL_ANSWER, warning
+    except Exception as exc:
+        logger.warning("synthesize_final_answer 失败，已回退规则摘要：%s", exc)
+        fallback = _format_rows_fallback(evidence)
+        return (
+            fallback or EMPTY_FINAL_ANSWER,
+            f"汇总 LLM 失败，已回退规则摘要：{exc}",
+        )

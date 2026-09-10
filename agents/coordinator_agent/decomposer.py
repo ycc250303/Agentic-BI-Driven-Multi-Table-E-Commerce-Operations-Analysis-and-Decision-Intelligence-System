@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
-from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from agents.common.prompts import compose_system_prompt
 from agents.coordinator_agent.planner import IntentName, classify_intent
+
+logger = logging.getLogger(__name__)
+
+LLM_STRUCTURED_FALLBACK = "LLM 结构化输出失败，已回退规则"
 
 
 class DecomposeResult(BaseModel):
@@ -34,14 +38,6 @@ class DecomposeResult(BaseModel):
         ):
             raise ValueError("sub_questions 不能为空（off_topic=false 时）")
         return self
-
-
-def _extract_json_object(text: str) -> str:
-    s = text.strip()
-    if s.startswith("```"):
-        s = re.sub(r"^```(?:json)?\s*", "", s, flags=re.IGNORECASE)
-        s = re.sub(r"\s*```$", "", s)
-    return s.strip()
 
 
 def _split_jiqi_query(user_query: str) -> list[str] | None:
@@ -226,26 +222,33 @@ def decompose_query_rule(user_query: str) -> DecomposeResult:
 def decompose_query_llm(user_query: str, *, model=None) -> DecomposeResult:
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    from agents.common.llm import invoke_chat
+    from agents.common.llm import invoke_structured
 
     system = compose_system_prompt("coordinator_agent", "decompose_query.md")
-    human = f"【用户问题】\n{user_query}\n\n请输出 JSON。"
+    human = f"【用户问题】\n{user_query}\n\n请只输出结构化分解结果。"
     try:
-        raw = _extract_json_object(
-            invoke_chat(
-                [SystemMessage(content=system), HumanMessage(content=human)],
-                model=model,
-            )
+        response = invoke_structured(
+            DecomposeResult,
+            [SystemMessage(content=system), HumanMessage(content=human)],
+            model=model,
         )
-        result = DecomposeResult.model_validate_json(raw)
+        result = (
+            response
+            if isinstance(response, DecomposeResult)
+            else DecomposeResult.model_validate(response)
+        )
         result = finalize_suggested_agents(result, user_query)
         if len(result.sub_questions) == 1:
             only = result.sub_questions[0]
             if only.rstrip("？?") == user_query.rstrip("？?"):
                 return result
         return result
-    except Exception:
-        return decompose_query_rule(user_query)
+    except Exception as exc:
+        logger.warning("%s：%s", LLM_STRUCTURED_FALLBACK, exc)
+        fallback = decompose_query_rule(user_query)
+        return fallback.model_copy(
+            update={"reasoning": f"{LLM_STRUCTURED_FALLBACK}：{exc}；{fallback.reasoning}"}
+        )
 
 
 def decompose_query(user_query: str, *, use_llm: bool = True, model=None) -> DecomposeResult:

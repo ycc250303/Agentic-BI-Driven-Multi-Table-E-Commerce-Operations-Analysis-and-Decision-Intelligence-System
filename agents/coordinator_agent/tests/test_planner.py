@@ -32,17 +32,16 @@ def test_decompose_single_question():
     assert len(result.sub_questions) == 1
 
 
-class DummyMessage:
-    def __init__(self, content: str):
-        self.content = content
-
-
 class DummyDecomposeModel:
-    def __init__(self, payload: str):
+    def __init__(self, payload: DecomposeResult):
         self.payload = payload
 
+    def with_structured_output(self, schema):
+        assert schema is DecomposeResult
+        return self
+
     def invoke(self, messages):
-        return DummyMessage(self.payload)
+        return self.payload
 
 
 def test_rule_decompose_does_not_classify_what_if_by_keywords():
@@ -61,18 +60,16 @@ def test_llm_decompose_self_contained_what_if_routes_directly_to_decision():
     result = decompose_query_llm(
         "如果 GMV 基线 100 万、转化提升 10%，GMV 会怎样？",
         model=DummyDecomposeModel(
-            """
-            {
-              "intent": "what_if",
-              "sub_questions": [],
-              "suggested_agents": ["decision"],
-              "requires_data_analysis": false,
-              "data_requirements": [],
-              "can_decide_without_data": true,
-              "reasoning": "LLM 判断为自带假设的 What-if。",
-              "off_topic": false
-            }
-            """
+            DecomposeResult(
+                intent="what_if",
+                sub_questions=[],
+                suggested_agents=["decision"],
+                requires_data_analysis=False,
+                data_requirements=[],
+                can_decide_without_data=True,
+                reasoning="LLM 判断为自带假设的 What-if。",
+                off_topic=False,
+            )
         ),
     )
     assert result.intent == "what_if"
@@ -84,18 +81,16 @@ def test_llm_decompose_data_dependent_what_if_keeps_analysis_route():
     result = decompose_query_llm(
         "如果下架当前差评率最高的卖家会怎样？",
         model=DummyDecomposeModel(
-            """
-            {
-              "intent": "what_if",
-              "sub_questions": ["查询当前差评率最高的卖家及其基线指标？"],
-              "suggested_agents": ["data_analysis", "decision"],
-              "requires_data_analysis": true,
-              "data_requirements": ["当前差评率最高卖家的基线指标"],
-              "can_decide_without_data": false,
-              "reasoning": "LLM 判断需要先查当前基线。",
-              "off_topic": false
-            }
-            """
+            DecomposeResult(
+                intent="what_if",
+                sub_questions=["查询当前差评率最高的卖家及其基线指标？"],
+                suggested_agents=["data_analysis", "decision"],
+                requires_data_analysis=True,
+                data_requirements=["当前差评率最高卖家的基线指标"],
+                can_decide_without_data=False,
+                reasoning="LLM 判断需要先查当前基线。",
+                off_topic=False,
+            )
         ),
     )
     assert result.intent == "what_if"

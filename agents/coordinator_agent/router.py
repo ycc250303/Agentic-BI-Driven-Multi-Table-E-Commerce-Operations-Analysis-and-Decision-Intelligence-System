@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import json
-import re
+import logging
 from typing import Literal
 
 from pydantic import BaseModel
 
 from agents.common.prompts import compose_system_prompt
 from agents.coordinator_agent.replanner import MAX_REPLAN_COUNT, inspect_agent_outputs
+
+logger = logging.getLogger(__name__)
+
+LLM_STRUCTURED_FALLBACK = "LLM 结构化输出失败，已回退规则"
 
 AgentRoute = Literal["data_analysis", "visualization", "nlp", "decision", "synthesize"]
 
@@ -22,14 +26,6 @@ _POST_SQL_AGENT_ORDER: tuple[AgentRoute, ...] = ("nlp", "visualization", "decisi
 class RouteDecision(BaseModel):
     next_agent: AgentRoute
     reasoning: str = ""
-
-
-def _extract_json_object(text: str) -> str:
-    s = text.strip()
-    if s.startswith("```"):
-        s = re.sub(r"^```(?:json)?\s*", "", s, flags=re.IGNORECASE)
-        s = re.sub(r"\s*```$", "", s)
-    return s.strip()
 
 
 def _pending_sql_count(state: dict) -> int:
@@ -233,21 +229,28 @@ def _build_router_context(state: dict) -> str:
 def route_next_llm(state: dict, *, model=None) -> RouteDecision:
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    from agents.common.llm import invoke_chat
+    from agents.common.llm import invoke_structured
 
     system = compose_system_prompt("coordinator_agent", "route_next.md")
-    human = f"【当前状态】\n{_build_router_context(state)}\n\n请输出 JSON。"
+    human = f"【当前状态】\n{_build_router_context(state)}\n\n请只输出结构化路由结果。"
     try:
-        raw = _extract_json_object(
-            invoke_chat(
-                [SystemMessage(content=system), HumanMessage(content=human)],
-                model=model,
-            )
+        response = invoke_structured(
+            RouteDecision,
+            [SystemMessage(content=system), HumanMessage(content=human)],
+            model=model,
         )
-        decision = RouteDecision.model_validate_json(raw)
+        decision = (
+            response
+            if isinstance(response, RouteDecision)
+            else RouteDecision.model_validate(response)
+        )
         return _enforce_suggested_pipeline(decision, state)
-    except Exception:
-        return route_next_rule(state)
+    except Exception as exc:
+        logger.warning("%s：%s", LLM_STRUCTURED_FALLBACK, exc)
+        fallback = route_next_rule(state)
+        return fallback.model_copy(
+            update={"reasoning": f"{LLM_STRUCTURED_FALLBACK}：{exc}；{fallback.reasoning}"}
+        )
 
 
 def choose_next_agent(state: dict, *, use_llm: bool = True, model=None) -> RouteDecision:
