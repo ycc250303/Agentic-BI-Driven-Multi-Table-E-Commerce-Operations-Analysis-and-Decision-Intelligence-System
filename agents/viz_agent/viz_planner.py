@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any, Literal
@@ -10,6 +11,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from agents.common.prompts import compose_system_prompt
+
+logger = logging.getLogger(__name__)
 
 DataSource = Literal["sql_run", "supplementary_query", "wordcloud", "review_insights"]
 InsightChartType = Literal["topic_distribution", "complaints_by_category"]
@@ -42,14 +45,6 @@ class VizSuitePlan(BaseModel):
     @classmethod
     def _validate_tasks(cls, charts: list[VizChartTask]) -> list[VizChartTask]:
         return charts
-
-
-def _extract_json_object(text: str) -> str:
-    s = text.strip()
-    if s.startswith("```"):
-        s = re.sub(r"^```(?:json)?\s*", "", s, flags=re.IGNORECASE)
-        s = re.sub(r"\s*```$", "", s)
-    return s.strip()
 
 
 _VIZ_HINTS = (
@@ -949,22 +944,25 @@ def plan_viz_suite_llm(
 ) -> VizSuitePlan:
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    from agents.common.llm import invoke_chat
+    from agents.common.llm import invoke_structured
 
     system = compose_system_prompt("visualization_agent", "plan_suite.md")
     human = (
         f"【用户问题】\n{user_query}\n\n"
         f"【intent】\n{intent}\n\n"
         f"【已完成分析】\n{_build_planner_context(user_query=user_query, intent=intent, sql_runs=sql_runs, review_insights=review_insights)}\n\n"
-        "请输出 JSON。"
+        "请只输出结构化出图规划。"
     )
-    raw = _extract_json_object(
-        invoke_chat(
-            [SystemMessage(content=system), HumanMessage(content=human)],
-            model=model,
-        )
+    response = invoke_structured(
+        VizSuitePlan,
+        [SystemMessage(content=system), HumanMessage(content=human)],
+        model=model,
     )
-    plan = VizSuitePlan.model_validate_json(raw)
+    plan = (
+        response
+        if isinstance(response, VizSuitePlan)
+        else VizSuitePlan.model_validate(response)
+    )
     charts = _finalize_sql_chart_tasks(
         list(plan.charts),
         sql_runs=sql_runs,
@@ -1027,8 +1025,21 @@ def plan_viz_suite(
                     review_insights=review_insights,
                 )
             return plan
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("plan_viz_suite LLM 失败，已回退启发式：%s", exc)
+            heuristic = heuristic_viz_suite(
+                user_query=user_query,
+                intent=intent,
+                sql_runs=sql_runs,
+                review_insights=review_insights,
+            )
+            return heuristic.model_copy(
+                update={
+                    "reasoning": (
+                        f"LLM 结构化输出失败，已回退规则：{exc}；{heuristic.reasoning}"
+                    )
+                }
+            )
     return heuristic_viz_suite(
         user_query=user_query,
         intent=intent,

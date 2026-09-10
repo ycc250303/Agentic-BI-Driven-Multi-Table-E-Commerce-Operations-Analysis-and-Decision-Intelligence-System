@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import json
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -14,21 +13,13 @@ from typing import Any
 import pandas as pd
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from agents.common.llm import invoke_chat
+from agents.common.llm import invoke_structured
 from agents.common.prompts import compose_system_prompt
 from agents.viz_agent.line_plan import normalize_line_plan
 from agents.viz_agent.render import render_to_png
 from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
 
 _viz_dir = Path(__file__).resolve().parent
-
-
-def _extract_json_object(text: str) -> str:
-    s = text.strip()
-    if s.startswith("```"):
-        s = re.sub(r"^```(?:json)?\s*", "", s, flags=re.IGNORECASE)
-        s = re.sub(r"\s*```$", "", s)
-    return s.strip()
 
 
 def _parse_execute_sql(exec_json: str) -> dict[str, Any]:
@@ -185,14 +176,13 @@ def plan_with_llm(
 ) -> tuple[VizPlan, str]:
     system = compose_system_prompt("visualization_agent", "plan_chart.md")
     human = _build_human_prompt(user_query, df, column_profiles, data_summary_zh)
-    raw = _extract_json_object(
-        invoke_chat(
-            [SystemMessage(content=system), HumanMessage(content=human)],
-            model=model,
-        )
+    response = invoke_structured(
+        VizPlan,
+        [SystemMessage(content=system), HumanMessage(content=human)],
+        model=model,
     )
-    plan = VizPlan.model_validate_json(raw)
-    return plan, raw
+    plan = response if isinstance(response, VizPlan) else VizPlan.model_validate(response)
+    return plan, plan.model_dump_json(ensure_ascii=False)
 
 
 def run_visualization_agent(
