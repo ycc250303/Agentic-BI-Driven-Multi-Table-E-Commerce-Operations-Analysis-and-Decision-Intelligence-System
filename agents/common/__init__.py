@@ -6,6 +6,7 @@ from agents.common.llm import (
     invoke_chat,
     invoke_structured,
     is_deepseek_thinking_enabled,
+    llm_error_kind,
     set_deepseek_thinking_enabled,
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     "invoke_chat",
     "invoke_structured",
     "is_deepseek_thinking_enabled",
+    "llm_error_kind",
     "set_deepseek_thinking_enabled",
 ]
