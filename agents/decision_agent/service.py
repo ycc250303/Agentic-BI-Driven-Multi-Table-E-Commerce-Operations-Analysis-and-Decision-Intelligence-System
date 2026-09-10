@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
@@ -26,6 +27,8 @@ from .tools import (
     score_problems,
 )
 from .warning_policy import collect_input_warnings
+
+logger = logging.getLogger(__name__)
 
 
 class NarrativeResponse(BaseModel):
@@ -250,6 +253,7 @@ def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
             decision_result=decision_result,
         )
     except Exception as exc:
+        logger.warning("叙述层生成失败，已使用规则层摘要兜底：%s", exc)
         narrative_issues.append(f"叙述层生成失败，已使用规则层摘要兜底：{exc}")
         narrative = _fallback_narrative(decision_result)
     decision_result.narrative_answer = narrative.narrative_answer
@@ -287,6 +291,7 @@ def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
             )
             _append_quality_issues(report, narrative_issues)
         except Exception as exc:  # pragma: no cover - defensive LLM fallback
+            logger.warning("质量修订失败，保留第一版回答：%s", exc)
             report.issues.append(f"质量修订失败，保留第一版回答：{exc}")
     decision_result.quality_report = quality_report_to_dict(report)
 

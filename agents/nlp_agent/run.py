@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from collections.abc import Callable
 from typing import Any
 
@@ -34,6 +35,8 @@ from agents.nlp_agent.tools.sentiment import aggregate_sentiment
 from agents.nlp_agent.tools.topic_keyword import run_review_insight
 from agents.nlp_agent.tools.topic_model import aggregate_bertopic
 from agents.nlp_agent.tools.wordcloud_data import run_wordcloud_data
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +113,7 @@ class ReviewInsightAgent:
             bt = self._bertopic_fn()
             return bool(bt and bt.get("topics"))
         except Exception:
+            logger.warning("探测 BERTopic 表失败，回退关键词主题。", exc_info=True)
             return False
 
     def _build_insight(self) -> dict[str, Any]:
@@ -146,6 +150,7 @@ class ReviewInsightAgent:
                 if sentiment and sentiment.get("total"):
                     insight["sentiment"] = sentiment
             except Exception as e:  # noqa: BLE001
+                logger.warning("sentiment 聚合失败：%s", e)
                 insight["sentiment"] = {"method": "n/a",
                                         "summary": f"sentiment 聚合失败：{e}"}
 
@@ -160,6 +165,7 @@ class ReviewInsightAgent:
                 if wc and (wc.get("positive") or wc.get("negative")):
                     insight["wordcloud"] = wc
             except Exception as e:  # noqa: BLE001
+                logger.warning("wordcloud 数据生成失败：%s", e)
                 insight["wordcloud"] = {"method": "n/a",
                                         "summary": f"wordcloud 数据生成失败：{e}"}
 
@@ -200,6 +206,7 @@ class ReviewInsightAgent:
         try:
             state["review_insights"] = self._build_insight()
         except Exception as e:  # 失败兜底：写入降级 summary，避免阻塞主流程
+            logger.warning("NLP Agent 评论洞察执行失败：%s", e)
             state["review_insights"] = {
                 "method": "n/a",
                 "summary": f"NLP Agent 评论洞察执行失败：{e}",
@@ -247,6 +254,9 @@ def _build_argparser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    from agents.common.logging import configure_logging
+
+    configure_logging()
     args = _build_argparser().parse_args()
 
     if args.no_state or (not args.question and not args.intent):

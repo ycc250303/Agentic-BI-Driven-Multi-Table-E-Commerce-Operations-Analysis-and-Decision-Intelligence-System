@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -9,6 +10,8 @@ from agents.common.llm import invoke_structured
 from agents.common.prompts import compose_system_prompt
 
 from ..schemas import DecisionInputs, EvidenceBundle, ScoredProblem, WhatIfPlan
+
+logger = logging.getLogger(__name__)
 
 
 def _problem_payload(problems: list[ScoredProblem]) -> list[dict[str, Any]]:
@@ -97,5 +100,6 @@ def plan_what_if(
             return response
         return WhatIfPlan.model_validate(response)
     except Exception as exc:
+        logger.warning("What-if 规划失败：%s", exc)
         return _fallback_plan(inputs, reason=f"What-if 规划失败：{exc}")
 

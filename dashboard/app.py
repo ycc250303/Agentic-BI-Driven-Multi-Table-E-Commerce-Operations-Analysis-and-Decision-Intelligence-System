@@ -17,6 +17,9 @@ from dashboard import session_store
 
 
 def main() -> None:
+    from agents.common.logging import configure_logging
+
+    configure_logging()
     st.set_page_config(
         page_title="Agentic BI",
         layout="wide",

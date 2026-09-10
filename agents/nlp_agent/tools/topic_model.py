@@ -44,11 +44,6 @@ from agents.nlp_agent import db
 
 
 logger = logging.getLogger("nlp.topic_model")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%H:%M:%S",
-)
 
 
 # 训练用差评（带文本，过滤极短文本以避免 embedding 噪声）
@@ -365,6 +360,9 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    from agents.common.logging import configure_logging
+
+    configure_logging()
     args = _parser().parse_args()
 
     if args.backfill:

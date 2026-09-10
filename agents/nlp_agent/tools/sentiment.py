@@ -45,11 +45,6 @@ from agents.nlp_agent import db
 
 
 logger = logging.getLogger("nlp.sentiment")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%H:%M:%S",
-)
 
 
 # ---------------------------------------------------------------------------
@@ -536,6 +531,9 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    from agents.common.logging import configure_logging
+
+    configure_logging()
     args = _parser().parse_args()
 
     if args.backfill:

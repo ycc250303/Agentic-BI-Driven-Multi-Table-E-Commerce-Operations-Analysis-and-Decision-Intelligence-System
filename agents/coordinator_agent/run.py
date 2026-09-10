@@ -24,6 +24,9 @@ def _write(text: str) -> None:
 
 
 def main() -> None:
+    from agents.common.logging import configure_logging
+
+    configure_logging()
     parser = argparse.ArgumentParser(description="协调器 Agent：迭代式多 Agent 编排")
     parser.add_argument("--query", required=True, help="用户自然语言问题")
     parser.add_argument(

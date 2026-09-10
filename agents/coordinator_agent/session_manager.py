@@ -144,6 +144,29 @@ class SessionManager:
         else:
             session = self.store.load_session(session_id)
 
+        from agents.common.logging import bind_session_id
+
+        with bind_session_id(str(session.get("session_id") or "")):
+            return self._run_bound_turn(
+                session=session,
+                query=query,
+                options=opts,
+                model=model,
+                har_out=har_out,
+                trace_event_callback=trace_event_callback,
+            )
+
+    def _run_bound_turn(
+        self,
+        *,
+        session: dict[str, Any],
+        query: str,
+        options: CoordinatorRunOptions,
+        model=None,
+        har_out: Path | str | None = None,
+        trace_event_callback: Callable[[dict[str, Any]], None] | None = None,
+    ) -> dict[str, Any]:
+        opts = options
         turn_id = len(session.get("turns") or []) + 1
         history = build_conversation_history(session)
         trace = TraceCollector(
@@ -186,6 +209,8 @@ class SessionManager:
         state: dict[str, Any] = {}
         if needs_clarification:
             final_answer = str(resolution.get("clarification_question") or "").strip()
+            if not final_answer:
+                final_answer = "未能生成回答，请查看 warnings。"
             trace.emit(
                 agent="session_manager",
                 step="request_clarification",
@@ -221,8 +246,15 @@ class SessionManager:
                 ),
                 trace_collector=trace,
             )
-            final_answer = str(state.get("final_answer") or "")
+            final_answer = str(state.get("final_answer") or "").strip()
             state_summary = build_state_summary(state)
+            if not final_answer:
+                final_answer = "未能生成回答，请查看 warnings。"
+                warnings = list(state_summary.get("warnings") or [])
+                message = "本轮未产生最终回答。"
+                if message not in warnings:
+                    warnings.append(message)
+                state_summary = {**state_summary, "warnings": warnings}
 
         trace.emit(
             agent="session_manager",

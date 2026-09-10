@@ -201,6 +201,9 @@ def _resolve_har_out(
 
 
 def main() -> None:
+    from agents.common.logging import configure_logging
+
+    configure_logging()
     parser = argparse.ArgumentParser(description="Coordinator 多轮 session CLI")
     parser.add_argument("--new", action="store_true", help="新建 session")
     parser.add_argument("--session-id", help="继续指定 session")
