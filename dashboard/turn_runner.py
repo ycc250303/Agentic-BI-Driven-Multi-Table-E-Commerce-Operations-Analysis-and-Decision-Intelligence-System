@@ -5,13 +5,12 @@ from typing import Any
 
 import streamlit as st
 
-from agents.coordinator_agent.session_manager import CoordinatorRunOptions
+from agents.coordinator_agent.session.session_manager import CoordinatorRunOptions
 
 from dashboard import session_store
 
 DEFAULT_RUN_OPTIONS = CoordinatorRunOptions(
     use_llm_plan=True,
-    use_llm_viz=True,
     use_llm_synthesize=True,
     full_state=True,
 )

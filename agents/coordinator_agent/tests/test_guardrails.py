@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.coordinator_agent.guardrails import is_off_topic_query
+from agents.coordinator_agent.orchestration.guardrails import is_off_topic_query
 
 
 def test_off_topic_model_question():

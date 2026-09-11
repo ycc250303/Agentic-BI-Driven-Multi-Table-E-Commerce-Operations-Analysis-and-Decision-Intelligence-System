@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.coordinator_agent.router import _pending_post_sql_agents
+from agents.coordinator_agent.orchestration.router import _pending_post_sql_agents
 
 
 def test_pending_includes_nlp_for_predictive_bad_review_even_if_not_suggested():

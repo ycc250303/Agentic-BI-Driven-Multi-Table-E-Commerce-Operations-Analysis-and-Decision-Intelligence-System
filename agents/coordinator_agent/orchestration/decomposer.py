@@ -7,7 +7,7 @@ import re
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from agents.common.prompts import compose_system_prompt
-from agents.coordinator_agent.planner import IntentName, classify_intent
+from agents.coordinator_agent.orchestration.planner import IntentName, classify_intent
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +259,7 @@ def decompose_query(user_query: str, *, use_llm: bool = True, model=None) -> Dec
 
 def decompose_to_state_patch(user_query: str, result: DecomposeResult) -> dict:
     if result.off_topic:
-        from agents.coordinator_agent.guardrails import off_topic_state_patch
+        from agents.coordinator_agent.orchestration.guardrails import off_topic_state_patch
 
         return off_topic_state_patch(user_query)
     task_plan = [f"子问题 {i + 1}：{q}" for i, q in enumerate(result.sub_questions)]

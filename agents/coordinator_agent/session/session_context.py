@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agents.coordinator_agent.planner import classify_intent
+from agents.coordinator_agent.orchestration.planner import classify_intent
 from agents.nlp_agent.run import should_run_nlp
 
 

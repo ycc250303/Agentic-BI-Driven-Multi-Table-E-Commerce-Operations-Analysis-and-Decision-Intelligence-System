@@ -4,24 +4,24 @@ import json
 from collections.abc import Callable
 from typing import Any
 
-from agents.coordinator_agent.adapters import (
+from agents.coordinator_agent.orchestration.adapters import (
     build_analysis_result_from_sql_pipeline,
     merge_sql_runs,
 )
-from agents.coordinator_agent.decomposer import (
+from agents.coordinator_agent.orchestration.decomposer import (
     LLM_STRUCTURED_FALLBACK,
     decompose_query,
     decompose_to_state_patch,
 )
-from agents.coordinator_agent.guardrails import is_off_topic_query, off_topic_state_patch
-from agents.coordinator_agent.replanner import apply_replan_decision, plan_recovery_queries
-from agents.coordinator_agent.router import (
+from agents.coordinator_agent.orchestration.guardrails import is_off_topic_query, off_topic_state_patch
+from agents.coordinator_agent.orchestration.replanner import apply_replan_decision, plan_recovery_queries
+from agents.coordinator_agent.orchestration.router import (
     LLM_STRUCTURED_FALLBACK as ROUTE_LLM_FALLBACK,
     choose_next_agent,
 )
 from agents.coordinator_agent.state import AgentState
-from agents.coordinator_agent.synthesizer import synthesize_final_answer
-from agents.coordinator_agent.tracing import TraceCollector
+from agents.coordinator_agent.orchestration.synthesizer import synthesize_final_answer
+from agents.coordinator_agent.events.tracing import TraceCollector
 from agents.decision_agent.run import run_decision_state
 from agents.nlp_agent.run import ReviewInsightAgent
 from agents.sql_agent.run import run_sql_pipeline_with_feedback
@@ -244,6 +244,7 @@ def data_analysis_node(
         summary=str(analysis.get("business_summary") or analysis.get("summary_text") or ""),
         metadata={"question": question, "index": idx},
     )
+    # 出图主要读 execute_sql_json（CSV 路径）；analysis_result 给套件规划当摘要
     sql_runs.append(
         {
             "question": question,
@@ -279,10 +280,15 @@ def visualization_node(
     state: AgentState,
     *,
     model=None,
-    use_llm: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
+    """协调器出图节点：消费已有 sql_runs / 评论洞察，写出 visualization_result。
+
+    不在此重写 SQL、不画图。真正规划与渲染在
+    ``agents.viz_agent.intelligent_viz.run_intelligent_visualization``。
+    无 sql_runs 时直接 skipped（查数未完成不能出图）。
+    """
     from agents.viz_agent.intelligent_viz import run_intelligent_visualization
 
     sql_runs = state.get("sql_runs") or []
@@ -311,7 +317,6 @@ def visualization_node(
         sql_runs=sql_runs,
         review_insights=state.get("review_insights") or state.get("nlp_result"),
         model=model,
-        use_llm=use_llm,
         on_tool_end=on_tool_end,
     )
 

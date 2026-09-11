@@ -4,7 +4,7 @@ import json
 
 import httpx
 
-from agents.coordinator_agent.har_capture import (
+from agents.coordinator_agent.events.har_capture import (
     HttpxHarCapture,
     count_har_entries_by_agent,
     infer_agent_trace,

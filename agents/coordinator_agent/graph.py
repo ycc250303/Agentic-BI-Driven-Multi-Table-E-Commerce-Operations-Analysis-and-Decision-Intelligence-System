@@ -5,7 +5,7 @@ from typing import Any
 
 from langgraph.graph import END, StateGraph
 
-from agents.coordinator_agent.nodes import (
+from agents.coordinator_agent.orchestration.nodes import (
     data_analysis_node,
     decompose_node,
     decision_node,
@@ -16,14 +16,13 @@ from agents.coordinator_agent.nodes import (
     visualization_node,
 )
 from agents.coordinator_agent.state import AgentState
-from agents.coordinator_agent.tracing import TraceCollector
+from agents.coordinator_agent.events.tracing import TraceCollector
 
 
 def build_coordinator_graph(
     *,
     model=None,
     use_llm_plan: bool = True,
-    use_llm_viz: bool = True,
     use_llm_synthesize: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
     trace_collector: TraceCollector | None = None,
@@ -64,7 +63,6 @@ def build_coordinator_graph(
         return visualization_node(
             s,
             model=model,
-            use_llm=use_llm_viz,
             on_tool_end=_tool_end,
             trace_collector=trace_collector,
         )
@@ -119,7 +117,6 @@ def run_coordinator(
     *,
     model=None,
     use_llm_plan: bool = True,
-    use_llm_viz: bool = True,
     use_llm_synthesize: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
     conversation_history: list[dict[str, str]] | None = None,
@@ -129,7 +126,6 @@ def run_coordinator(
     graph = build_coordinator_graph(
         model=model,
         use_llm_plan=use_llm_plan,
-        use_llm_viz=use_llm_viz,
         use_llm_synthesize=use_llm_synthesize,
         on_tool_end=on_tool_end,
         trace_collector=trace_collector,

@@ -12,7 +12,7 @@ import argparse
 import json
 import sys
 
-from agents.coordinator_agent.decomposer import decompose_query, dump_decompose_json
+from agents.coordinator_agent.orchestration.decomposer import decompose_query, dump_decompose_json
 
 
 def _write(text: str) -> None:
@@ -33,11 +33,6 @@ def main() -> None:
         "--no-llm-plan",
         action="store_true",
         help="问题分解与路由仅用规则引擎",
-    )
-    parser.add_argument(
-        "--no-llm-viz",
-        action="store_true",
-        help="可视化 Agent 仅用启发式",
     )
     parser.add_argument(
         "--no-llm-synthesize",
@@ -69,7 +64,6 @@ def main() -> None:
     state = run_coordinator(
         args.query,
         use_llm_plan=not args.no_llm_plan,
-        use_llm_viz=not args.no_llm_viz,
         use_llm_synthesize=not args.no_llm_synthesize,
         on_tool_end=_emit,
     )

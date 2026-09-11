@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from agents.coordinator_agent.web_events import (
+from agents.coordinator_agent.events.web_events import (
     encode_sse_event,
     result_to_sse,
     web_events_from_result,

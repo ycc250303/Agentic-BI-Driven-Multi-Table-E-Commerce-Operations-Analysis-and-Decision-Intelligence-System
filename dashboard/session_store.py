@@ -4,7 +4,7 @@ from typing import Any
 
 import streamlit as st
 
-from agents.coordinator_agent.session_manager import SessionManager
+from agents.coordinator_agent.session.session_manager import SessionManager
 
 from dashboard.constants import DEEPSEEK_THINKING_SESSION_KEY
 from dashboard.models import Conversation, VizRound

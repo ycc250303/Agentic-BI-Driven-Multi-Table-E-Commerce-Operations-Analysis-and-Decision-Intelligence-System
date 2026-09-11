@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from agents.coordinator_agent.upstream_ensure import ensure_upstream_payloads
+from agents.coordinator_agent.orchestration.upstream_ensure import ensure_upstream_payloads
 
 
 def test_ensure_nlp_runs_when_missing():
@@ -17,7 +17,7 @@ def test_ensure_nlp_runs_when_missing():
         "summary": "配送延迟占比最高",
         "topic_distribution": {"delivery_delay": 10},
     }
-    with patch("agents.coordinator_agent.upstream_ensure.ReviewInsightAgent") as mock_cls:
+    with patch("agents.coordinator_agent.orchestration.upstream_ensure.ReviewInsightAgent") as mock_cls:
         mock_cls.return_value.run.return_value = {"review_insights": fake_insights}
         patch_out = ensure_upstream_payloads(state)
 

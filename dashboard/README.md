@@ -1,6 +1,6 @@
 # Dashboard（Streamlit Web 前端）
 
-本目录为 Agentic BI 的 **Streamlit Web 界面**，与协调器 [`SessionManager`](../agents/coordinator_agent/session_manager.py) 共用同一套多轮会话后端；会话数据持久化在 `runtime/sessions/`。
+本目录为 Agentic BI 的 **Streamlit Web 界面**，与协调器 [`SessionManager`](../agents/coordinator_agent/session/session_manager.py) 共用同一套多轮会话后端；会话数据持久化在 `runtime/sessions/`。
 
 ## 运行
 

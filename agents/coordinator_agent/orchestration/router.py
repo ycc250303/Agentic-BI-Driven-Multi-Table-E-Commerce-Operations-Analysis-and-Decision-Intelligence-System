@@ -9,7 +9,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from agents.common.prompts import compose_system_prompt
-from agents.coordinator_agent.replanner import MAX_REPLAN_COUNT, inspect_agent_outputs
+from agents.coordinator_agent.orchestration.replanner import MAX_REPLAN_COUNT, inspect_agent_outputs
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +59,7 @@ def _pending_post_sql_agents(state: dict) -> list[AgentRoute]:
 
 
 def _should_visualize(state: dict) -> bool:
+    """规则兜底：查数完成后，分解建议了 visualization 或问句像要图，才调度出图。"""
     if _agent_done(state, "visualization"):
         return False
     if _pending_sql_count(state) > 0:

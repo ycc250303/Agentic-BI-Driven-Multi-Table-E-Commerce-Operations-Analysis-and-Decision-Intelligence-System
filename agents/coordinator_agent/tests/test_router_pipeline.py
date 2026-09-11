@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agents.coordinator_agent.router import choose_next_agent, route_next_rule
+from agents.coordinator_agent.orchestration.router import choose_next_agent, route_next_rule
 
 
 def _base_state(user_query: str) -> dict:
@@ -41,7 +41,7 @@ def test_negative_review_query_routes_nlp_before_viz():
 
 def test_llm_early_synthesize_overridden():
     state = _base_state("Top 10 差评品类及其主要差评原因是什么？")
-    from agents.coordinator_agent.router import RouteDecision, _enforce_suggested_pipeline
+    from agents.coordinator_agent.orchestration.router import RouteDecision, _enforce_suggested_pipeline
 
     forced = _enforce_suggested_pipeline(
         RouteDecision(next_agent="synthesize", reasoning="证据已足够，剩余步骤不再必要"),

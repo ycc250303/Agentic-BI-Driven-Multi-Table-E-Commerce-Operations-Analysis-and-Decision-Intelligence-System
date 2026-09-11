@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from agents.coordinator_agent.replanner import (
+from agents.coordinator_agent.orchestration.replanner import (
     ReplanDecision,
     apply_replan_decision,
     inspect_agent_outputs,
     plan_recovery_queries,
 )
-from agents.coordinator_agent.nodes import orchestrator_node
-from agents.coordinator_agent.router import route_next_rule
+from agents.coordinator_agent.orchestration.nodes import orchestrator_node
+from agents.coordinator_agent.orchestration.router import route_next_rule
 
 
 class DummyStructuredResponse:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.coordinator_agent.synthesizer import EMPTY_FINAL_ANSWER, synthesize_final_answer
+from agents.coordinator_agent.orchestration.synthesizer import EMPTY_FINAL_ANSWER, synthesize_final_answer
 
 
 class _BoomModel:

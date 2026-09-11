@@ -69,10 +69,10 @@ python -m agents.coordinator_agent.run_session --new --query "..." --sse
 
 HAR 捕获仅在显式传入 `--har-out` 时启用。HAR 用于调试和审计外部 LLM HTTP 请求；用户可见过程仍以 session `trace_events` 为准。启用 HAR 时，`run_turn` 返回值与 `har.saved` Web/SSE 事件会额外包含 `http_request_traces` 和 `har_agent_counts`，用于直接展示每次 HTTP 请求归属哪个 Agent。
 
-Web/API 层可直接复用 `agents.coordinator_agent.web_events`：
+Web/API 层可直接复用 `agents.coordinator_agent.events.web_events`：
 
 ```python
-from agents.coordinator_agent.web_events import web_events_from_result, result_to_sse
+from agents.coordinator_agent.events.web_events import web_events_from_result, result_to_sse
 
 result = manager.run_turn(query="...", new_session=True)
 events = web_events_from_result(result)  # WebSocket 可逐条发送 dict
@@ -100,6 +100,23 @@ print(state["sub_questions"])
 print(state["execution_log"])
 print(state["final_answer"])
 ```
+
+## 目录结构
+
+```
+agents/coordinator_agent/
+├── __init__.py
+├── run.py                 # 单轮 CLI
+├── run_session.py         # 多轮 CLI
+├── graph.py               # LangGraph 装配
+├── state.py               # 共享 AgentState
+├── orchestration/         # 拆问、路由、节点、上游补齐、汇总
+├── session/               # 多轮会话持久化与语义解析
+├── events/                # SSE / HAR / 执行 trace
+└── tests/
+```
+
+配套提示词：`config/coordinator_agent/`。
 
 ## 配置
 

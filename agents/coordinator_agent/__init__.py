@@ -14,7 +14,7 @@ def __getattr__(name: str) -> Any:
 
         return AgentState
     if name == "SessionManager":
-        from .session_manager import SessionManager
+        from .session.session_manager import SessionManager
 
         return SessionManager
     if name in {"build_coordinator_graph", "run_coordinator"}:

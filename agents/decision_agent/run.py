@@ -9,7 +9,7 @@ from .adapters import decision_inputs_from_state, merge_decision_result_to_state
 from .schemas import DecisionInputs
 from .service import answer_decision, collect_input_warnings, run_decision
 from .state import BIState
-from agents.coordinator_agent.upstream_ensure import ensure_upstream_payloads
+from agents.coordinator_agent.orchestration.upstream_ensure import ensure_upstream_payloads
 
 
 def run_decision_state(state: BIState, *, model=None) -> BIState:

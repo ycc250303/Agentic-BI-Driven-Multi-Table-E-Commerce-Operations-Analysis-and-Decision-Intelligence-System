@@ -6,7 +6,7 @@ import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.common.prompts import compose_system_prompt
-from agents.coordinator_agent.adapters import build_synthesis_evidence
+from agents.coordinator_agent.orchestration.adapters import build_synthesis_evidence
 
 logger = logging.getLogger(__name__)
 

@@ -8,26 +8,25 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
-from agents.coordinator_agent.har_capture import (
+from agents.coordinator_agent.events.har_capture import (
     HttpxHarCapture,
     count_har_entries_by_agent,
     summarize_har_entries,
 )
-from agents.coordinator_agent.memory import (
+from agents.coordinator_agent.session.memory import (
     build_conversation_history,
     build_state_summary,
     update_memory_summary,
 )
-from agents.coordinator_agent.conversation_resolver import resolve_conversation_context
-from agents.coordinator_agent.session_context import seed_state_from_session
-from agents.coordinator_agent.session_store import LocalSessionStore
-from agents.coordinator_agent.tracing import TraceCollector
+from agents.coordinator_agent.session.conversation_resolver import resolve_conversation_context
+from agents.coordinator_agent.session.session_context import seed_state_from_session
+from agents.coordinator_agent.session.session_store import LocalSessionStore
+from agents.coordinator_agent.events.tracing import TraceCollector
 
 
 @dataclass(frozen=True)
 class CoordinatorRunOptions:
     use_llm_plan: bool = True
-    use_llm_viz: bool = True
     use_llm_synthesize: bool = True
     full_state: bool = False
 
@@ -236,7 +235,6 @@ class SessionManager:
                 resolved_task,
                 model=model,
                 use_llm_plan=opts.use_llm_plan,
-                use_llm_viz=opts.use_llm_viz,
                 use_llm_synthesize=opts.use_llm_synthesize,
                 conversation_history=history,
                 seed_state=seed_state_from_session(
@@ -342,7 +340,7 @@ class SessionManager:
         runs the normal blocking Agent flow, while trace callbacks are pushed to
         a queue and yielded immediately by this generator.
         """
-        from agents.coordinator_agent.web_events import (
+        from agents.coordinator_agent.events.web_events import (
             make_answer_final_event,
             make_har_saved_event,
             make_trace_event,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.coordinator_agent.decomposer import DecomposeResult, finalize_suggested_agents
+from agents.coordinator_agent.orchestration.decomposer import DecomposeResult, finalize_suggested_agents
 
 
 def test_finalize_adds_nlp_for_predictive_bad_review():

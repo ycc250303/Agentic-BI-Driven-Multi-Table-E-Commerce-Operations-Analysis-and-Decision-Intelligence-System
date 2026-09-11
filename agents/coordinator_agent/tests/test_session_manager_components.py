@@ -4,15 +4,15 @@ import json
 
 import pytest
 
-from agents.coordinator_agent.conversation_resolver import resolve_conversation_context
-from agents.coordinator_agent.memory import (
+from agents.coordinator_agent.session.conversation_resolver import resolve_conversation_context
+from agents.coordinator_agent.session.memory import (
     build_conversation_history,
     build_state_summary,
     update_memory_summary,
 )
-from agents.coordinator_agent.session_manager import CoordinatorRunOptions, SessionManager
-from agents.coordinator_agent.session_store import LocalSessionStore
-from agents.coordinator_agent.tracing import TraceCollector, summarize_tool_payload
+from agents.coordinator_agent.session.session_manager import CoordinatorRunOptions, SessionManager
+from agents.coordinator_agent.session.session_store import LocalSessionStore
+from agents.coordinator_agent.events.tracing import TraceCollector, summarize_tool_payload
 
 
 class _FakeStructuredModel:
@@ -87,7 +87,6 @@ def test_first_turn_replaces_placeholder_title(tmp_path):
     sid = session["session_id"]
     options = CoordinatorRunOptions(
         use_llm_plan=False,
-        use_llm_viz=False,
         use_llm_synthesize=False,
     )
     model = _FakeModel(
@@ -116,7 +115,6 @@ def test_first_turn_keeps_custom_title(tmp_path):
     sid = session["session_id"]
     options = CoordinatorRunOptions(
         use_llm_plan=False,
-        use_llm_viz=False,
         use_llm_synthesize=False,
     )
     model = _FakeModel(
@@ -328,7 +326,6 @@ def test_session_manager_stream_turn_events_emits_realtime_shape(tmp_path):
     manager = SessionManager(LocalSessionStore(tmp_path))
     options = CoordinatorRunOptions(
         use_llm_plan=False,
-        use_llm_viz=False,
         use_llm_synthesize=False,
     )
     model = _FakeModel(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.coordinator_agent.decomposer import (
+from agents.coordinator_agent.orchestration.decomposer import (
     DecomposeResult,
     finalize_suggested_agents,
     normalize_predictive_sub_questions,

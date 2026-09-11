@@ -65,13 +65,13 @@ python misc\har\capture_coordinator_har.py --query "..." --har-out misc\har\xxx.
 
 | 文件 | 用途 |
 |------|------|
-| `agents/coordinator_agent/session_manager.py` | 会话主服务：创建/加载/运行一轮/保存 |
-| `agents/coordinator_agent/session_store.py` | 本地 JSON session 读写、列表、元数据更新 |
-| `agents/coordinator_agent/memory.py` | 历史裁剪、语义会话摘要生成 |
-| `agents/coordinator_agent/conversation_resolver.py` | 将当前输入 + 历史摘要解析成本轮真实业务任务 |
-| `agents/coordinator_agent/tracing.py` | 标准化 trace event、从工具 payload/state 提取关键文本 |
+| `agents/coordinator_agent/session/session_manager.py` | 会话主服务：创建/加载/运行一轮/保存 |
+| `agents/coordinator_agent/session/session_store.py` | 本地 JSON session 读写、列表、元数据更新 |
+| `agents/coordinator_agent/session/memory.py` | 历史裁剪、语义会话摘要生成 |
+| `agents/coordinator_agent/session/conversation_resolver.py` | 将当前输入 + 历史摘要解析成本轮真实业务任务 |
+| `agents/coordinator_agent/events/tracing.py` | 标准化 trace event、从工具 payload/state 提取关键文本 |
 | `agents/coordinator_agent/run_session.py` | 多轮 CLI 入口 |
-| `agents/coordinator_agent/web_events.py` | SSE/WebSocket 事件转换 |
+| `agents/coordinator_agent/events/web_events.py` | SSE/WebSocket 事件转换 |
 | `config/coordinator_agent/resolve_conversation_context.md` | 会话语义解析提示词 |
 | `config/coordinator_agent/summarize_session_memory.md` | 会话摘要提示词 |
 | `docs/session_manager_implementation_plan.md` | 本方案文档 |
@@ -80,7 +80,7 @@ python misc\har\capture_coordinator_har.py --query "..." --har-out misc\har\xxx.
 
 | 文件 | 用途 |
 |------|------|
-| `agents/coordinator_agent/har_capture.py` | 从 `misc/har/capture_coordinator_har.py` 抽取正式 HAR 捕获工具 |
+| `agents/coordinator_agent/events/har_capture.py` | 从 `misc/har/capture_coordinator_har.py` 抽取正式 HAR 捕获工具 |
 
 ## 5. Session 数据结构
 

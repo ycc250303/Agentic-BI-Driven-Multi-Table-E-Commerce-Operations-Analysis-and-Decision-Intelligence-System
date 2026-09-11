@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from agents.coordinator_agent.decomposer import (
+from agents.coordinator_agent.orchestration.decomposer import (
     DecomposeResult,
     decompose_query_llm,
     decompose_query_rule,
     finalize_suggested_agents,
 )
-from agents.coordinator_agent.planner import classify_intent
-from agents.coordinator_agent.router import route_next_rule
+from agents.coordinator_agent.orchestration.planner import classify_intent
+from agents.coordinator_agent.orchestration.router import route_next_rule
 
 
 def test_classify_prescriptive():

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from agents.coordinator_agent.decomposer import (
+from agents.coordinator_agent.orchestration.decomposer import (
     LLM_STRUCTURED_FALLBACK,
     DecomposeResult,
     decompose_query_llm,
 )
-from agents.coordinator_agent.nodes import decompose_node, orchestrator_node
-from agents.coordinator_agent.router import RouteDecision, route_next_llm
+from agents.coordinator_agent.orchestration.nodes import decompose_node, orchestrator_node
+from agents.coordinator_agent.orchestration.router import RouteDecision, route_next_llm
 
 
 class _StructuredModel:

@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from agents.coordinator_agent.session_manager import CoordinatorRunOptions, SessionManager
-from agents.coordinator_agent.web_events import encode_sse_event
+from agents.coordinator_agent.session.session_manager import CoordinatorRunOptions, SessionManager
+from agents.coordinator_agent.events.web_events import encode_sse_event
 
 
 def _write(text: str = "") -> None:
@@ -117,7 +117,6 @@ def _print_run_result(
 def _options_from_args(args: argparse.Namespace) -> CoordinatorRunOptions:
     return CoordinatorRunOptions(
         use_llm_plan=not args.no_llm_plan,
-        use_llm_viz=not args.no_llm_viz,
         use_llm_synthesize=not args.no_llm_synthesize,
         full_state=args.full_state,
     )
@@ -222,7 +221,6 @@ def main() -> None:
         help="仅在 HAR entry 写入 Agent 标签，不向外部 API 发送 X-Agentic-BI-* 请求头",
     )
     parser.add_argument("--no-llm-plan", action="store_true")
-    parser.add_argument("--no-llm-viz", action="store_true")
     parser.add_argument("--no-llm-synthesize", action="store_true")
     args = parser.parse_args()
 

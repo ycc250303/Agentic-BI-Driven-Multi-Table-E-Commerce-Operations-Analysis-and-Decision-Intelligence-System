@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.coordinator_agent.session_context import seed_state_from_session
+from agents.coordinator_agent.session.session_context import seed_state_from_session
 
 
 def test_seed_review_insights_from_session_cache():
