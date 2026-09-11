@@ -55,18 +55,62 @@ def _unique_csv_path(dest_dir: Path, stem: str) -> Path:
     return path
 
 
+def _csv_stem(batch_ts: str, idx: int, n_sql: int) -> str:
+    """多 SQL 用 时间戳_sqlN；单条仍只用时间戳，与历史文件名兼容。"""
+    return f"{batch_ts}_sql{idx + 1}" if n_sql > 1 else batch_ts
+
+
+def _reshape_single_column_ltr(
+    columns: list[str], rows: list[dict[str, Any]]
+) -> tuple[list[str], list[dict[str, Any]]]:
+    """单列结果改成 metric,value，同一行从左往右写，避免表头在 A1、值在 A2。"""
+    if len(columns) != 1:
+        return columns, rows
+    col = columns[0]
+    wide = [
+        {
+            "metric": col,
+            "value": r.get(col) if r.get(col) is not None else "",
+        }
+        for r in rows
+    ]
+    return ["metric", "value"], wide
+
+
 def _write_query_result_csv(
     columns: list[str], rows: list[dict[str, Any]], *, file_stem: str
 ) -> Path:
     dest_dir = _query_result_csv_dir()
     dest_dir.mkdir(parents=True, exist_ok=True)
     path = _unique_csv_path(dest_dir, file_stem)
-    with path.open("w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
+    write_cols, write_rows = _reshape_single_column_ltr(columns, rows)
+    # utf-8 无 BOM + LF：避免 Excel/编辑器把 BOM 当成空的第一列
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=write_cols,
+            extrasaction="ignore",
+            lineterminator="\n",
+        )
         writer.writeheader()
-        for r in rows:
-            writer.writerow({c: r.get(c) if r.get(c) is not None else "" for c in columns})
+        for r in write_rows:
+            writer.writerow(
+                {c: r.get(c) if r.get(c) is not None else "" for c in write_cols}
+            )
     return path.resolve()
+
+
+def _try_write_error_csv(stem: str, stage: str, message: str) -> str:
+    """失败条目也占 sqlN 文件位，避免出现 sql2/sql4 却缺 sql3。"""
+    try:
+        path = _write_query_result_csv(
+            ["error_stage", "error_message"],
+            [{"error_stage": stage, "error_message": message}],
+            file_stem=stem,
+        )
+        return str(path)
+    except OSError:
+        return ""
 
 
 def _infer_type(v: Any) -> str:
@@ -278,15 +322,20 @@ class ExecuteSqlRunner:
             with conn.cursor() as cursor:
                 for idx, sql_raw in enumerate(sql_list):
                     sql = normalize_sql(sql_raw)
+                    stem = _csv_stem(batch_ts, idx, n_sql)
                     # 第二道只读闸门：未通过的条目不发送到数据库
                     safe_ok, safe_reason = read_only_select_ok(sql)
                     if not safe_ok:
+                        err_msg = f"只读校验未通过：{safe_reason}"
                         results.append(
                             ExecuteSqlResultItem(
                                 index=idx,
                                 ok=False,
+                                result_csv_path=_try_write_error_csv(
+                                    stem, "sql_local", err_msg
+                                ),
                                 error_stage="sql_local",
-                                error_message=f"只读校验未通过：{safe_reason}",
+                                error_message=err_msg,
                             )
                         )
                         continue
@@ -308,13 +357,17 @@ class ExecuteSqlRunner:
                             rows_out.append(row)
                     except Exception as e:
                         elapsed = (time.perf_counter() - t0) * 1000
+                        err_msg = f"执行失败：{e}"
                         results.append(
                             ExecuteSqlResultItem(
                                 index=idx,
                                 ok=False,
+                                result_csv_path=_try_write_error_csv(
+                                    stem, "db_execute", err_msg
+                                ),
                                 execution_time_ms=elapsed,
                                 error_stage="db_execute",
-                                error_message=f"执行失败：{e}",
+                                error_message=err_msg,
                             )
                         )
                         continue
@@ -323,11 +376,6 @@ class ExecuteSqlRunner:
                     profiles = _profile_columns(rows_out, columns)
                     summary = _build_summary_zh(
                         len(rows_out), truncated, columns, profiles, elapsed
-                    )
-                    stem = (
-                        f"{batch_ts}_sql{idx + 1}"
-                        if n_sql > 1
-                        else batch_ts
                     )
                     try:
                         csv_path = _write_query_result_csv(
@@ -425,7 +473,7 @@ def build_execute_sql_tool():
         name="execute_sql_tool",
         description=(
             "在配置好环境变量后连接 MySQL，依次执行 generate_sql JSON 中的 query_sqls。"
-            "每条查询写入独立 CSV（单条时文件名为时间戳；多条时为 时间戳_sql1.csv、_sql2.csv…）。"
+            "每条查询写入独立 CSV（UTF-8 无 BOM；单条时文件名为时间戳；多条时为 时间戳_sql1.csv、_sql2.csv…；失败条目仍占对应 sqlN 文件）。"
             "返回 results 列表与聚合摘要。可选环境变量 AGENTIC_BI_SQL_CSV_DIR。"
             "执行前会再次做只读校验；编排上仍建议先调用 check_sql_tool。"
         ),
