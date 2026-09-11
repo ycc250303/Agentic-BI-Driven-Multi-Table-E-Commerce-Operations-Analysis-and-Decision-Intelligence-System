@@ -171,11 +171,11 @@ def _normalize_thinking_json(data: Any) -> Any:
 def _build_rewrite_messages(query: str) -> list[Any]:
     system_prompt = compose_system_prompt_parts(
         "# Agent 背景规则\n\n"
-        + load_config_text("data_analysis_agent", "system_core.md"),
+        + load_config_text("sql_agent", "system_core.md"),
         "# 数据库表结构与视图字典\n\n"
-        + load_config_text("data_analysis_agent", "schema_dictionary.md"),
+        + load_config_text("sql_agent", "schema_dictionary.md"),
         "# 转写工具规则\n\n"
-        + load_config_text("data_analysis_agent", "rewrite_to_query_tool.md"),
+        + load_config_text("sql_agent", "rewrite_to_query_tool.md"),
     )
     return [
         SystemMessage(content=system_prompt),

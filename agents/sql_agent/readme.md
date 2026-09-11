@@ -104,7 +104,7 @@ agents/sql_agent/
 ├── tests/              # 纯本地单测（不连库、不调 LLM）
 └── test/eval_rewrite_to_query.py
 
-config/data_analysis_agent/
+config/sql_agent/
 ├── system_core.md              # 视图优先策略
 ├── schema_dictionary.md        # 表 + 视图字典 + 通用指标语义
 ├── rewrite_to_query_tool.md

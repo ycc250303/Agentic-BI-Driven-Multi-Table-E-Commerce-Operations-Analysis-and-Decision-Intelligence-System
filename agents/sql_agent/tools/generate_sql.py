@@ -67,11 +67,11 @@ class GenerateSqlRunner:
 
         system_prompt = compose_system_prompt_parts(
             "# Agent 背景规则\n\n"
-            + load_config_text("data_analysis_agent", "system_core.md"),
+            + load_config_text("sql_agent", "system_core.md"),
             "# 数据库表结构与视图字典\n\n"
-            + load_config_text("data_analysis_agent", "schema_dictionary.md"),
+            + load_config_text("sql_agent", "schema_dictionary.md"),
             "# SQL 生成工具规则\n\n"
-            + load_config_text("data_analysis_agent", "generate_sql_tool.md"),
+            + load_config_text("sql_agent", "generate_sql_tool.md"),
         )
 
         human_content = (
