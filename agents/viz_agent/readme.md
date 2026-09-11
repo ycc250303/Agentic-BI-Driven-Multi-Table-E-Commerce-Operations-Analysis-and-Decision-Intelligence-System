@@ -1,111 +1,87 @@
 # 可视化 Agent（Visualize）
 
-面向 **Agentic BI**：在数据分析 Agent 产出 **CSV + 列画像** 后，由 **大模型** 根据业务问题与数据结构选择图表类型（折线 / 柱状 / 热力 / 地理散点 / 散点 / 词云），并用 matplotlib / seaborn / wordcloud **渲染 PNG**。
+面向 **Agentic BI**：查数完成后，按用户问题规划要不要图、几张、数据从哪来，再用 matplotlib / seaborn / wordcloud 渲染 PNG。产品路径只经协调器。
 
 ---
 
 ## 1. 依赖与环境
 
-- 与数据分析链路一致，需配置 **`DEEPSEEK_API_KEY`**（使用默认 LLM 规划图表时）。
-- 可选：`AGENTIC_BI_VIZ_DIR` — 指定 PNG 输出目录；默认 `agents/viz_agent/chart_output/`。
-- 可选：`AGENTIC_BI_VIZ_FONT` — 指定中文字体文件路径（`.ttf` / `.ttc`）。未设置时按系统自动探测：Windows 微软雅黑、macOS 冬青黑体/黑体/宋体/苹方、Linux Noto CJK。macOS 新版若苹方不可用，会在系统字体目录中扫描可用中文字体；仍显示方框时可设置该变量。
+- 规划图表时需 **`DEEPSEEK_API_KEY`**。
+- 可选：`AGENTIC_BI_VIZ_DIR` — PNG 输出目录；默认 `agents/viz_agent/chart_output/`。
+- 可选：`AGENTIC_BI_VIZ_FONT` — 中文字体（`.ttf` / `.ttc`）。未设置时按系统探测：Windows 微软雅黑、macOS 冬青黑体/黑体/宋体/苹方、Linux Noto CJK。仍显示方框时再设该变量。
 
 ---
 
 ## 2. 对外入口
 
-| 函数 | 说明 |
-|------|------|
-| `run_visualization_agent(...)` | 主入口：输入业务问题 + `execute_sql_json` 或 `csv_path`，返回结构化 dict。 |
-| `plan_with_llm(...)` | 仅调用 LLM 得到 `VizPlan`（便于单独测试）。 |
-| `heuristic_plan(df, user_query)` | 不调用 LLM 的兜底选型（字段规则 + 关键词）。 |
-| `run_sql_then_visualize(user_query, ...)` | 串联 `sql_agent` 全链路后再可视化（需数据库）。 |
-
-Python 导入示例（在仓库根执行）：
+协调器 `visualization_node` 调用：
 
 ```python
-from agents.viz_agent.run import run_visualization_agent, run_sql_then_visualize
+from agents.viz_agent.intelligent_viz import run_intelligent_visualization
 ```
 
----
-
-## 3. `run_visualization_agent` 参数
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `user_query` | `str` | 用户业务问题，用于指导图表类型与语义标题。 |
-| `execute_sql_json` | `str \| None` | **`execute_sql_tool` 返回的完整 JSON 字符串**。要求 `ok=true`，内含 `result_csv_path`、`column_profiles`、`data_summary_zh`。 |
-| `csv_path` | `str \| Path \| None` | 直接指定查询结果 CSV；无列画像时 LLM 仍可根据表头与样本推断。 |
-| `model` | 可选 | 传入自定义 LangChain Chat 模型；默认 `agents.common.llm.invoke_chat` / `get_llm()`（DeepSeek）。 |
-| `use_llm` | `bool`，默认 `True` | `False` 时仅用 `heuristic_plan`，无需 API Key（适合离线联调）。 |
-| `output_dir` | `Path \| None` | 覆盖 PNG 输出目录。 |
-
-**注意**：`execute_sql_json` 与 `csv_path` 至少提供一个。
-
----
-
-## 4. 返回 dict 字段（`VisualizationAgentOutput`）
-
-| 字段 | 说明 |
+| 参数 | 说明 |
 |------|------|
-| `ok` | 是否成功生成图片。 |
-| `error_message` | 失败时的中文原因。 |
-| `user_query` | 传入的业务问题。 |
-| `csv_path` | 使用的 CSV 绝对路径。 |
-| `plan` | `VizPlan`：`chart_type`、`title`、各列映射、`reasoning`。 |
-| `plan_raw_json` | LLM 原始 JSON 或序列化后的规划（便于调试）。 |
-| `image_path` | 生成的 **PNG 绝对路径**。 |
-| `chart_type_resolved` | 最终图表类型枚举字符串。 |
+| `user_query` | 用户问题 |
+| `intent` | 协调器意图，默认 `descriptive` |
+| `sql_runs` | 已完成的查数结果列表 |
+| `review_insights` | 可选；评论洞察（词云等） |
+| `use_llm` | `False` 时规划与单图选型走启发式 |
 
-支持的 `chart_type`：`line`、`bar`、`heatmap`、`scatter`、`geo_scatter`、`wordcloud`。约束说明见 `config/visualization_agent/plan_chart.md`。
+返回 `visualization_result`：`skipped`、`summary_text`、`charts[]`、`viz_plan`；预测图可能带 `forecast_result`。
 
----
-
-## 5. 命令行
-
-在项目根目录：
+经协调器（推荐）：
 
 ```bash
-# 仅可视化已有 CSV（无 LLM）
+python -m agents.coordinator_agent.run --query "2017 年各州订单量 TOP10"
+```
+
+单图渲染（`run_visualization_agent` / `plan_with_llm` / `heuristic_plan`）是套件内部实现，测试可直接 import，不是对外 API。出图包不依赖协调器；补查仍走查数流水线。
+
+---
+
+## 3. 执行链路
+
+```mermaid
+flowchart TD
+  A["user_query + sql_runs"] --> B["规划套件"]
+  B -->|无需出图| S["skipped"]
+  B -->|有任务| C["取数"]
+  C -->|sql_run| D["复用 CSV"]
+  C -->|supplementary_query| E["追加查数"]
+  C -->|wordcloud / 洞察| F["评论数据"]
+  D --> G["单图选型"]
+  E --> G
+  F --> G
+  G --> H["渲染 PNG"]
+  H --> I["去重合并"]
+  I --> J["visualization_result"]
+```
+
+> 规划阶段会给每条已成功的 `sql_run` 补至少 1 张图，并丢掉 NLP 数据为空的洞察任务。纯描述性单指标（如「2017 GMV 是多少」）通常 **0 张图**。单图选型失败回退启发式。
+
+| 阶段 | 说明 |
+|------|------|
+| **规划套件** | 读问题、intent、各 `sql_run` 的列与摘要 → 要不要图、几张、数据从哪来（`plan_suite.md`） |
+| **取数** | 优先复用已有 SQL CSV；不够时向数据分析 Agent 发 `supplementary_query`；评论类走词云 / 洞察表 |
+| **单图选型** | LLM 按 `plan_chart.md` 选类型与列映射；`use_llm=False` 或失败时走启发式 |
+| **渲染** | matplotlib / seaborn / wordcloud 出 PNG；折线可叠预测；`rationale` 不画入图 |
+| **去重合并** | 仅剔除类型 + 内容完全相同的图，汇总为 `charts[]` |
+
+支持的 `chart_type`：`line`、`bar`、`heatmap`、`scatter`、`geo_scatter`、`wordcloud`。约束见 `config/visualization_agent/plan_chart.md`。
+
+---
+
+## 4. 单图调试 CLI
+
+隔离渲染层，不经过协调器：
+
+```bash
 python agents/viz_agent/run.py --csv path/to/result.csv --query "各州销售额对比" --no-llm
-
-# 使用 execute_sql 的 JSON 文件（通常内含列画像，利于 LLM）
-python agents/viz_agent/run.py --execute-json path/to/exec.json --query "支付方式分布"
-
-# 串联：NL → sql_agent → 结果 CSV → 可视化（需 MySQL、AGENTIC_BI_DB_*、DEEPSEEK_API_KEY）
-python agents/viz_agent/run.py --sql-then-viz --query "2017 年各州订单量 TOP10"
 ```
 
 ---
 
-## 6. 与数据分析 Agent 串联
-
-```python
-from agents.viz_agent.run import run_sql_then_visualize
-
-out = run_sql_then_visualize("2017 年各月 GMV 趋势如何？", use_llm=True)
-# out["sql_pipeline"] — 与 sql_agent 流水线输出一致
-# out["visualization"] — 本节所述可视化输出 dict
-```
-
----
-
-## 7. 智能可视化套件（协调器默认）
-
-`visualization_node` 调用 `intelligent_viz.run_intelligent_visualization`：
-
-1. **规划**（`viz_planner` + `config/visualization_agent/plan_suite.md`）：读用户问题、intent、各 `sql_run` 的列与摘要 → 决定要不要图、要几张、每张数据从哪来
-2. **取数**：优先复用已有 SQL CSV；不够时向数据分析 Agent 发起 `supplementary_query`；评论类走 `wordcloud`
-3. **补齐 SQL 图**：每条已成功查数的 `sql_run` 至少 1 张图（从 `data_summary_zh` / CSV 解析列名，不依赖 `column_profiles` 字段）
-4. **去重**：仅剔除**类型 + 内容完全相同**的图；NLP 数据为空的 `review_insights` 任务会在规划阶段剔除，避免空跑失败
-5. **渲染**（`plan_chart.md` + `render.py`）：单图选型 + 可选预测叠加；`rationale` 不画入图表，仅词云保留简短图例
-
-纯描述性单指标问题（如「2017 GMV 是多少」）通常 **0 张图**。
-
-`preset_charts.py` 仅保留给 `python agents/viz_agent/run.py --dashboard` 本地调试，协调器**不会**自动调用。
-
----
-
-## 8. 改进方向（可选）
+## 5. 改进方向（可选）
 
 - 地理 choropleth 底图需 GeoPandas/shapefile；当前为按需州中心点气泡。

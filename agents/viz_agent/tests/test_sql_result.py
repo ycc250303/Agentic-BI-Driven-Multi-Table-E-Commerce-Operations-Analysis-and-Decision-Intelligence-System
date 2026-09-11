@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 
-from agents.coordinator_agent.adapters import (
+from agents.viz_agent.sql_result import (
     build_viz_execute_json,
+    merge_visualization_results,
     pick_viz_csv_from_exec_payload,
 )
 
@@ -54,3 +55,15 @@ def test_build_viz_execute_json_has_top_level_csv_path():
     data = json.loads(raw)
     assert data["ok"] is True
     assert data["result_csv_path"] == "/tmp/rank.csv"
+
+
+def test_merge_visualization_results_counts_ok_charts():
+    out = merge_visualization_results(
+        [
+            {"ok": True, "chart_type_resolved": "bar", "plan": {"title": "A"}},
+            {"ok": False, "error_message": "x"},
+        ]
+    )
+    assert out["chart_type_counts"] == {"bar": 1}
+    assert len(out["charts"]) == 2
+    assert "1 张图表" in out["summary_text"]

@@ -6,12 +6,22 @@ import pandas as pd
 
 from agents.viz_agent.schema import VizPlan
 
-_TIME_HINTS = ("month", "date", "year", "timestamp", "week", "day", "period", "时间")
+_TIME_HINTS = (
+    "month",
+    "date",
+    "year",
+    "timestamp",
+    "week",
+    "day",
+    "period",
+    "时间",
+)
 _CATEGORY_HINTS = (
     "state",
     "category",
     "region",
     "city",
+    "name",
     "customer",
     "product",
     "payment",
@@ -23,12 +33,12 @@ _CATEGORY_HINTS = (
 )
 
 
-def _is_time_col(name: str) -> bool:
+def column_is_time(name: str) -> bool:
     cl = (name or "").lower()
     return any(h in cl for h in _TIME_HINTS)
 
 
-def _is_category_col(name: str) -> bool:
+def column_is_category(name: str) -> bool:
     cl = (name or "").lower()
     return any(h in cl for h in _CATEGORY_HINTS)
 
@@ -48,7 +58,7 @@ def infer_line_series_column(
         n = int(df[col].nunique(dropna=True))
         if n < 2 or n > 50:
             continue
-        score = 1 + (10 if _is_category_col(col) else 0)
+        score = 1 + (10 if column_is_category(col) else 0)
         candidates.append((score, n, col))
     if not candidates:
         return None
@@ -63,10 +73,7 @@ def normalize_line_plan(df: pd.DataFrame, plan: VizPlan) -> VizPlan:
 
     cols = list(df.columns)
     nums = [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]
-    time_cols = [c for c in cols if _is_time_col(c)]
-    cat_cols = [
-        c for c in cols if not pd.api.types.is_numeric_dtype(c) and c not in time_cols
-    ]
+    time_cols = [c for c in cols if column_is_time(c)]
 
     x_c = plan.x_column if plan.x_column in cols else None
     if not x_c and time_cols:

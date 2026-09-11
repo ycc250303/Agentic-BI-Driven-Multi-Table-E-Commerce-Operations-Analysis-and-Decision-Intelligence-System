@@ -1,17 +1,6 @@
-"""可视化 Agent：基于查询结果 CSV，由 LLM 选型并导出 PNG。"""
+"""可视化 Agent。
 
-from .intelligent_viz import run_intelligent_visualization
-from .run import (
-    heuristic_plan,
-    plan_with_llm,
-    run_sql_then_visualize,
-    run_visualization_agent,
-)
-
-__all__ = [
-    "heuristic_plan",
-    "plan_with_llm",
-    "run_visualization_agent",
-    "run_sql_then_visualize",
-    "run_intelligent_visualization",
-]
+为避免循环依赖，包入口不主动导入执行模块。
+请使用：
+    from agents.viz_agent.intelligent_viz import run_intelligent_visualization
+"""

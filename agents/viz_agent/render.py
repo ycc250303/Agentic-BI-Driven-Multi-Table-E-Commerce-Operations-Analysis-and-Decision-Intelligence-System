@@ -18,12 +18,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-try:
-    from agents.viz_agent.render_context import RenderExtras
-    from agents.viz_agent.schema import VizPlan
-except ModuleNotFoundError:
-    from render_context import RenderExtras
-    from schema import VizPlan
+from agents.viz_agent.render_context import RenderExtras
+from agents.viz_agent.schema import VizPlan
 
 warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
 

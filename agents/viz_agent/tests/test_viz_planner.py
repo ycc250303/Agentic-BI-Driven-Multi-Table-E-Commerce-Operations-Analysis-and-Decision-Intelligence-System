@@ -7,9 +7,7 @@ from agents.viz_agent.viz_planner import (
     _enrich_diagnostic_review_charts,
     _expand_multi_result_sql_tasks,
     _filter_scalar_sql_chart_tasks,
-    _finalize_sql_chart_tasks,
     _infer_hint_from_columns,
-    _is_scalar_kpi_result,
     _normalize_chart_tasks,
     _strip_unrenderable_insight_charts,
     chart_task_fingerprint,
@@ -263,14 +261,6 @@ def test_heuristic_diagnostic_at_most_one_global_compare_wordcloud():
     assert fingerprints.count("wordcloud:compare:global") <= 1
     sql_tasks = [c for c in plan.charts if c.data_source == "sql_run"]
     assert len(sql_tasks) >= 2
-
-
-def test_is_scalar_kpi_result_single_metric():
-    row = {
-        "row_count_returned": 1,
-        "data_summary_zh": "共 1 列：gmv_total_2017",
-    }
-    assert _is_scalar_kpi_result(row) is True
 
 
 def test_filter_scalar_sql_chart_tasks():

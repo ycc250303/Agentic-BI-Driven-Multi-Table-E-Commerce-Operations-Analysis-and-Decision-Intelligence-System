@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from agents.viz_agent.forecast import gmv_forecast_result_payload
+from agents.viz_agent.intelligent_viz import _ForecastCache
 
 
 def test_gmv_forecast_result_payload_has_weekly_table():
@@ -25,3 +26,19 @@ def test_gmv_forecast_result_payload_has_weekly_table():
     assert len(payload["weekly_forecast"]) == 2
     assert payload["forecast_values"] == [100.0, 110.0]
     assert payload["method_zh"]
+
+
+def test_forecast_cache_queries_once(monkeypatch):
+    calls = {"n": 0}
+
+    def _fake(*, horizon_weeks: int = 6, lookback_weeks: int = 26):
+        calls["n"] += 1
+        return {"ok": True, "summary_text": "once", "horizon_weeks": horizon_weeks}
+
+    monkeypatch.setattr(
+        "agents.viz_agent.intelligent_viz.forecast_weekly_gmv", _fake
+    )
+    cache = _ForecastCache()
+    assert cache.get()["ok"] is True
+    assert cache.get()["summary_text"] == "once"
+    assert calls["n"] == 1

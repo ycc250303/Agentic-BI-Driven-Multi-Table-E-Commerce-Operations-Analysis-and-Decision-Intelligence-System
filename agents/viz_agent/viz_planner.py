@@ -11,6 +11,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from agents.common.prompts import compose_system_prompt
+from agents.viz_agent.line_plan import column_is_category, column_is_time
 
 logger = logging.getLogger(__name__)
 
@@ -255,33 +256,6 @@ def _cols_for_sql_run(
     return _summarize_sql_runs([sql_runs[index]])[0].get("columns") or []
 
 
-_TIME_COLUMN_HINTS = ("month", "year", "date", "timestamp", "week", "day")
-_CATEGORY_COLUMN_HINTS = (
-    "state",
-    "category",
-    "region",
-    "city",
-    "name",
-    "customer",
-    "product",
-    "payment",
-    "seller",
-    "州",
-    "品类",
-    "地区",
-)
-
-
-def _column_is_time(col: str) -> bool:
-    cl = col.lower()
-    return any(h in cl for h in _TIME_COLUMN_HINTS)
-
-
-def _column_is_category(col: str) -> bool:
-    cl = col.lower()
-    return any(h in cl for h in _CATEGORY_COLUMN_HINTS)
-
-
 def _result_columns(row: dict[str, Any]) -> list[str]:
     cols = _parse_columns_from_summary_zh(str(row.get("data_summary_zh") or ""))
     if cols:
@@ -316,7 +290,7 @@ def _is_scalar_kpi_result(row: dict[str, Any]) -> bool:
         return False
     if len(cols) == 1:
         return True
-    if any(_column_is_time(c) or _column_is_category(c) for c in cols):
+    if any(column_is_time(c) or column_is_category(c) for c in cols):
         return False
     return True
 
@@ -330,8 +304,8 @@ def _infer_hint_from_columns(cols: list[str], question: str) -> ChartHint:
         return "wordcloud"
     if any(k in ql for k in ("热力", "矩阵", "交叉")):
         return "heatmap"
-    has_time = any(_column_is_time(c) for c in cols)
-    has_category = any(_column_is_category(c) for c in cols)
+    has_time = any(column_is_time(c) for c in cols)
+    has_category = any(column_is_category(c) for c in cols)
     if has_time and has_category:
         return "line"
     if has_category and not has_time:
@@ -351,8 +325,8 @@ def _infer_hint_for_sql_result(row: dict[str, Any], question: str) -> ChartHint:
     if hint != "auto":
         return hint
     row_count = int(row.get("row_count_returned") or 0)
-    if row_count > 1 and any(_column_is_category(c) for c in cols):
-        if any(_column_is_time(c) for c in cols):
+    if row_count > 1 and any(column_is_category(c) for c in cols):
+        if any(column_is_time(c) for c in cols):
             return "line"
         return "bar"
     return "auto"
@@ -457,7 +431,7 @@ def _is_placeholder_forecast_sql_run(run: dict[str, Any]) -> bool:
 
 def _sql_run_has_monthly_gmv(sql_runs: list[dict[str, Any]], index: int) -> bool:
     cols = [c.lower() for c in _cols_for_sql_run(sql_runs, index)]
-    has_time = any(_column_is_time(c) for c in cols)
+    has_time = any(column_is_time(c) for c in cols)
     has_gmv = any(
         any(k in c for k in ("gmv", "sales", "total_gmv", "gmv_total"))
         for c in cols

@@ -89,5 +89,4 @@ streamlit run dashboard/app.py
 - **智能流程**：SQL 分析完成后 → `viz_planner` 根据**用户问题 + 已有查数结果**规划需要几张图、从哪取数 → `intelligent_viz` 按需复用 SQL / 追加查数 / 词云并渲染
 - **不会**固定生成 8 张图；纯数值问题可跳过可视化
 - **详细用法**：见 [`agents/viz_agent/readme.md`](agents/viz_agent/readme.md)
-- **调试全套模板图**（非协调器默认）：`python agents/viz_agent/run.py --dashboard`
 - **NL → SQL → 智能出图**：`python -m agents.coordinator_agent.run --query "<问题>"`

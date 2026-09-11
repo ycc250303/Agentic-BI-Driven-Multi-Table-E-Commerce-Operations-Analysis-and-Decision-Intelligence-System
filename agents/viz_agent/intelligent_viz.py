@@ -6,24 +6,24 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from contextvars import ContextVar
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from agents.coordinator_agent.adapters import (
+from agents.sql_agent.run import run_sql_pipeline_with_feedback
+from agents.viz_agent.forecast import forecast_weekly_gmv, gmv_forecast_result_payload
+from agents.viz_agent.line_plan import normalize_line_plan
+from agents.viz_agent.output import viz_output_dir
+from agents.viz_agent.render import render_to_png
+from agents.viz_agent.render_context import RenderExtras
+from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
+from agents.viz_agent.sql_result import (
     build_viz_execute_json,
     merge_visualization_results,
     pick_viz_csv_from_exec_payload,
 )
-from agents.viz_agent.forecast import forecast_weekly_gmv
-from agents.viz_agent.render import render_to_png
-from agents.viz_agent.render_context import RenderExtras
-from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
 from agents.viz_agent.viz_planner import VizChartTask, VizSuitePlan, plan_viz_suite, _is_scalar_kpi_result
-from agents.viz_agent.line_plan import normalize_line_plan
-from agents.sql_agent.run import run_sql_pipeline_with_feedback
-
-_viz_dir = Path(__file__).resolve().parent
 
 
 def _normalize_viz_plan(plan: VizPlan | dict[str, Any]) -> VizPlan:
@@ -40,13 +40,30 @@ def _viz_output(**kwargs: Any) -> dict[str, Any]:
     return VisualizationAgentOutput(**kwargs).model_dump()
 
 
-def _viz_output_dir() -> Path:
-    import os
+class _ForecastCache:
+    """同一套件内周度 GMV 预测只查一次库。"""
 
-    raw = os.environ.get("AGENTIC_BI_VIZ_DIR")
-    if raw:
-        return Path(raw).expanduser().resolve()
-    return (_viz_dir / "chart_output").resolve()
+    def __init__(self) -> None:
+        self._fc: dict[str, Any] | None = None
+        self._loaded = False
+
+    def get(self) -> dict[str, Any]:
+        if not self._loaded:
+            self._fc = forecast_weekly_gmv(horizon_weeks=6)
+            self._loaded = True
+        return self._fc or {"ok": False}
+
+
+_forecast_cache: ContextVar[_ForecastCache | None] = ContextVar(
+    "viz_forecast_cache", default=None
+)
+
+
+def _forecast_once() -> dict[str, Any]:
+    cache = _forecast_cache.get()
+    if cache is None:
+        return forecast_weekly_gmv(horizon_weeks=6)
+    return cache.get()
 
 
 def _run_viz_from_exec_payload(
@@ -175,7 +192,7 @@ def _render_with_plan(
 ) -> dict[str, Any]:
     plan = _normalize_viz_plan(plan)
     plan = normalize_line_plan(df, plan)
-    out_dir = _viz_output_dir()
+    out_dir = viz_output_dir()
     png_path = _allocate_png_path(out_dir, plan.chart_type, chart_task)
     extras = _build_render_extras(chart_task, plan)
     try:
@@ -211,7 +228,7 @@ def _build_render_extras(chart_task: VizChartTask, plan: VizPlan) -> RenderExtra
         subtitle = "左：好评(≥4分)  右：差评(≤2分)"
     extras = RenderExtras(subtitle=subtitle)
     if chart_task.include_forecast and plan.chart_type == "line":
-        fc = forecast_weekly_gmv(horizon_weeks=6)
+        fc = _forecast_once()
         if fc.get("ok"):
             extras.forecast = fc
     if plan.chart_type == "geo_scatter":
@@ -245,7 +262,7 @@ def _maybe_apply_forecast_overlay(out: dict[str, Any], chart_task: VizChartTask)
         png_path = Path(str(out.get("image_path") or ""))
         if not png_path.name:
             ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            png_path = _viz_output_dir() / f"viz_line_fc_{ts}.png"
+            png_path = viz_output_dir() / f"viz_line_fc_{ts}.png"
         extras = _build_render_extras(chart_task, plan)
         img = render_to_png(df, plan, png_path, extras=extras)
         out["image_path"] = img
@@ -279,7 +296,7 @@ def _render_wordcloud_task(
         title=chart_task.title,
         reasoning=chart_task.rationale,
     )
-    out_dir = _viz_output_dir()
+    out_dir = viz_output_dir()
     png_path = _allocate_png_path(out_dir, "wordcloud", chart_task)
     extras = RenderExtras(
         wordcloud_compare={
@@ -542,39 +559,41 @@ def run_intelligent_visualization(
     items: list[dict[str, Any]] = []
     forecast_patch: dict[str, Any] = {}
     rendered_fingerprints: set[str] = set()
-    for i, task in enumerate(suite.charts):
-        item = _execute_chart_task(
-            task,
-            sql_runs=runs,
-            review_insights=review_insights,
-            model=model,
-            use_llm=use_llm,
-            on_tool_end=on_tool_end,
-        )
-        if item.get("skipped"):
-            continue
-        if item.get("ok"):
-            rfp = rendered_chart_fingerprint(item, task)
-            if rfp and rfp in rendered_fingerprints:
+    cache = _ForecastCache()
+    token = _forecast_cache.set(cache)
+    try:
+        for i, task in enumerate(suite.charts):
+            item = _execute_chart_task(
+                task,
+                sql_runs=runs,
+                review_insights=review_insights,
+                model=model,
+                use_llm=use_llm,
+                on_tool_end=on_tool_end,
+            )
+            if item.get("skipped"):
                 continue
-            if rfp:
-                rendered_fingerprints.add(rfp)
-        items.append(item)
-        if on_tool_end:
-            on_tool_end(f"visualization_{i}", json.dumps(item, ensure_ascii=False))
-        if item.get("forecast_summary") and not forecast_patch:
-            from agents.viz_agent.forecast import forecast_weekly_gmv, gmv_forecast_result_payload
-
-            fc = forecast_weekly_gmv(horizon_weeks=6)
-            payload = gmv_forecast_result_payload(fc)
-            if payload:
-                forecast_patch["forecast_result"] = payload
-            else:
-                forecast_patch["forecast_result"] = {
-                    "summary_text": item["forecast_summary"],
-                    "horizon": "6 weeks",
-                    "method": "linear_regression_26w",
-                }
+            if item.get("ok"):
+                rfp = rendered_chart_fingerprint(item, task)
+                if rfp and rfp in rendered_fingerprints:
+                    continue
+                if rfp:
+                    rendered_fingerprints.add(rfp)
+            items.append(item)
+            if on_tool_end:
+                on_tool_end(f"visualization_{i}", json.dumps(item, ensure_ascii=False))
+            if item.get("forecast_summary") and not forecast_patch:
+                payload = gmv_forecast_result_payload(cache.get())
+                if payload:
+                    forecast_patch["forecast_result"] = payload
+                else:
+                    forecast_patch["forecast_result"] = {
+                        "summary_text": item["forecast_summary"],
+                        "horizon": "6 weeks",
+                        "method": "linear_regression_26w",
+                    }
+    finally:
+        _forecast_cache.reset(token)
 
     result = merge_visualization_results(items)
     result["viz_plan"] = suite.model_dump()

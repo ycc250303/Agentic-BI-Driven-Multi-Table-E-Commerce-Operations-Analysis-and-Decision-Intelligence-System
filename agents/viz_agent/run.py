@@ -15,24 +15,14 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.common.llm import invoke_structured
 from agents.common.prompts import compose_system_prompt
-from agents.viz_agent.line_plan import normalize_line_plan
+from agents.viz_agent.line_plan import column_is_time, normalize_line_plan
+from agents.viz_agent.output import viz_output_dir
 from agents.viz_agent.render import render_to_png
 from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
-
-_viz_dir = Path(__file__).resolve().parent
 
 
 def _parse_execute_sql(exec_json: str) -> dict[str, Any]:
     return json.loads(exec_json.strip())
-
-
-def _viz_output_dir() -> Path:
-    import os
-
-    raw = os.environ.get("AGENTIC_BI_VIZ_DIR")
-    if raw:
-        return Path(raw).expanduser().resolve()
-    return (_viz_dir / "chart_output").resolve()
 
 
 def _build_human_prompt(
@@ -90,8 +80,7 @@ def heuristic_plan(df: pd.DataFrame, user_query: str) -> VizPlan:
 
     nums = [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]
     cats = [c for c in cols if not pd.api.types.is_numeric_dtype(df[c])]
-    time_hints = ("month", "date", "year", "timestamp", "时间")
-    time_cols = [c for c in cols if any(h in c.lower() for h in time_hints)]
+    time_cols = [c for c in cols if column_is_time(c)]
 
     if "热力" in user_query or "heatmap" in ql or "矩阵" in user_query:
         if len(cols) >= 3:
@@ -194,11 +183,9 @@ def run_visualization_agent(
     use_llm: bool = True,
     output_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """
-    可视化 Agent 主入口。
+    """单图渲染（内部）。套件入口见 ``run_intelligent_visualization``。
 
-    - 若提供 execute_sql_json：从中读取 result_csv_path、column_profiles、data_summary_zh（须 ok=true）。
-    - 否则直接提供 csv_path。
+    提供 ``execute_sql_json``（须 ``ok=true``）或 ``csv_path`` 之一。
     """
     csv_p: Path | None = None
     profiles: list[dict[str, Any]] = []
@@ -256,7 +243,7 @@ def run_visualization_agent(
 
     plan = normalize_line_plan(df, plan)
 
-    out_dir = output_dir or _viz_output_dir()
+    out_dir = output_dir or viz_output_dir()
     ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     safe_type = plan.chart_type.replace("/", "-")
     png_path = out_dir / f"viz_{safe_type}_{ts}.png"
@@ -285,36 +272,14 @@ def run_visualization_agent(
     ).model_dump()
 
 
-def run_sql_then_visualize(
-    user_query: str,
-    *,
-    model=None,
-    use_llm: bool = True,
-) -> dict[str, Any]:
-    """串联数据分析流水线 + 可视化（需数据库环境与 DEEPSEEK_API_KEY）。"""
-    from agents.sql_agent.run import run_sql_pipeline_with_feedback
-
-    sql_out = run_sql_pipeline_with_feedback(user_query, model=model)
-    viz_out = run_visualization_agent(
-        user_query=user_query,
-        execute_sql_json=sql_out["execute_sql_json"],
-        model=model,
-        use_llm=use_llm,
-    )
-    return {"sql_pipeline": sql_out, "visualization": viz_out}
-
-
 if __name__ == "__main__":
     import argparse
+    import sys
 
-    parser = argparse.ArgumentParser(description="可视化 Agent CLI")
-    parser.add_argument("--csv", type=str, default="", help="直接指定查询结果 CSV 路径")
-    parser.add_argument(
-        "--execute-json",
-        type=str,
-        default="",
-        help="execute_sql_tool 输出的 JSON 文件路径",
+    parser = argparse.ArgumentParser(
+        description="单图渲染调试：给定 CSV 出一张 PNG。产品路径请走协调器。"
     )
+    parser.add_argument("--csv", type=str, required=True, help="查询结果 CSV 路径")
     parser.add_argument(
         "--query",
         type=str,
@@ -322,63 +287,12 @@ if __name__ == "__main__":
         help="用户业务问题（用于图表选型）",
     )
     parser.add_argument("--no-llm", action="store_true", help="仅用启发式，不调用大模型")
-    parser.add_argument(
-        "--dashboard",
-        action="store_true",
-        help="生成作业级预设仪表板图表（8 张，需 MySQL 与 AGENTIC_BI_DB_*）",
-    )
-    parser.add_argument(
-        "--sql-then-viz",
-        action="store_true",
-        help="先运行 sql_agent 全链路（需 MySQL 与 AGENTIC_BI_DB_*），再对本条查询结果做可视化",
-    )
     args = parser.parse_args()
 
-    if args.dashboard:
-        try:
-            from agents.viz_agent.preset_charts import run_dashboard_charts
-        except ModuleNotFoundError:
-            from preset_charts import run_dashboard_charts
-
-        try:
-            items = run_dashboard_charts()
-        except Exception as e:
-            print(json.dumps({"ok": False, "error_message": str(e)}, ensure_ascii=False), file=sys.stderr)
-            sys.exit(1)
-        ok_n = sum(1 for i in items if i.get("ok"))
-        out = {"ok": ok_n > 0, "charts_generated": ok_n, "items": items}
-        print(json.dumps(out, ensure_ascii=False, indent=2))
-        sys.exit(0 if ok_n > 0 else 1)
-
-    if args.sql_then_viz and (bool(args.csv) or bool(args.execute_json)):
-        print("--sql-then-viz 不能与 --csv / --execute-json 同时使用", file=sys.stderr)
-        sys.exit(2)
-
-    if args.sql_then_viz:
-        try:
-            out = run_sql_then_visualize(args.query, use_llm=not args.no_llm)
-        except Exception as e:
-            print(json.dumps({"ok": False, "error_message": str(e)}, ensure_ascii=False), file=sys.stderr)
-            sys.exit(1)
-        print(json.dumps(out, ensure_ascii=False, indent=2))
-        sys.exit(0 if out.get("visualization", {}).get("ok") else 1)
-
-    ex_json = ""
-    if args.execute_json:
-        ex_json = Path(args.execute_json).read_text(encoding="utf-8")
-        out = run_visualization_agent(
-            user_query=args.query,
-            execute_sql_json=ex_json,
-            use_llm=not args.no_llm,
-        )
-    elif args.csv:
-        out = run_visualization_agent(
-            user_query=args.query,
-            csv_path=args.csv,
-            use_llm=not args.no_llm,
-        )
-    else:
-        print("请提供 --csv 或 --execute-json", file=sys.stderr)
-        sys.exit(2)
-
+    out = run_visualization_agent(
+        user_query=args.query,
+        csv_path=args.csv,
+        use_llm=not args.no_llm,
+    )
     print(json.dumps(out, ensure_ascii=False, indent=2))
+    sys.exit(0 if out.get("ok") else 1)
