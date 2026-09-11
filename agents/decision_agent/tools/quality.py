@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from .schemas import DecisionResult, EvidenceBundle
+from ..schemas import DecisionResult, EvidenceBundle
 
 
 class DecisionQualityReport(BaseModel):

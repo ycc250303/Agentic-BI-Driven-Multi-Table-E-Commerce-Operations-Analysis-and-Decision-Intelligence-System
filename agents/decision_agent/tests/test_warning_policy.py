@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from agents.decision_agent.schemas import DecisionInputs
-from agents.decision_agent.warning_policy import collect_input_warnings
+from agents.decision_agent.tools.warning_policy import collect_input_warnings
 
 
 def _inputs(**kwargs) -> DecisionInputs:

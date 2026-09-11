@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.decision_agent.quality import evaluate_decision_quality
+from agents.decision_agent.tools.quality import evaluate_decision_quality
 from agents.decision_agent.schemas import DecisionResult, DecisionSignal, EvidenceBundle, WhatIfResult
 
 

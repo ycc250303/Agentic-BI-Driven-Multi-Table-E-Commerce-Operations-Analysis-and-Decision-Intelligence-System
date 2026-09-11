@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .schemas import DecisionTheme, EvidenceBundle, ScoredProblem
+from ..schemas import DecisionTheme, EvidenceBundle, ScoredProblem
 
 
 DELIVERY_ON_TIME_THRESHOLD = 0.82

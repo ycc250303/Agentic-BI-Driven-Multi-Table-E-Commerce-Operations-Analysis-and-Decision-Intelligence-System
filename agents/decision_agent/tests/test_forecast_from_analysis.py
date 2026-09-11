@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from agents.decision_agent.forecast_from_analysis import build_bad_review_forecast_result
+from agents.decision_agent.tools.forecast_from_analysis import build_bad_review_forecast_result
 
 
 def test_build_bad_review_forecast_from_sql_csv(tmp_path: Path):

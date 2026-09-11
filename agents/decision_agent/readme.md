@@ -2,6 +2,23 @@
 
 Decision Agent 负责把上游 SQL / NLP / Forecast / Visualization 产出的结构化证据转化为运营决策建议。它不直接访问原始数据库，也不重新生成 SQL；所有判断都来自传入的 state 或 `DecisionInputs`。
 
+## 目录结构
+
+```
+agents/decision_agent/
+├── __init__.py
+├── run.py                 # CLI + state 入口
+├── service.py             # 核心流水线
+├── langgraph_node.py      # 协调器节点包装
+├── schemas.py             # 输入输出契约
+├── state.py
+├── adapters.py            # 上游 state ↔ DecisionInputs
+├── tools/                 # 证据、打分、What-if、规则、质量、预测补齐
+└── tests/
+```
+
+配套提示词：`config/decision_agent/`。
+
 ## 职责边界
 
 - 汇总多来源证据，构造 `EvidenceBundle`。

@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from agents.decision_agent.adapters import normalize_nlp_result
-from agents.decision_agent.forecast_from_analysis import (
+from agents.decision_agent.tools.forecast_from_analysis import (
     build_bad_review_forecast_result,
     try_build_gmv_forecast_result,
 )
-from agents.decision_agent.warning_policy import has_forecast_payload, has_nlp_payload
+from agents.decision_agent.tools.warning_policy import has_forecast_payload, has_nlp_payload
 from agents.nlp_agent.run import ReviewInsightAgent, should_run_nlp
 
 

@@ -4,7 +4,7 @@ import json
 
 from agents.common.paths import load_config_text
 from agents.common.prompts import compose_system_prompt_parts
-from .schemas import DecisionResult, EvidenceBundle, ScoredProblem
+from ..schemas import DecisionResult, EvidenceBundle, ScoredProblem
 
 
 def build_system_prompt() -> str:
