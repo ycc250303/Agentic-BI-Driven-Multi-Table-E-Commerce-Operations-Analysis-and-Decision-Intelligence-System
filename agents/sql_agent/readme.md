@@ -42,8 +42,8 @@ flowchart TD
 |------|------|
 | **rewrite** | 拆 `sub_questions`，标注 `hit_pre_agg_view` / `candidate_views` |
 | **generate** | 输出 `query_sqls[]`，一子问题一条 `SELECT`，单条内禁止分号 |
-| **check** | 本地校验格式、反引号小写、只读安全（不连库） |
-| **execute** | 顺序执行，每条 SQL 一个 CSV；明细不进 LLM 上下文 |
+| **check** | 本地校验格式与只读（不连库，不是语法解析） |
+| **execute** | 执行前再做只读闸门；顺序执行，每条 SQL 一个 CSV；明细不进 LLM 上下文 |
 
 失败时错误写入 `correction_context` 自动重试。任一条 SQL 执行失败则顶层 `ok=false`。
 
@@ -75,8 +75,8 @@ flowchart TD
 |------|-----|------|
 | `rewrite_to_query_tool` | 是 | NL → 结构化计划 + 视图命中 |
 | `generate_sql_tool` | 是 | 计划 → `query_sqls` |
-| `check_sql_tool` | 否 | 格式与安全校验 |
-| `execute_sql_tool` | 否 | 连库执行，写 CSV |
+| `check_sql_tool` | 否 | 格式与只读校验（不连库） |
+| `execute_sql_tool` | 否 | 执行前只读闸门，连库执行，写 CSV |
 
 共享规则：`tools/sql_format_rules.py`。LLM：`agents.common.llm.get_structured_llm()`（DeepSeek，关思考）。
 
@@ -98,8 +98,10 @@ flowchart TD
 ```
 agents/sql_agent/
 ├── __init__.py
-├── run.py              # 流水线入口：python -m agents.sql_agent.run
+├── pipeline.py         # 重试循环与对外入口
+├── run.py              # CLI + re-export：python -m agents.sql_agent.run
 ├── tools/              # 四个 StructuredTool
+├── tests/              # 纯本地单测（不连库、不调 LLM）
 └── test/eval_rewrite_to_query.py
 
 config/data_analysis_agent/

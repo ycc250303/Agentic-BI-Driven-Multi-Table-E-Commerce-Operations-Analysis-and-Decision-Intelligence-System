@@ -110,7 +110,7 @@ def summarize_tool_payload(tool_name: str, payload: str) -> str:
     if tool_name == "check_sql_tool":
         ok = data.get("syntax_ok")
         brief = str(data.get("brief") or "").strip()
-        return f"SQL 语法检查 {'通过' if ok else '未通过'}：{_truncate(brief, 160)}"
+        return f"SQL 格式与只读检查 {'通过' if ok else '未通过'}：{_truncate(brief, 160)}"
 
     if tool_name == "execute_sql_tool":
         ok = bool(data.get("ok"))

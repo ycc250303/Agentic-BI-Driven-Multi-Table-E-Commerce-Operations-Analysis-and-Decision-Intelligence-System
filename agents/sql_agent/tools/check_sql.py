@@ -1,6 +1,6 @@
 """
-对 generate_sql_tool 输出的 JSON 做本地语法与安全校验（不访问数据库）。
-支持 query_sqls 多条 SELECT，每条单独校验。
+对 generate_sql_tool 输出的 JSON 做本地格式与只读校验（不访问数据库）。
+支持 query_sqls 多条 SELECT，每条单独校验。不是 MySQL 语法解析。
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from agents.sql_agent.tools.sql_format_rules import (
 
 
 class CheckSqlOutput(BaseModel):
-    syntax_ok: bool = Field(description="语法与本地安全规则是否通过")
+    syntax_ok: bool = Field(description="格式与本地只读规则是否通过（字段名保持兼容）")
     brief: str = Field(description="简要说明：通过时概括要点，失败时说明原因")
 
 

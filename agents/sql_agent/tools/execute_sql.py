@@ -1,14 +1,15 @@
 """
 连接 MySQL 执行 generate_sql_tool 输出的 JSON 中的 query_sqls（可多条 SELECT），返回结构化结果摘要。
 
-编排上应在链中先跑 check_sql_tool；本工具不重复其语法/只读校验（仅做空 query 防护）。
-单独调用本工具时请自行保证输入已通过 check_sql_tool。
+编排上应在链中先跑 check_sql_tool 做格式/只读预检。本工具在执行前再次做只读校验，
+未通过的条目不发送到数据库（error_stage=sql_local）。
 """
 
 from __future__ import annotations
 
 import csv
 import os
+import sys
 import time
 from datetime import date, datetime
 from decimal import Decimal
@@ -22,7 +23,7 @@ from pymysql.cursors import DictCursor
 
 from db_env import json_safe_value, pymysql_config
 from agents.sql_agent.tools.generate_sql import GenerateSqlOutput
-from agents.sql_agent.tools.sql_format_rules import normalize_sql
+from agents.sql_agent.tools.sql_format_rules import normalize_sql, read_only_select_ok
 
 _sql_agent_dir = Path(__file__).resolve().parents[1]
 
@@ -106,7 +107,7 @@ class ExecuteSqlResultItem(BaseModel):
     execution_time_ms: float = Field(default=0.0, description="本条数据库执行耗时（毫秒）")
     error_stage: str | None = Field(
         default=None,
-        description="失败阶段：db_execute | csv_write",
+        description="失败阶段：sql_local | db_execute | csv_write",
     )
     error_message: str | None = Field(default=None, description="本条错误简述")
 
@@ -268,6 +269,18 @@ class ExecuteSqlRunner:
             with conn.cursor() as cursor:
                 for idx, sql_raw in enumerate(sql_list):
                     sql = normalize_sql(sql_raw)
+                    safe_ok, safe_reason = read_only_select_ok(sql)
+                    if not safe_ok:
+                        results.append(
+                            ExecuteSqlResultItem(
+                                index=idx,
+                                ok=False,
+                                error_stage="sql_local",
+                                error_message=f"只读校验未通过：{safe_reason}",
+                            )
+                        )
+                        continue
+
                     t0 = time.perf_counter()
                     rows_out: list[dict[str, Any]] = []
                     truncated = False
@@ -403,7 +416,7 @@ def build_execute_sql_tool():
             "在配置好环境变量后连接 MySQL，依次执行 generate_sql JSON 中的 query_sqls。"
             "每条查询写入独立 CSV（单条时文件名为时间戳；多条时为 时间戳_sql1.csv、_sql2.csv…）。"
             "返回 results 列表与聚合摘要。可选环境变量 AGENTIC_BI_SQL_CSV_DIR。"
-            "链式编排下须先调用 check_sql_tool。"
+            "执行前会再次做只读校验；编排上仍建议先调用 check_sql_tool。"
         ),
     )
 
