@@ -10,7 +10,6 @@ from agents.common.paths import load_config_text
 
 _GUARDRAILS_HEADING = "# 共用安全与任务边界"
 
-
 def compose_system_prompt(*relative: str) -> str:
     """始终前置 ``prompt_guardrails.md``，再拼接 ``config/<relative>``。
 

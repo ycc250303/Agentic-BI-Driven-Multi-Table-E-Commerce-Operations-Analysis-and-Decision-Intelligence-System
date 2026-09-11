@@ -18,7 +18,7 @@ def project_root() -> Path:
     raise RuntimeError("未找到仓库根（需同时包含 config/ 与 agents/）")
 
 
-@lru_cache(maxsize=32)
+@lru_cache(maxsize=64)
 def load_config_text(*relative: str) -> str:
     """读取 ``project_root()/config/<relative>`` 的 UTF-8 文本。
 

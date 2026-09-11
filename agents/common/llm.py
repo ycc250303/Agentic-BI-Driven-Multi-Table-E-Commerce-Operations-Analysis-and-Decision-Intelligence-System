@@ -46,16 +46,19 @@ def is_deepseek_thinking_enabled() -> bool:
 
 
 def set_deepseek_thinking_enabled(enabled: bool) -> None:
+    """设置 DeepSeek 思考模式是否启用。"""
     global _runtime_thinking_enabled
     _runtime_thinking_enabled = bool(enabled)
 
 
 def _thinking_extra_body(*, thinking_enabled: bool) -> dict:
+    """组装 DeepSeek 请求体里的 thinking 字段。"""
     mode = "enabled" if thinking_enabled else "disabled"
     return {"thinking": {"type": mode}}
 
 
 def _env_float(name: str, default: float) -> float:
+    """获取环境变量并转换为浮点数，如果转换失败则返回默认值。"""
     raw = os.getenv(name, "").strip()
     if not raw:
         return default
@@ -67,6 +70,7 @@ def _env_float(name: str, default: float) -> float:
 
 
 def _env_int(name: str, default: int) -> int:
+    """获取环境变量并转换为整数，如果转换失败则返回默认值。"""
     raw = os.getenv(name, "").strip()
     if not raw:
         return default
@@ -101,6 +105,7 @@ def llm_error_kind(exc: BaseException) -> str:
 
 
 def _invoke_config() -> dict[str, Any] | None:
+    """组装 DeepSeek 请求体里的 metadata 字段。"""
     session_id = get_session_id()
     if not session_id or session_id == "-":
         return None
@@ -108,6 +113,7 @@ def _invoke_config() -> dict[str, Any] | None:
 
 
 def _call_invoke(runnable: Any, messages: Any) -> Any:
+    """调用 DeepSeek 模型，返回响应结果。"""
     config = _invoke_config()
     if not config:
         return runnable.invoke(messages)
@@ -119,6 +125,7 @@ def _call_invoke(runnable: Any, messages: Any) -> Any:
 
 @lru_cache(maxsize=8)
 def _get_llm_cached(thinking_enabled: bool, timeout: float, max_retries: int) -> ChatDeepSeek:
+    """获取 DeepSeek 模型实例，使用 LRU 缓存。"""
     load_dotenv()
     api_key = os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
