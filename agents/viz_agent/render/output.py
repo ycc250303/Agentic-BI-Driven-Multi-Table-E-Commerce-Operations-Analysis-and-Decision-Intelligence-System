@@ -10,4 +10,4 @@ def viz_output_dir() -> Path:
     raw = os.environ.get("AGENTIC_BI_VIZ_DIR")
     if raw:
         return Path(raw).expanduser().resolve()
-    return (Path(__file__).resolve().parent / "chart_output").resolve()
+    return (Path(__file__).resolve().parents[1] / "chart_output").resolve()

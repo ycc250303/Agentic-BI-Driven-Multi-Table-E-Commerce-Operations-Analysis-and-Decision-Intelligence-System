@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from agents.viz_agent.line_plan import normalize_line_plan
+from agents.viz_agent.plan.line_plan import normalize_line_plan
 from agents.viz_agent.run import heuristic_plan
 from agents.viz_agent.schema import VizPlan
 

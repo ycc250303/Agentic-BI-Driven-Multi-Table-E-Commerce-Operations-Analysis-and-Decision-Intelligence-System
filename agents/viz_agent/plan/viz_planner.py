@@ -11,7 +11,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from agents.common.prompts import compose_system_prompt
-from agents.viz_agent.line_plan import column_is_category, column_is_time
+from agents.viz_agent.plan.line_plan import column_is_category, column_is_time
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +149,7 @@ def build_column_profiles_for_viz(
 
 
 def query_suggests_visualization(user_query: str, intent: str) -> bool:
+    """问句/意图是否像要图。分解补 suggested_agents、路由、套件规划跳过都读这个。"""
     q = user_query or ""
     ql = q.lower()
     if intent in ("predictive", "diagnostic"):
@@ -202,6 +203,7 @@ def _build_planner_context(
     sql_runs: list[dict[str, Any]],
     review_insights: dict[str, Any] | None = None,
 ) -> str:
+    """把 sql_runs 压成规划器 Human 上下文：列名、行数、摘要、视图，不把整份 CSV 塞进 Prompt。"""
     nlp_summary: dict[str, Any] = {}
     if review_insights:
         nlp_summary = {
@@ -611,6 +613,7 @@ def _finalize_sql_chart_tasks(
     user_query: str,
     intent: str,
 ) -> list[VizChartTask]:
+    """LLM/启发式任务的规则后处理：补齐漏掉的 sql_run、拆多 SQL 结果、丢掉单值 KPI、预测折线叠外推。"""
     charts = _normalize_chart_tasks(charts, sql_runs=sql_runs)
     charts = _ensure_sql_run_chart_tasks(
         charts,
@@ -703,7 +706,7 @@ def _ensure_sql_run_chart_tasks(
 def _insight_data_available(
     review_insights: dict[str, Any] | None, kind: str
 ) -> bool:
-    from agents.viz_agent.insight_charts import insight_chart_has_data
+    from agents.viz_agent.data.insight_charts import insight_chart_has_data
 
     return insight_chart_has_data(review_insights, kind)
 
@@ -916,6 +919,11 @@ def plan_viz_suite_llm(
     review_insights: dict[str, Any] | None = None,
     model=None,
 ) -> VizSuitePlan:
+    """结构化输出套件计划（Prompt: config/visualization_agent/plan_suite.md）。
+
+    LLM 只决定 needs_visualization 与 charts[]（data_source / 类型 hint）。
+    返回前仍走 _finalize_sql_chart_tasks 等规则，避免漏图或画不出的洞察图。
+    """
     from langchain_core.messages import HumanMessage, SystemMessage
 
     from agents.common.llm import invoke_structured
@@ -975,48 +983,41 @@ def plan_viz_suite(
     sql_runs: list[dict[str, Any]],
     review_insights: dict[str, Any] | None = None,
     model=None,
-    use_llm: bool = True,
 ) -> VizSuitePlan:
+    """套件规划：默认 DeepSeek 结构化输出；失败或诊断空计划时回退启发式。"""
     if not query_suggests_visualization(user_query, intent) and intent not in ("predictive",):
         return VizSuitePlan(
             needs_visualization=False,
             reasoning="问题未体现可视化需求，跳过出图。",
         )
-    if use_llm:
-        try:
-            plan = plan_viz_suite_llm(
+    try:
+        plan = plan_viz_suite_llm(
+            user_query=user_query,
+            intent=intent,
+            sql_runs=sql_runs,
+            review_insights=review_insights,
+            model=model,
+        )
+        if intent == "diagnostic" and (not plan.needs_visualization or not plan.charts):
+            return heuristic_viz_suite(
                 user_query=user_query,
                 intent=intent,
                 sql_runs=sql_runs,
                 review_insights=review_insights,
-                model=model,
             )
-            if intent == "diagnostic" and (not plan.needs_visualization or not plan.charts):
-                return heuristic_viz_suite(
-                    user_query=user_query,
-                    intent=intent,
-                    sql_runs=sql_runs,
-                    review_insights=review_insights,
+        return plan
+    except Exception as exc:
+        logger.warning("plan_viz_suite LLM 失败，已回退启发式：%s", exc)
+        heuristic = heuristic_viz_suite(
+            user_query=user_query,
+            intent=intent,
+            sql_runs=sql_runs,
+            review_insights=review_insights,
+        )
+        return heuristic.model_copy(
+            update={
+                "reasoning": (
+                    f"LLM 结构化输出失败，已回退规则：{exc}；{heuristic.reasoning}"
                 )
-            return plan
-        except Exception as exc:
-            logger.warning("plan_viz_suite LLM 失败，已回退启发式：%s", exc)
-            heuristic = heuristic_viz_suite(
-                user_query=user_query,
-                intent=intent,
-                sql_runs=sql_runs,
-                review_insights=review_insights,
-            )
-            return heuristic.model_copy(
-                update={
-                    "reasoning": (
-                        f"LLM 结构化输出失败，已回退规则：{exc}；{heuristic.reasoning}"
-                    )
-                }
-            )
-    return heuristic_viz_suite(
-        user_query=user_query,
-        intent=intent,
-        sql_runs=sql_runs,
-        review_insights=review_insights,
-    )
+            }
+        )

@@ -202,7 +202,7 @@ def build_bad_review_forecast_result(
 
 def try_build_gmv_forecast_result() -> dict[str, Any]:
     """基于周度 GMV 线性外推，构造标准 forecast_result。"""
-    from agents.viz_agent.forecast import forecast_weekly_gmv, gmv_forecast_result_payload
+    from agents.viz_agent.data.forecast import forecast_weekly_gmv, gmv_forecast_result_payload
 
     fc = forecast_weekly_gmv(horizon_weeks=6)
     return gmv_forecast_result_payload(fc)

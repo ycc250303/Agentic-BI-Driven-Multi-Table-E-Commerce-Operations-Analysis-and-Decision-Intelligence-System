@@ -68,7 +68,7 @@ def _should_visualize(state: dict) -> bool:
         return False
     if "visualization" in _suggested_agents(state):
         return True
-    from agents.viz_agent.viz_planner import query_suggests_visualization
+    from agents.viz_agent.plan.viz_planner import query_suggests_visualization
 
     return query_suggests_visualization(
         str(state.get("user_query") or ""),

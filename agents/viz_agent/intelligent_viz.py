@@ -12,18 +12,18 @@ from pathlib import Path
 from typing import Any
 
 from agents.sql_agent.run import run_sql_pipeline_with_feedback
-from agents.viz_agent.forecast import forecast_weekly_gmv, gmv_forecast_result_payload
-from agents.viz_agent.line_plan import normalize_line_plan
-from agents.viz_agent.output import viz_output_dir
-from agents.viz_agent.render import render_to_png
-from agents.viz_agent.render_context import RenderExtras
+from agents.viz_agent.data.forecast import forecast_weekly_gmv, gmv_forecast_result_payload
+from agents.viz_agent.plan.line_plan import normalize_line_plan
+from agents.viz_agent.render.output import viz_output_dir
+from agents.viz_agent.render.render import render_to_png
+from agents.viz_agent.render.render_context import RenderExtras
 from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
-from agents.viz_agent.sql_result import (
+from agents.viz_agent.data.sql_result import (
     build_viz_execute_json,
     merge_visualization_results,
     pick_viz_csv_from_exec_payload,
 )
-from agents.viz_agent.viz_planner import VizChartTask, VizSuitePlan, plan_viz_suite, _is_scalar_kpi_result
+from agents.viz_agent.plan.viz_planner import VizChartTask, VizSuitePlan, plan_viz_suite, _is_scalar_kpi_result
 
 
 def _normalize_viz_plan(plan: VizPlan | dict[str, Any]) -> VizPlan:
@@ -72,8 +72,11 @@ def _run_viz_from_exec_payload(
     exec_payload: dict[str, Any],
     chart_task: VizChartTask,
     model=None,
-    use_llm: bool = True,
 ) -> dict[str, Any]:
+    """sql_run / 补查共用：从 execute_sql JSON 选出 CSV → DeepSeek 单图选型 → 渲染。
+
+    单行 KPI 在此 skipped，不进入选型。chart_type_hint 非 auto 时会覆盖 LLM 选出的类型。
+    """
     from agents.viz_agent.run import heuristic_plan, plan_with_llm, run_visualization_agent
 
     csv_path = pick_viz_csv_from_exec_payload(
@@ -115,7 +118,7 @@ def _run_viz_from_exec_payload(
     exec_json = build_viz_execute_json(exec_payload, row)
 
     hint = chart_task.chart_type_hint
-    if hint and hint != "auto" and use_llm:
+    if hint and hint != "auto":
         import pandas as pd
 
         payload = json.loads(exec_json)
@@ -149,7 +152,6 @@ def _run_viz_from_exec_payload(
         user_query=f"{chart_task.title}。{chart_task.rationale}",
         execute_sql_json=exec_json,
         model=model,
-        use_llm=use_llm,
     )
     if out.get("ok") and chart_task.include_forecast:
         out = _maybe_apply_forecast_overlay(out, chart_task)
@@ -190,6 +192,7 @@ def _render_with_plan(
     csv_path: str,
     chart_task: VizChartTask,
 ) -> dict[str, Any]:
+    """DataFrame + VizPlan → PNG。预测带 / 词云对比通过 RenderExtras 传入，不改 plan 字段。"""
     plan = _normalize_viz_plan(plan)
     plan = normalize_line_plan(df, plan)
     out_dir = viz_output_dir()
@@ -330,7 +333,7 @@ def _render_wordcloud_task(
 def _insights_to_dataframe(insights: dict[str, Any], kind: str):
     import pandas as pd
 
-    from agents.viz_agent.insight_charts import insight_chart_rows
+    from agents.viz_agent.data.insight_charts import insight_chart_rows
 
     return pd.DataFrame(insight_chart_rows(insights, kind))
 
@@ -390,9 +393,11 @@ def _execute_chart_task(
     sql_runs: list[dict[str, Any]],
     review_insights: dict[str, Any] | None,
     model=None,
-    use_llm: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
 ) -> dict[str, Any]:
+    """按 data_source 取数并出一张图：sql_run 复用 CSV，supplementary_query 再跑查数流水线，
+    wordcloud / review_insights 走评论数据。返回 VisualizationAgentOutput 再附任务元数据。
+    """
     if chart_task.data_source == "wordcloud":
         item = _render_wordcloud_task(chart_task, review_insights)
         item["task_title"] = chart_task.title
@@ -422,7 +427,6 @@ def _execute_chart_task(
             exec_payload=exec_payload,
             chart_task=chart_task,
             model=model,
-            use_llm=use_llm,
         )
         item["task_title"] = chart_task.title
         item["task_rationale"] = chart_task.rationale
@@ -460,7 +464,6 @@ def _execute_chart_task(
             exec_payload=exec_payload,
             chart_task=chart_task,
             model=model,
-            use_llm=use_llm,
         )
         item["task_title"] = chart_task.title
         item["task_rationale"] = chart_task.rationale
@@ -529,14 +532,16 @@ def run_intelligent_visualization(
     sql_runs: list[dict[str, Any]] | None = None,
     review_insights: dict[str, Any] | None = None,
     model=None,
-    use_llm: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
 ) -> dict[str, Any]:
-    """
-    智能可视化主入口：
-    1. 根据用户问题 + 已有 SQL 结果规划图表套件
-    2. 按需复用 sql_run / 追加查数 / 词云
-    3. 返回 visualization_result 结构
+    """产品路径出图入口。协调器 visualization_node 只调这里。
+
+    规划/选型默认 DeepSeek（``agents.common.llm.invoke_structured``）；``model`` 仅测试注入。
+    数据流：user_query + sql_runs + review_insights
+      → plan_viz_suite（套件：要不要图、几张、从哪取数）
+      → 逐任务 _execute_chart_task（取数 + 单图选型 + render_to_png）
+      → 指纹去重 + merge_visualization_results
+      → {skipped, summary_text, charts[], viz_plan, 可选 forecast_result}
     """
     runs = sql_runs or []
     suite: VizSuitePlan = plan_viz_suite(
@@ -545,7 +550,6 @@ def run_intelligent_visualization(
         sql_runs=runs,
         review_insights=review_insights,
         model=model,
-        use_llm=use_llm,
     )
 
     if not suite.needs_visualization or not suite.charts:
@@ -568,7 +572,6 @@ def run_intelligent_visualization(
                 sql_runs=runs,
                 review_insights=review_insights,
                 model=model,
-                use_llm=use_llm,
                 on_tool_end=on_tool_end,
             )
             if item.get("skipped"):

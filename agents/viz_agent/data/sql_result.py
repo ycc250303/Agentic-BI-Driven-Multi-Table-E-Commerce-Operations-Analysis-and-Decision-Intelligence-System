@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from agents.viz_agent.line_plan import column_is_category, column_is_time
-from agents.viz_agent.viz_planner import (
+from agents.viz_agent.plan.line_plan import column_is_category, column_is_time
+from agents.viz_agent.plan.viz_planner import (
     _parse_columns_from_summary_zh,
     _read_csv_header_columns,
     build_column_profiles_for_viz,
@@ -19,7 +19,10 @@ def pick_viz_csv_from_exec_payload(
     sql_result_index: int | None = None,
     chart_type_hint: str | None = None,
 ) -> str | None:
-    """从 execute_sql JSON 中选取最适合出图的一条 CSV 路径。"""
+    """从 execute_sql JSON 的 results[] 里挑一条 CSV。
+
+    指定 sql_result_index 则用该条；否则 bar 偏类别表、line 偏带时间列的表，默认取行数最多的。
+    """
     results = [
         r
         for r in (exec_payload.get("results") or [])
@@ -91,6 +94,7 @@ def build_viz_execute_json(exec_payload: dict[str, Any], row: dict[str, Any]) ->
 
 
 def merge_visualization_results(items: list[dict[str, Any]]) -> dict[str, Any]:
+    """多张单图输出压成对外 charts[] + summary_text。Dashboard 只读这里的 image_path。"""
     charts: list[dict[str, Any]] = []
     ok_count = 0
     type_counts: dict[str, int] = {}

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from agents.viz_agent.render import (
+from agents.viz_agent.render.render import (
     _ordered_time_categories,
     _prepare_line_dataframe,
     render_to_png,

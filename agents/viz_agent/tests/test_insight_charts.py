@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.viz_agent.insight_charts import insight_chart_has_data, insight_chart_rows
+from agents.viz_agent.data.insight_charts import insight_chart_has_data, insight_chart_rows
 
 
 def test_bertopic_complaints_by_category_rows():

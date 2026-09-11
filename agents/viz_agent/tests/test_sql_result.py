@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from agents.viz_agent.sql_result import (
+from agents.viz_agent.data.sql_result import (
     build_viz_execute_json,
     merge_visualization_results,
     pick_viz_csv_from_exec_payload,

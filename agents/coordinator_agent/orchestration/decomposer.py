@@ -126,7 +126,7 @@ def normalize_predictive_sub_questions(
 def finalize_suggested_agents(result: DecomposeResult, user_query: str) -> DecomposeResult:
     """分解结果与规则对齐：该调度上的 Agent 必须写进 suggested_agents。"""
     from agents.nlp_agent.run import should_run_nlp
-    from agents.viz_agent.viz_planner import query_suggests_visualization
+    from agents.viz_agent.plan.viz_planner import query_suggests_visualization
 
     agents = list(result.suggested_agents)
     if result.intent == "what_if" and not result.requires_data_analysis and not result.sub_questions:
@@ -179,7 +179,7 @@ def finalize_suggested_agents(result: DecomposeResult, user_query: str) -> Decom
 
 def _default_suggested_agents(intent: IntentName, user_query: str) -> list[str]:
     from agents.nlp_agent.run import should_run_nlp
-    from agents.viz_agent.viz_planner import query_suggests_visualization
+    from agents.viz_agent.plan.viz_planner import query_suggests_visualization
 
     if intent == "what_if":
         return ["decision"]

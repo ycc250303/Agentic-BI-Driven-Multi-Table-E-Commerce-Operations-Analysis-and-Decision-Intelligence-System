@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from agents.viz_agent.render_context import RenderExtras
+from agents.viz_agent.render.render_context import RenderExtras
 from agents.viz_agent.schema import VizPlan
 
 warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
@@ -413,7 +413,7 @@ def _resolve_line_series_column(
     ):
         return explicit
 
-    from agents.viz_agent.line_plan import infer_line_series_column
+    from agents.viz_agent.plan.line_plan import infer_line_series_column
 
     return infer_line_series_column(df, x_column, y_column)
 
@@ -594,7 +594,10 @@ def render_to_png(
     *,
     extras: RenderExtras | None = None,
 ) -> str:
-    """将图表写入 dest_path（.png），返回绝对路径字符串。"""
+    """确定性渲染：按 plan.chart_type 分支调用 seaborn / matplotlib / WordCloud，写入 PNG。
+
+    非交互后端 Agg。LLM 不进入本函数。extras 承载预测带、对比词云等 plan 里没有的附加数据。
+    """
     _apply_style()
     dest_path = dest_path.resolve()
     dest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -758,7 +761,7 @@ def render_to_png(
         _style_title(ax, plan.title, subtitle)
 
     elif chart == "line":
-        from agents.viz_agent.line_plan import normalize_line_plan
+        from agents.viz_agent.plan.line_plan import normalize_line_plan
 
         plan = normalize_line_plan(df, plan)
         series_col = plan.category_column or plan.hue_column

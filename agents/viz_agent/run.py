@@ -15,9 +15,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.common.llm import invoke_structured
 from agents.common.prompts import compose_system_prompt
-from agents.viz_agent.line_plan import column_is_time, normalize_line_plan
-from agents.viz_agent.output import viz_output_dir
-from agents.viz_agent.render import render_to_png
+from agents.viz_agent.plan.line_plan import column_is_time, normalize_line_plan
+from agents.viz_agent.render.output import viz_output_dir
+from agents.viz_agent.render.render import render_to_png
 from agents.viz_agent.schema import VisualizationAgentOutput, VizPlan
 
 
@@ -163,6 +163,11 @@ def plan_with_llm(
     *,
     model=None,
 ) -> tuple[VizPlan, str]:
+    """单图选型：CSV 样本 + 列画像 → VizPlan（chart_type 与列映射）。
+
+    Prompt: config/visualization_agent/plan_chart.md。默认 ``get_structured_llm()``（DeepSeek）；
+    ``model`` 仅测试注入。模型不写 matplotlib 代码。
+    """
     system = compose_system_prompt("visualization_agent", "plan_chart.md")
     human = _build_human_prompt(user_query, df, column_profiles, data_summary_zh)
     response = invoke_structured(
@@ -180,12 +185,12 @@ def run_visualization_agent(
     execute_sql_json: str | None = None,
     csv_path: str | Path | None = None,
     model=None,
-    use_llm: bool = True,
     output_dir: Path | None = None,
 ) -> dict[str, Any]:
     """单图渲染（内部）。套件入口见 ``run_intelligent_visualization``。
 
     提供 ``execute_sql_json``（须 ``ok=true``）或 ``csv_path`` 之一。
+    选型默认 DeepSeek；失败回退启发式。
     """
     csv_p: Path | None = None
     profiles: list[dict[str, Any]] = []
@@ -230,13 +235,9 @@ def run_visualization_agent(
     plan_raw = ""
     plan: VizPlan
     try:
-        if use_llm:
-            plan, plan_raw = plan_with_llm(
-                user_query, df, profiles, summary_zh, model=model
-            )
-        else:
-            plan = heuristic_plan(df, user_query)
-            plan_raw = _plan_to_raw_json(plan)
+        plan, plan_raw = plan_with_llm(
+            user_query, df, profiles, summary_zh, model=model
+        )
     except Exception as e:
         plan = heuristic_plan(df, user_query)
         plan_raw = _plan_to_raw_json(plan) + f"\n<!-- llm_fallback: {e} -->"
@@ -286,13 +287,11 @@ if __name__ == "__main__":
         default="可视化这张结果表",
         help="用户业务问题（用于图表选型）",
     )
-    parser.add_argument("--no-llm", action="store_true", help="仅用启发式，不调用大模型")
     args = parser.parse_args()
 
     out = run_visualization_agent(
         user_query=args.query,
         csv_path=args.csv,
-        use_llm=not args.no_llm,
     )
     print(json.dumps(out, ensure_ascii=False, indent=2))
     sys.exit(0 if out.get("ok") else 1)

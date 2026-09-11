@@ -33,6 +33,7 @@ def collect_viz_rounds(conversation: Conversation | None) -> list[VizRound]:
 
 
 def render_viz_round(viz_round: VizRound, *, live: bool = False) -> None:
+    """Dashboard 只展示已有 PNG（st.image），不重新规划或渲染。"""
     show_generating = live and should_show_live_viz(viz_round)
     prefix = "（生成中）" if show_generating else ""
     st.markdown(f"**{prefix}问：{viz_round.user_query}**")

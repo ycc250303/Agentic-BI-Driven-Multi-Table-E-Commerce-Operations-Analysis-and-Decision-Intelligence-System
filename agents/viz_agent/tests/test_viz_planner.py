@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.viz_agent.viz_planner import (
+from agents.viz_agent.plan.viz_planner import (
     VizChartTask,
     _dedupe_viz_charts,
     _ensure_sql_run_chart_tasks,

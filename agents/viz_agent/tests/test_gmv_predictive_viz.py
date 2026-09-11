@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.viz_agent.viz_planner import (
+from agents.viz_agent.plan.viz_planner import (
     VizChartTask,
     _enrich_gmv_predictive_charts,
     _is_placeholder_forecast_sql_run,

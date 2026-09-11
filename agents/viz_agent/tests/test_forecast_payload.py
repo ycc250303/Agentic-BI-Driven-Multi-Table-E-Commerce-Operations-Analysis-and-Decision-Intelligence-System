@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents.viz_agent.forecast import gmv_forecast_result_payload
+from agents.viz_agent.data.forecast import gmv_forecast_result_payload
 from agents.viz_agent.intelligent_viz import _ForecastCache
 
 
