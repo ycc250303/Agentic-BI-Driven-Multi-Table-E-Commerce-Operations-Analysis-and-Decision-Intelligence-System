@@ -54,7 +54,6 @@ flowchart TD
 | 函数 | 用途 |
 |------|------|
 | `run_sql_pipeline_with_feedback(...)` | 完整流水线 dict；支持 `on_tool_end` 回调 |
-| `build_sql_pipeline(...)` | LangChain `Runnable`，`invoke(str)` 返回同上 |
 
 ### 输出 dict 关键字段
 
@@ -78,7 +77,7 @@ flowchart TD
 | `check_sql_tool` | 否 | 格式与只读校验（不连库） |
 | `execute_sql_tool` | 否 | 执行前只读闸门，连库执行，写 CSV |
 
-共享规则：`tools/sql_format_rules.py`。LLM：`agents.common.llm.get_structured_llm()`（DeepSeek，关思考）。
+共享规则：`tools/sql_format_rules.py`。LLM：`agents.common.llm.invoke_structured`（DeepSeek，关思考）。
 
 ---
 

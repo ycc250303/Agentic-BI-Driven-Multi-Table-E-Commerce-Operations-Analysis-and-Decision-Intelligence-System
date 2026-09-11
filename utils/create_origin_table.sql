@@ -25,8 +25,7 @@ create table orders (
     primary key (order_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单主表';
 
-create index idx_orders_order_id on orders (order_id);
-
+-- order_id 已是主键，不再建同名二级索引
 create index idx_orders_customer_id on orders (customer_id);
 
 -- 2.订单项目表
@@ -41,8 +40,7 @@ create table order_items (
     primary key (order_id, order_item_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单项目表';
 
-create index idx_order_items_order_id on order_items (order_id);
-
+-- PRIMARY(order_id, order_item_id) 左前缀已覆盖按 order_id 查找
 create index idx_order_items_product_id on order_items (product_id);
 
 create index idx_order_items_seller_id on order_items (seller_id);
@@ -63,8 +61,6 @@ create table products (
     primary key (product_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '产品表';
 
-create index idx_products_product_id on products (product_id);
-
 create index idx_products_product_category_name on products (product_category_name);
 
 -- 4.客户表
@@ -77,12 +73,9 @@ create table customers (
     primary key (customer_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '客户表';
 
-create index idx_customers_customer_id on customers (customer_id);
-
 create index idx_customers_customer_unique_id on customers (customer_unique_id);
 
-create index idx_customers_customer_city on customers (customer_city);
-
+-- 仅按州过滤不能走 (city, state) 左前缀，故保留 state；单列 city 由 city_state 覆盖
 create index idx_customers_customer_state on customers (customer_state);
 
 create index idx_customers_customer_city_state on customers (customer_city, customer_state);
@@ -95,10 +88,6 @@ create table sellers (
     seller_state varchar(2) NOT NULL COMMENT '商家州',
     primary key (seller_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商家表';
-
-create index idx_sellers_seller_id on sellers (seller_id);
-
-create index idx_sellers_seller_city on sellers (seller_city);
 
 create index idx_sellers_seller_state on sellers (seller_state);
 
@@ -114,8 +103,6 @@ create table payments (
     primary key (order_id, payment_sequential)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '支付表';
 
-create index idx_payments_order_id_payment_sequential on payments (order_id, payment_sequential);
-
 -- 7.评论表
 create table order_reviews (
     review_id varchar(32) NOT NULL COMMENT '评论ID',
@@ -127,8 +114,6 @@ create table order_reviews (
     review_answer_timestamp datetime NOT NULL COMMENT '评论回答时间',
     primary key (review_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '评论表';
-
-create index idx_order_reviews_review_id on order_reviews (review_id);
 
 create index idx_order_reviews_order_id on order_reviews (order_id);
 
@@ -157,7 +142,5 @@ create table product_category_name_translation (
     product_category_name_english varchar(255) NOT NULL COMMENT '产品类目名称英文',
     primary key (product_category_name)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '产品类目翻译表';
-
-create index idx_pcnt_product_category_name on product_category_name_translation (product_category_name);
 
 create index idx_pcnt_product_category_name_english on product_category_name_translation (product_category_name_english);

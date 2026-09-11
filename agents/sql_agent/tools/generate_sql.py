@@ -4,11 +4,10 @@ from langchain_core.tools import StructuredTool
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from agents.common.llm import get_structured_llm
+from agents.common.llm import get_structured_llm, invoke_structured
 from agents.common.paths import load_config_text
 from agents.common.prompts import compose_system_prompt_parts
 from agents.sql_agent.tools.rewrite_to_query import RewriteToQueryOutput
-from agents.sql_agent.tools.sql_format_rules import query_sql_format_ok
 
 
 class GenerateSqlOutput(BaseModel):
@@ -54,9 +53,8 @@ class GenerateSqlOutput(BaseModel):
 
 
 class GenerateSqlRunner:
-    def __init__(self, model, max_retries: int = 3):
-        self.structured_model = model.with_structured_output(GenerateSqlOutput)
-        self.max_retries = max_retries
+    def __init__(self, model):
+        self.model = model
 
     def invoke(self, rewrite_json: str, correction_context: str = "") -> str:
         """根据 rewrite_to_query 的结构化 JSON 生成 MySQL SQL。
@@ -89,39 +87,9 @@ class GenerateSqlRunner:
             SystemMessage(content=system_prompt),
             HumanMessage(content=human_content),
         ]
-
-        last_error: Exception | None = None
-        resp: GenerateSqlOutput | None = None
-
-        for _ in range(self.max_retries):
-            try:
-                candidate: Any = self.structured_model.invoke(messages)
-                if isinstance(candidate, GenerateSqlOutput):
-                    resp = candidate
-                elif isinstance(candidate, dict):
-                    resp = GenerateSqlOutput.model_validate(candidate)
-                else:
-                    resp = GenerateSqlOutput.model_validate(candidate)
-
-                if not resp.query_sqls:
-                    raise ValueError("query_sqls 不能为空")
-                for i, q in enumerate(resp.query_sqls):
-                    if not str(q).strip():
-                        raise ValueError(f"query_sqls[{i}] 不能为空")
-                    if not query_sql_format_ok(str(q)):
-                        raise ValueError(
-                            f"query_sqls[{i}] 格式不符：须以大写 SELECT 开头，"
-                            "反引号内标识符全部小写，且单条内不得含分号"
-                        )
-                break
-            except Exception as e:
-                last_error = e
-
-        if resp is None:
-            raise RuntimeError(
-                f"generate_sql_tool 在 {self.max_retries} 次尝试后仍未获得符合要求的输出: {last_error}"
-            )
-
+        resp = invoke_structured(GenerateSqlOutput, messages, model=self.model)
+        if not isinstance(resp, GenerateSqlOutput):
+            resp = GenerateSqlOutput.model_validate(resp)
         return resp.model_dump_json(
             indent=2,
             ensure_ascii=False,
@@ -130,10 +98,10 @@ class GenerateSqlRunner:
         )
 
 
-def build_generate_sql_tool(model=None, max_retries: int = 3):
+def build_generate_sql_tool(model=None):
     if model is None:
         model = get_structured_llm()
-    runner = GenerateSqlRunner(model=model, max_retries=max_retries)
+    runner = GenerateSqlRunner(model=model)
     return StructuredTool.from_function(
         func=runner.invoke,
         name="generate_sql_tool",

@@ -260,7 +260,7 @@ def build_eval_tool(model: ChatDeepSeek, thinking: str, max_retries: int = 3):
             (),
             {"invoke": lambda _self, payload: runner.invoke(str(payload["query"]))},
         )()
-    return build_rewrite_to_query_tool(model, max_retries=max_retries)
+    return build_rewrite_to_query_tool(model)
 
 
 def run_eval(

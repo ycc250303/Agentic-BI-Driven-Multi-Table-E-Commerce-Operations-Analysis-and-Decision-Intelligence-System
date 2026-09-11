@@ -6,9 +6,9 @@
 
 from __future__ import annotations
 
-from agents.sql_agent.pipeline import build_sql_pipeline, run_sql_pipeline_with_feedback
+from agents.sql_agent.pipeline import run_sql_pipeline_with_feedback
 
-__all__ = ["build_sql_pipeline", "run_sql_pipeline_with_feedback"]
+__all__ = ["run_sql_pipeline_with_feedback"]
 
 
 if __name__ == "__main__":

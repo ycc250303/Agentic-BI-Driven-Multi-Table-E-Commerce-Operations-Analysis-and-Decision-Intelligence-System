@@ -128,7 +128,9 @@ NLP 衍生表（独立 DDL，需离线灌库）：
 
 ### `create_origin_table.sql`
 
-Olist **原始业务表** DDL：先 `DROP` 再 `CREATE` 共 9 张表，含主键、常用查询索引及字段中文注释。被 `load_data_to_mysql.py` 在导入前自动执行。
+Olist **原始业务表** DDL：先 `DROP` 再 `CREATE` 共 9 张表，含主键、常用查询索引及字段中文注释。被 `load_data_to_mysql.py` 在导入前自动执行。二级索引不重复主键或主键左前缀；仅按城市过滤走 `(city, state)` 左前缀。
+
+已导入的库可用 `utils/drop_redundant_indexes.sql` 删掉历史冗余索引（不删表）。
 
 | 表名 | 说明 |
 |------|------|

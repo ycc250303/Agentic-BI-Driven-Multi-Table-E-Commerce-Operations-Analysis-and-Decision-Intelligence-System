@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from agents.sql_agent import pipeline as pipeline_mod
 from agents.sql_agent import run as run_mod
-from agents.sql_agent.pipeline import build_sql_pipeline, run_sql_pipeline_with_feedback
+from agents.sql_agent.pipeline import run_sql_pipeline_with_feedback
 
 _PIPELINE_KEYS = {
     "user_query",
@@ -42,9 +42,8 @@ def _success_tools() -> tuple[_FakeTool, _FakeTool, _FakeTool, _FakeTool]:
     return rewrite, generate, check, execute
 
 
-def test_run_reexports_pipeline_entrypoints():
+def test_run_reexports_pipeline_entrypoint():
     assert run_mod.run_sql_pipeline_with_feedback is pipeline_mod.run_sql_pipeline_with_feedback
-    assert run_mod.build_sql_pipeline is pipeline_mod.build_sql_pipeline
 
 
 def test_check_failure_does_not_call_execute():
@@ -70,6 +69,7 @@ def test_check_pass_calls_execute_once():
     ):
         out = run_sql_pipeline_with_feedback("hello")
 
+    assert set(out) == _PIPELINE_KEYS
     assert len(execute.calls) == 1
     assert json.loads(out["check_sql_json"])["syntax_ok"] is True
     assert json.loads(out["execute_sql_json"])["ok"] is True
@@ -96,16 +96,3 @@ def test_check_fail_then_pass_retries_then_executes():
     assert len(execute.calls) == 1
     assert "check_sql 未通过" in generate.calls[1]["correction_context"]
     assert out["generate_sql_attempts"] == 2
-
-
-def test_build_pipeline_matches_feedback_fields():
-    tools_a = _success_tools()
-    tools_b = _success_tools()
-    with patch.object(pipeline_mod, "_pipeline_tools", return_value=tools_a):
-        via_runnable = build_sql_pipeline().invoke("hello")
-    with patch.object(pipeline_mod, "_pipeline_tools", return_value=tools_b):
-        via_fn = run_sql_pipeline_with_feedback("hello")
-
-    assert set(via_runnable) == _PIPELINE_KEYS
-    assert set(via_fn) == _PIPELINE_KEYS
-    assert via_runnable["user_query"] == via_fn["user_query"] == "hello"

@@ -3,8 +3,7 @@
 rewrite 最多 3 次；generate 最多 3 次（check 未通过或 execute 报错则写入
 correction_context 重试）。不负责 CLI。
 
-对外入口：`build_sql_pipeline`（LangChain Runnable）、
-`run_sql_pipeline_with_feedback`（dict + 可选逐步回调）。
+对外入口：`run_sql_pipeline_with_feedback`（dict + 可选逐步回调）。
 """
 
 from __future__ import annotations
@@ -12,8 +11,6 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from typing import Any
-
-from langchain_core.runnables import RunnableLambda
 
 from agents.common.llm import get_structured_llm
 from agents.sql_agent.tools.check_sql import build_check_sql_tool
@@ -23,7 +20,6 @@ from agents.sql_agent.tools.rewrite_to_query import build_rewrite_to_query_tool
 
 MAX_REWRITE_ATTEMPTS = 3
 MAX_GENERATE_ATTEMPTS = 3
-TOOL_MODEL_RETRIES = 1
 
 _EXECUTE_SKIPPED_STUB = {
     "ok": False,
@@ -73,8 +69,8 @@ def _execute_error_message_nonempty(exec_json: str) -> tuple[bool, str]:
 def _pipeline_tools(model=None) -> tuple[Any, Any, Any, Any]:
     structured_llm = model or get_structured_llm()
     return (
-        build_rewrite_to_query_tool(structured_llm, max_retries=TOOL_MODEL_RETRIES),
-        build_generate_sql_tool(structured_llm, max_retries=TOOL_MODEL_RETRIES),
+        build_rewrite_to_query_tool(structured_llm),
+        build_generate_sql_tool(structured_llm),
         build_check_sql_tool(),
         build_execute_sql_tool(),
     )
@@ -242,32 +238,3 @@ def run_sql_pipeline_with_feedback(
         execute_tool=execute_tool,
         on_tool_end=on_tool_end,
     )
-
-
-def _coerce_pipeline_input(x: str | dict[str, Any]) -> dict[str, Any]:
-    if isinstance(x, str):
-        return {"user_query": x}
-    return dict(x)
-
-
-def build_sql_pipeline(model=None):
-    """
-    返回 Runnable：`invoke(str | {"user_query": str})` → dict，包含
-    `user_query`、`rewrite_json`、`rewrite_attempts`、
-    `generate_sql_json`、`check_sql_json`、`execute_sql_json`、`generate_sql_attempts`。
-
-    Web 端实时进度请使用 `run_sql_pipeline_with_feedback(..., on_tool_end=...)`。
-    构建时只装配一次工具，后续 `invoke` 复用。
-    """
-    rewrite_tool, generate_tool, check_tool, execute_tool = _pipeline_tools(model)
-
-    def pipeline_step(state: dict[str, Any]) -> dict[str, Any]:
-        return _run_pipeline(
-            state["user_query"],
-            rewrite_tool=rewrite_tool,
-            generate_tool=generate_tool,
-            check_tool=check_tool,
-            execute_tool=execute_tool,
-        )
-
-    return RunnableLambda(_coerce_pipeline_input) | RunnableLambda(pipeline_step)

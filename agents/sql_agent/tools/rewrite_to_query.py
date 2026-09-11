@@ -4,7 +4,7 @@ from langchain_core.tools import StructuredTool
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field, model_validator
 
-from agents.common.llm import get_structured_llm
+from agents.common.llm import get_structured_llm, invoke_structured
 from agents.common.paths import load_config_text
 from agents.common.prompts import compose_system_prompt_parts
 
@@ -126,9 +126,8 @@ class RewriteToQueryOutput(BaseModel):
 
 
 class RewriteToQueryRunner:
-    def __init__(self, model, max_retries: int = 3):
-        self.structured_model = model.with_structured_output(RewriteToQueryOutput)
-        self.max_retries = max_retries
+    def __init__(self, model):
+        self.model = model
 
     def invoke(self, query: str, correction_context: str = "") -> str:
         """将自然语言问题转换为查询工具输入。"""
@@ -153,28 +152,9 @@ class RewriteToQueryRunner:
             SystemMessage(content=system_prompt),
             HumanMessage(content=human_content),
         ]
-        last_error: Exception | None = None
-        resp: RewriteToQueryOutput | None = None
-
-        for _ in range(self.max_retries):
-            try:
-                candidate: Any = self.structured_model.invoke(messages)
-                # 再次显式校验，确保最终输出严格符合 schema。
-                if isinstance(candidate, RewriteToQueryOutput):
-                    resp = candidate
-                elif isinstance(candidate, dict):
-                    resp = RewriteToQueryOutput.model_validate(candidate)
-                else:
-                    resp = RewriteToQueryOutput.model_validate(candidate)
-                break
-            except Exception as e:
-                last_error = e
-
-        if resp is None:
-            raise RuntimeError(
-                f"rewrite_to_query_tool 在 {self.max_retries} 次尝试后仍未获得符合 schema 的输出: {last_error}"
-            )
-
+        resp = invoke_structured(RewriteToQueryOutput, messages, model=self.model)
+        if not isinstance(resp, RewriteToQueryOutput):
+            resp = RewriteToQueryOutput.model_validate(resp)
         return resp.model_dump_json(
             indent=2,
             ensure_ascii=False,
@@ -183,10 +163,10 @@ class RewriteToQueryRunner:
         )
 
 
-def build_rewrite_to_query_tool(model=None, max_retries: int = 3):
+def build_rewrite_to_query_tool(model=None):
     if model is None:
         model = get_structured_llm()
-    runner = RewriteToQueryRunner(model=model, max_retries=max_retries)
+    runner = RewriteToQueryRunner(model=model)
     return StructuredTool.from_function(
         func=runner.invoke,
         name="rewrite_to_query_tool",
