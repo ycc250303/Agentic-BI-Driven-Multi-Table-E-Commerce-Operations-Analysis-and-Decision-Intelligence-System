@@ -1,4 +1,4 @@
-# 数据分析 Agent 数据字典 Prompt（按需注入）
+# 数据分析 Agent 数据字典 Prompt
 
 ## 1) 原始表（Base Tables）
 

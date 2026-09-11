@@ -152,7 +152,11 @@ def infer_agent_trace(request_content: bytes, request: httpx.Request) -> dict[st
             }
         )
         return trace
-    if "SQL 生成工具" in all_text and "query_sqls" in all_text:
+    if (
+        "SQL 生成器" in all_text
+        or "SQL 生成规则" in all_text
+        or "SQL 生成工具" in all_text
+    ) and "query_sqls" in all_text:
         trace.update(
             {
                 "agent": "data_analysis_agent",

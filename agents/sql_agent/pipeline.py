@@ -47,6 +47,11 @@ def _json_load_dict(raw_json: str) -> dict[str, Any] | None:
 
 
 def _parse_check_syntax_ok(check_json: str) -> tuple[bool, str]:
+    """解析 check 工具返回的 JSON。
+
+    入参：check_sql_tool 的 JSON 字符串。
+    返回：``(syntax_ok 是否为 True, brief)``；JSON 非法时视为未通过。
+    """
     d = _json_load_dict(check_json)
     if d is None:
         return False, "check_sql 返回非合法 JSON"
@@ -56,6 +61,11 @@ def _parse_check_syntax_ok(check_json: str) -> tuple[bool, str]:
 
 
 def _execute_error_message_nonempty(exec_json: str) -> tuple[bool, str]:
+    """判断 execute 是否应触发带错重试。
+
+    入参：execute_sql_tool 的 JSON 字符串。
+    返回：``(需要重试, 错误摘要)``。JSON 非法或 ``error_message`` 非空则为需要重试。
+    """
     d = _json_load_dict(exec_json)
     if d is None:
         return True, "execute_sql 返回非合法 JSON"
@@ -67,6 +77,7 @@ def _execute_error_message_nonempty(exec_json: str) -> tuple[bool, str]:
 
 
 def _pipeline_tools(model=None) -> tuple[Any, Any, Any, Any]:
+    """装配 rewrite / generate / check / execute 四个工具。``model`` 供测试注入。"""
     structured_llm = model or get_structured_llm()
     return (
         build_rewrite_to_query_tool(structured_llm),
@@ -82,12 +93,20 @@ def _run_rewrite(
     rewrite_tool: Any,
     emit: Callable[[str, str], None] | None,
 ) -> tuple[str, int, list[str]]:
+    """NL → 结构化计划。最多 ``MAX_REWRITE_ATTEMPTS`` 次。
+
+    入参：``user_query`` 本轮自然语言；``rewrite_tool``；``emit`` 可选进度回调。
+    返回：``(rewrite_json, 实际尝试次数, 失败说明列表)``。
+    失败：schema/调用异常写入 correction_context 重试；全部失败则返回空计划 JSON，
+    失败说明交给后续 generate 循环。
+    """
     rewrite_json = ""
     attempts_used = 0
     feedback_lines: list[str] = []
 
     for _ in range(MAX_REWRITE_ATTEMPTS):
         attempts_used += 1
+        # 上一轮 schema/调用失败摘要，供本轮纠错
         try:
             rewrite_json = rewrite_tool.invoke(
                 {
@@ -96,7 +115,7 @@ def _run_rewrite(
                 }
             )
         except Exception as e:
-            feedback_lines.append(f"[rewrite_to_query 失败] {e}")
+            feedback_lines.append(f"[结构化转写失败] {e}")
             continue
         if emit:
             emit("rewrite_to_query_tool", rewrite_json)
@@ -125,7 +144,14 @@ def _run_retry_loop(
     emit: Callable[[str, str], None] | None,
     initial_feedback: list[str] | None = None,
 ) -> tuple[str, str, str, int]:
-    """返回 (generate_sql_json, check_sql_json, execute_sql_json, attempts_used)。"""
+    """generate → check → execute，失败把错误写回 generate。最多 3 次（含首次）。
+
+    入参：``rewrite_json`` 转写结果；三个工具；``emit`` 可选；``initial_feedback``
+    一般为 rewrite 失败说明。
+    返回：``(generate_sql_json, check_sql_json, execute_sql_json, generate 尝试次数)``。
+    失败：check 未通过不连库；execute 的 ``error_message`` 非空则重试；3 次仍无成功
+    execute 时填 skipped 占位，不抛给调用方。
+    """
     feedback_lines: list[str] = list(initial_feedback or [])
     sql_json = ""
     check_json = ""
@@ -135,6 +161,7 @@ def _run_retry_loop(
 
     for _ in range(MAX_GENERATE_ATTEMPTS):
         attempts_used += 1
+        # 上一轮 generate/check/execute 的失败摘要，供本轮纠错
         ctx = "\n\n".join(feedback_lines)
         try:
             sql_json = generate_tool.invoke(
@@ -142,7 +169,7 @@ def _run_retry_loop(
             )
         except Exception as e:
             last_generate_error = str(e)
-            feedback_lines.append(f"[generate_sql 失败] {last_generate_error}")
+            feedback_lines.append(f"[SQL 生成失败] {last_generate_error}")
             continue
         if emit:
             emit("generate_sql_tool", sql_json)
@@ -153,7 +180,8 @@ def _run_retry_loop(
 
         check_ok, brief = _parse_check_syntax_ok(check_json)
         if not check_ok:
-            feedback_lines.append(f"[check_sql 未通过] {brief}")
+            # 格式/只读未过：不执行，brief 带回下一轮 generate
+            feedback_lines.append(f"[格式与只读校验未通过] {brief}")
             continue
 
         exec_json = execute_tool.invoke({"generate_sql_json": sql_json})
@@ -164,7 +192,8 @@ def _run_retry_loop(
         if not has_err:
             break
 
-        feedback_lines.append(f"[execute_sql 失败] {err_s}")
+        # 连库失败或 SQL 报错：error_message 带回下一轮 generate
+        feedback_lines.append(f"[查询执行失败] {err_s}")
 
     if not exec_json.strip():
         exec_json = json.dumps(_EXECUTE_SKIPPED_STUB, ensure_ascii=False)
@@ -189,7 +218,13 @@ def _run_pipeline(
     execute_tool: Any,
     on_tool_end: Callable[[str, str], None] | None = None,
 ) -> dict[str, Any]:
-    """跑完整条流水线并拼装对外 dict。"""
+    """按 rewrite → generate/check/execute 跑通并拼对外 dict。
+
+    入参：已规范化的 ``user_query`` 与四个工具；``on_tool_end(tool_name, json_str)``
+    在每个工具返回后立刻回调（Web/SSE 进度）。
+    返回：含 ``rewrite_json`` / ``generate_sql_json`` / ``check_sql_json`` /
+    ``execute_sql_json`` 及各阶段尝试次数。不在此处抛业务失败。
+    """
 
     def emit(tool_name: str, payload: str) -> None:
         if on_tool_end:
@@ -225,8 +260,12 @@ def run_sql_pipeline_with_feedback(
     model=None,
     on_tool_end: Callable[[str, str], None] | None = None,
 ) -> dict[str, Any]:
-    """
-    跑完整条流水线；若提供 `on_tool_end(tool_name, json_str)`，则在每个工具返回后立即调用。
+    """SQL Agent 对外入口：自然语言 → 只读查询结果摘要。
+
+    入参：``user_query`` 为字符串或 ``{"user_query": str}``；``model`` 可选注入结构化
+    LLM；``on_tool_end`` 可选逐步回调。
+    返回：流水线 dict（JSON 字符串字段 + attempts）。协调器 / 可视化从此导入。
+    失败：不抛给调用方，错误落在 ``check_sql_json`` / ``execute_sql_json``。
     """
     rewrite_tool, generate_tool, check_tool, execute_tool = _pipeline_tools(model)
     uq = _coerce_user_query(user_query)

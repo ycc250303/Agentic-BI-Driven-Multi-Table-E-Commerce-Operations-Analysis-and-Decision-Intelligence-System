@@ -174,7 +174,7 @@ def _build_rewrite_messages(query: str) -> list[Any]:
         + load_config_text("sql_agent", "system_core.md"),
         "# 数据库表结构与视图字典\n\n"
         + load_config_text("sql_agent", "schema_dictionary.md"),
-        "# 转写工具规则\n\n"
+        "# 转写规则\n\n"
         + load_config_text("sql_agent", "rewrite_to_query_tool.md"),
     )
     return [

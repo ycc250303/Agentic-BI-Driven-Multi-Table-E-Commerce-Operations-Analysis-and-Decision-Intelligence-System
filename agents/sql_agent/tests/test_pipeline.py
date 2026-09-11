@@ -94,5 +94,5 @@ def test_check_fail_then_pass_retries_then_executes():
 
     assert len(generate.calls) == 2
     assert len(execute.calls) == 1
-    assert "check_sql 未通过" in generate.calls[1]["correction_context"]
+    assert "格式与只读校验未通过" in generate.calls[1]["correction_context"]
     assert out["generate_sql_attempts"] == 2

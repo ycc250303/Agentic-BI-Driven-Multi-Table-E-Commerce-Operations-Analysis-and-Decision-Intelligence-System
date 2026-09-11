@@ -9,6 +9,7 @@ import re
 
 
 def normalize_sql(sql: str) -> str:
+    """去掉首尾空白与末尾分号，供格式/只读规则与执行共用。"""
     s = sql.strip()
     if s.endswith(";"):
         s = s[:-1].rstrip()

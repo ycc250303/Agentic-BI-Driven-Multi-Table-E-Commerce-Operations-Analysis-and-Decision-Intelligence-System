@@ -1,3 +1,9 @@
+"""结构化计划 → MySQL SELECT 列表（query_sqls）。
+
+一次 ``invoke_structured``；格式/只读问题交给后续 check，执行错误经
+correction_context 回到本步。不连库。
+"""
+
 from typing import Any
 
 from langchain_core.tools import StructuredTool
@@ -43,6 +49,7 @@ class GenerateSqlOutput(BaseModel):
         return data
 
     def normalized_sqls(self) -> list[str]:
+        """去掉首尾空白与末尾分号，供 check / execute 使用同一口径。"""
         out: list[str] = []
         for q in self.query_sqls:
             s = q.strip()
@@ -57,9 +64,12 @@ class GenerateSqlRunner:
         self.model = model
 
     def invoke(self, rewrite_json: str, correction_context: str = "") -> str:
-        """根据 rewrite_to_query 的结构化 JSON 生成 MySQL SQL。
+        """根据 rewrite JSON 生成 GenerateSqlOutput（query_sqls 等）。
 
-        ``correction_context``：上游 check_sql / execute_sql 的失败说明，非空时会一并交给模型用于纠错。
+        入参：``rewrite_json`` 为 RewriteToQueryOutput；``correction_context`` 为
+        check / execute 失败摘要，非空时写入 Human 消息纠错。
+        返回：含 ``query_sqls`` 的 JSON 字符串。
+        失败：rewrite JSON 非法或 LLM/schema 异常向上抛，由 pipeline 捕获。
         """
         payload = RewriteToQueryOutput.model_validate_json(rewrite_json.strip())
 
@@ -68,12 +78,12 @@ class GenerateSqlRunner:
             + load_config_text("sql_agent", "system_core.md"),
             "# 数据库表结构与视图字典\n\n"
             + load_config_text("sql_agent", "schema_dictionary.md"),
-            "# SQL 生成工具规则\n\n"
+            "# SQL 生成规则\n\n"
             + load_config_text("sql_agent", "generate_sql_tool.md"),
         )
 
         human_content = (
-            "以下为 rewrite_to_query_tool 的输出（JSON），请生成 SQL：\n\n"
+            "以下为查数计划 JSON，请据此生成 SQL：\n\n"
             f"{payload.model_dump_json(indent=2, ensure_ascii=False)}"
             "\n\n请优先依据 sub_questions 生成 query_sqls，若无 sub_questions 再回退参考 query_for_sql。"
         )
@@ -99,6 +109,7 @@ class GenerateSqlRunner:
 
 
 def build_generate_sql_tool(model=None):
+    """装配 ``generate_sql_tool``。``model`` 为空则用默认结构化 LLM。"""
     if model is None:
         model = get_structured_llm()
     runner = GenerateSqlRunner(model=model)

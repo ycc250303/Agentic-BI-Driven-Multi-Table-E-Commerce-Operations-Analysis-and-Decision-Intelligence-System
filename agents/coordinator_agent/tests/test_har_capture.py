@@ -36,7 +36,7 @@ def test_infer_agent_trace_for_session_context_resolution():
 
 
 def test_infer_agent_trace_for_generate_sql():
-    request = _chat_request("SQL 生成工具规则：请输出 query_sqls。")
+    request = _chat_request("SQL 生成规则：请输出 query_sqls。")
     trace = infer_agent_trace(request.read(), request)
 
     assert trace["agent"] == "data_analysis_agent"

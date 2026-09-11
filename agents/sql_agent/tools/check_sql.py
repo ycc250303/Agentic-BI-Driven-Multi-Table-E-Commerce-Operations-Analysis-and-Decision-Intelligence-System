@@ -21,7 +21,12 @@ class CheckSqlOutput(BaseModel):
 
 
 def check_generate_sql_model(payload: GenerateSqlOutput) -> CheckSqlOutput:
-    """校验已解析的 GenerateSqlOutput。"""
+    """对已解析的 GenerateSqlOutput 逐条做格式 + 只读校验。
+
+    入参：合法的 ``GenerateSqlOutput``。
+    返回：``syntax_ok`` / ``brief``（字段名兼容旧契约，不是 MySQL 语法解析）。
+    失败：任一条空 SQL、格式不符或含非只读片段即 ``syntax_ok=False``，不抛异常。
+    """
     if not payload.query_sqls:
         return CheckSqlOutput(syntax_ok=False, brief="query_sqls 不能为空。")
 
@@ -54,7 +59,10 @@ def check_generate_sql_model(payload: GenerateSqlOutput) -> CheckSqlOutput:
 
 
 def check_generate_sql_payload(generate_sql_json: str) -> CheckSqlOutput:
-    """从 JSON 字符串解析并校验。"""
+    """解析 generate JSON 再交给 ``check_generate_sql_model``。
+
+    失败：JSON / schema 非法时返回 ``syntax_ok=False``，不抛给调用方。
+    """
     try:
         payload = GenerateSqlOutput.model_validate_json(generate_sql_json.strip())
     except Exception as e:
@@ -67,11 +75,13 @@ def check_generate_sql_payload(generate_sql_json: str) -> CheckSqlOutput:
 
 class CheckSqlRunner:
     def invoke(self, generate_sql_json: str) -> str:
+        """流水线入口：返回 CheckSqlOutput JSON。不访问数据库。"""
         out = check_generate_sql_payload(generate_sql_json)
         return out.model_dump_json(indent=2, ensure_ascii=False)
 
 
 def build_check_sql_tool():
+    """装配 ``check_sql_tool``（无 LLM、无数据库）。"""
     runner = CheckSqlRunner()
     return StructuredTool.from_function(
         func=runner.invoke,

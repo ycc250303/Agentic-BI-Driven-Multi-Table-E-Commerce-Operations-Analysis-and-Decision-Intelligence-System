@@ -1,3 +1,9 @@
+"""NL → 结构化查数计划：拆分子问题、标注作用域、判断是否命中预聚合视图。
+
+本步只产出 JSON 计划，不生成 SQL、不连库。失败由调用方（pipeline）写入
+correction_context 后重试。
+"""
+
 from typing import Any, Literal
 
 from langchain_core.tools import StructuredTool
@@ -130,13 +136,19 @@ class RewriteToQueryRunner:
         self.model = model
 
     def invoke(self, query: str, correction_context: str = "") -> str:
-        """将自然语言问题转换为查询工具输入。"""
+        """将自然语言转成 RewriteToQueryOutput JSON。
+
+        入参：``query`` 用户原问；``correction_context`` 上一轮 schema/校验失败说明，
+        非空时追加到 Human 消息供纠错。
+        返回：结构化 JSON 字符串（含 ``sub_questions`` / 视图命中）。
+        失败：schema 校验或 LLM 调用异常向上抛，由 pipeline 捕获后重试。
+        """
         system_prompt = compose_system_prompt_parts(
             "# Agent 背景规则\n\n"
             + load_config_text("sql_agent", "system_core.md"),
             "# 数据库表结构与视图字典\n\n"
             + load_config_text("sql_agent", "schema_dictionary.md"),
-            "# 转写工具规则\n\n"
+            "# 转写规则\n\n"
             + load_config_text("sql_agent", "rewrite_to_query_tool.md"),
         )
 
@@ -164,6 +176,7 @@ class RewriteToQueryRunner:
 
 
 def build_rewrite_to_query_tool(model=None):
+    """装配 ``rewrite_to_query_tool``。``model`` 为空则用默认结构化 LLM。"""
     if model is None:
         model = get_structured_llm()
     runner = RewriteToQueryRunner(model=model)

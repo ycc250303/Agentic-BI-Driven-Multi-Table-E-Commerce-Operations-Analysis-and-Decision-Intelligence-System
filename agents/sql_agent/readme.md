@@ -42,7 +42,7 @@ flowchart TD
 |------|------|
 | **rewrite** | 拆 `sub_questions`，标注 `hit_pre_agg_view` / `candidate_views` |
 | **generate** | 输出 `query_sqls[]`，一子问题一条 `SELECT`，单条内禁止分号 |
-| **check** | 本地校验格式与只读（不连库，不是语法解析） |
+| **check** | 格式与只读校验（不连库，不是语法解析） |
 | **execute** | 执行前再做只读闸门；顺序执行，每条 SQL 一个 CSV；明细不进 LLM 上下文 |
 
 失败时错误写入 `correction_context` 自动重试。任一条 SQL 执行失败则顶层 `ok=false`。

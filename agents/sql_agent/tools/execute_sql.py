@@ -144,6 +144,7 @@ class ExecuteSqlOutput(BaseModel):
 def _profile_columns(
     rows: list[dict[str, Any]], columns: list[str]
 ) -> list[ColumnProfile]:
+    """根据返回样本推断列类型、空值与示例，供中文摘要使用。"""
     if not rows or not columns:
         return []
     n = len(rows)
@@ -181,6 +182,7 @@ def _build_summary_zh(
     profiles: list[ColumnProfile],
     execution_ms: float,
 ) -> str:
+    """拼单条 SELECT 的中文结果摘要（行数、截断、耗时、列示例）。"""
     parts = [
         f"查询返回 {row_count} 行",
         "（已截断）" if truncated else "",
@@ -217,7 +219,14 @@ class ExecuteSqlRunner:
         return _db_config_from_env()
 
     def invoke(self, generate_sql_json: str) -> str:
-        """输入为 GenerateSqlOutput 的 JSON 字符串；输出为 ExecuteSqlOutput 的 JSON。"""
+        """解析 generate JSON，逐条只读校验后执行 SELECT，写出 CSV。
+
+        入参：GenerateSqlOutput 的 JSON 字符串。
+        返回：ExecuteSqlOutput JSON（``results`` 按条、以及聚合摘要）。
+        失败：解析失败 ``parse_input``；缺连接配置 ``env_config``；单条只读未过
+        ``sql_local`` 且该条不发往数据库；连库/执行/写 CSV 分别记对应 ``error_stage``。
+        不向调用方抛业务异常。
+        """
         payload: GenerateSqlOutput | None = None
         try:
             payload = GenerateSqlOutput.model_validate_json(generate_sql_json.strip())
@@ -269,6 +278,7 @@ class ExecuteSqlRunner:
             with conn.cursor() as cursor:
                 for idx, sql_raw in enumerate(sql_list):
                     sql = normalize_sql(sql_raw)
+                    # 第二道只读闸门：未通过的条目不发送到数据库
                     safe_ok, safe_reason = read_only_select_ok(sql)
                     if not safe_ok:
                         results.append(
@@ -408,6 +418,7 @@ class ExecuteSqlRunner:
 
 
 def build_execute_sql_tool():
+    """装配 ``execute_sql_tool``。连接参数仅来自环境变量。"""
     runner = ExecuteSqlRunner()
     return StructuredTool.from_function(
         func=runner.invoke,
