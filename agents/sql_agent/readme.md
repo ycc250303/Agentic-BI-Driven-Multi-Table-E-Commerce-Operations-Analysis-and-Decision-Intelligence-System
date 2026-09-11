@@ -42,10 +42,10 @@ flowchart TD
 |------|------|
 | **rewrite** | 拆 `sub_questions`，标注 `hit_pre_agg_view` / `candidate_views` |
 | **generate** | 输出 `query_sqls[]`，一子问题一条 `SELECT`，单条内禁止分号 |
-| **check** | 格式与只读校验（不连库，不是语法解析） |
+| **check** | 格式、只读、以及对照 rewrite 计划（LIMIT / 继承子查询 / 平台准时率不得只扫视图） |
 | **execute** | 执行前再做只读闸门；顺序执行，每条 SQL 一个 CSV（UTF-8 无 BOM；失败也占 sqlN）；明细不进 LLM 上下文 |
 
-失败时错误写入 `correction_context` 自动重试。任一条 SQL 执行失败则顶层 `ok=false`。
+失败时错误写入 `correction_context` 自动重试（含计划-SQL 不一致）。任一条 SQL 执行失败则顶层 `ok=false`。
 
 ---
 
@@ -92,6 +92,55 @@ flowchart TD
 
 ---
 
+## 评测（Execution Accuracy）
+
+对外准确率是 **EX**：金标 SQL 与流水线最终 `query_sqls` 在同一库执行后比较结果集，不是 SQL 文本匹配，也不是「能执行 / 点对了视图」。
+
+判过规则：每条 intent 二元 PASS/FAIL；一题全部 intent 通过才算题 PASS。`question_ex` = 题 PASS 数 / 非 OOS 题数。复合问漏一个子查询则题 FAIL。OOS（词云、预测、热力）不进分母。
+
+能力阶梯金标（各 8 题，不含 OOS）与作业对照套件分开：
+
+| suite | 文件 | 测什么 |
+| --- | --- | --- |
+| `smoke` | `gold/smoke.json` | 冒烟：链路能否出可执行 SQL、单表/单视图口径 |
+| `general` | `gold/general.json` | 通用：视图命中、过滤、单表计算、简单多表 JOIN |
+| `complex` | `gold/complex.json` | 复杂：多表口径、继承前序对象、比率/加权 |
+| `extreme` | `gold/extreme.json` | 极端但有业务含义：跨年对比、交叉过滤、复购/运费结构 |
+| `capability` | 以上四个 | 32 题一起跑 |
+| `assignment` | `phase1.json` + `phase2.json` | 作业参考问 + 字面量/OOS |
+
+比较器单测进 CI（不连库、不调 LLM）：
+
+```bash
+pytest agents/sql_agent/tests/test_ex_compare.py agents/sql_agent/tests/test_eval_ex_helpers.py -q
+```
+
+实库评测（需 `.env` 与 `DEEPSEEK_API_KEY`）：
+
+```bash
+# 只检查金标 SQL 能否执行、行数形态是否符合 scalar / topk
+python agents/sql_agent/test/eval_ex.py --suite capability --validate-gold
+python agents/sql_agent/test/eval_ex.py --suite assignment --validate-gold
+
+# 按能力档位跑 EX（需 LLM）
+python agents/sql_agent/test/eval_ex.py --suite smoke
+python agents/sql_agent/test/eval_ex.py --suite general
+python agents/sql_agent/test/eval_ex.py --suite complex
+python agents/sql_agent/test/eval_ex.py --suite extreme
+
+# 作业对照 1 期 / 1+2 期稳定性
+python agents/sql_agent/test/eval_ex.py --suite phase1
+python agents/sql_agent/test/eval_ex.py --suite assignment --repeat 3
+
+# rewrite 消融（主指标同样是 EX，不含 OOS；默认识作业对照）
+python agents/sql_agent/test/eval_rewrite_ablation.py
+python agents/sql_agent/test/eval_rewrite_ablation.py --suite smoke
+```
+
+结果写在 `agents/sql_agent/test/eval_outputs/`（gitignore）。`eval_rewrite_to_query.py` 只诊断 rewrite 视图点名，**不能**当成 Text-to-SQL 准确率。
+
+---
+
 ## 目录与配置
 
 ```
@@ -101,7 +150,16 @@ agents/sql_agent/
 ├── run.py              # CLI + re-export：python -m agents.sql_agent.run
 ├── tools/              # 四个 StructuredTool
 ├── tests/              # 纯本地单测（不连库、不调 LLM）
-└── test/eval_rewrite_to_query.py
+└── test/               # 实库 / LLM 评测脚本与金标
+    ├── gold/smoke.json
+    ├── gold/general.json
+    ├── gold/complex.json
+    ├── gold/extreme.json
+    ├── gold/phase1.json
+    ├── gold/phase2.json
+    ├── eval_ex.py
+    ├── eval_rewrite_to_query.py
+    └── eval_rewrite_ablation.py
 
 config/sql_agent/
 ├── system_core.md              # 视图优先策略

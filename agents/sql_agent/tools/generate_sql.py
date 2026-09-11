@@ -36,7 +36,11 @@ class GenerateSqlOutput(BaseModel):
     )
     result_explanation: str = Field(
         default="",
-        description="说明口径、过滤条件、视图命中或回退原始表原因与业务含义；多 SQL 时按序号分述（可选）",
+        description=(
+            "按 query_sqls 序号概括每条 SQL 的业务含义：指标、粒度、"
+            "图意（排名/趋势/占比/对比）与过滤对象；"
+            "不要复述转写步骤，不要写 JOIN/视图名/加权公式"
+        ),
     )
 
     @model_validator(mode="before")

@@ -50,6 +50,14 @@ class SubQuestion(BaseModel):
             "bad_review_count、bad_review_rate）"
         )
     )
+    measure_keys: list[str] = Field(
+        default_factory=list,
+        description=(
+            "同一条子问题必须在同一条 SQL 里同时输出的度量键。"
+            "同一 grain、同一过滤上并列多个度量时必填（如 total_gmv+total_orders+avg_basket）；"
+            "仅一个度量时留空，沿用 metric_key。"
+        ),
+    )
     dimensions: list[str] = Field(
         default_factory=list,
         description="目标分析维度（如 year_month、customer_state、payment_type）",

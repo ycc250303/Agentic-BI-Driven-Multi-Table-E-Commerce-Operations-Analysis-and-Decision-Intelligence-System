@@ -1,9 +1,9 @@
 """SQL Agent 流水线编排：rewrite → generate → check → execute。
 
-rewrite 最多 3 次；generate 最多 3 次（check 未通过或 execute 报错则写入
-correction_context 重试）。不负责 CLI。
+rewrite 最多 3 次；generate 最多 3 次（check 未通过、计划-SQL 不一致或 execute
+报错则写入 correction_context 重试）。不负责 CLI。
 
-对外入口：`run_sql_pipeline_with_feedback`（dict + 可选逐步回调）。
+对外入口：`run_sql_pipeline_with_feedback`（问句字符串 + 可选逐步回调）。
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from agents.common.llm import get_structured_llm
 from agents.sql_agent.tools.check_sql import build_check_sql_tool
 from agents.sql_agent.tools.execute_sql import build_execute_sql_tool
 from agents.sql_agent.tools.generate_sql import build_generate_sql_tool
+from agents.sql_agent.tools.plan_sql_guard import plan_sql_consistency
 from agents.sql_agent.tools.rewrite_to_query import build_rewrite_to_query_tool
 
 MAX_REWRITE_ATTEMPTS = 3
@@ -29,11 +30,6 @@ _EXECUTE_SKIPPED_STUB = {
         "未执行 execute_sql：在完成 3 次生成尝试前从未出现 check_sql 通过后的执行结果"
     ),
 }
-
-def _coerce_user_query(x: str | dict[str, Any]) -> str:
-    if isinstance(x, dict):
-        return str(x["user_query"])
-    return str(x)
 
 
 def _json_load_dict(raw_json: str) -> dict[str, Any] | None:
@@ -149,8 +145,8 @@ def _run_retry_loop(
     入参：``rewrite_json`` 转写结果；三个工具；``emit`` 可选；``initial_feedback``
     一般为 rewrite 失败说明。
     返回：``(generate_sql_json, check_sql_json, execute_sql_json, generate 尝试次数)``。
-    失败：check 未通过不连库；execute 的 ``error_message`` 非空则重试；3 次仍无成功
-    execute 时填 skipped 占位，不抛给调用方。
+    失败：check 未通过或计划与 SQL 不一致则不连库；execute 的 ``error_message``
+    非空则重试；3 次仍无成功 execute 时填 skipped 占位，不抛给调用方。
     """
     feedback_lines: list[str] = list(initial_feedback or [])
     sql_json = ""
@@ -182,6 +178,11 @@ def _run_retry_loop(
         if not check_ok:
             # 格式/只读未过：不执行，brief 带回下一轮 generate
             feedback_lines.append(f"[格式与只读校验未通过] {brief}")
+            continue
+
+        plan_ok, plan_brief = plan_sql_consistency(rewrite_json, sql_json)
+        if not plan_ok:
+            feedback_lines.append(f"[计划-SQL 一致性未通过] {plan_brief}")
             continue
 
         exec_json = execute_tool.invoke({"generate_sql_json": sql_json})
@@ -255,22 +256,20 @@ def _run_pipeline(
 
 
 def run_sql_pipeline_with_feedback(
-    user_query: str | dict[str, Any],
+    user_query: str,
     *,
     model=None,
     on_tool_end: Callable[[str, str], None] | None = None,
 ) -> dict[str, Any]:
     """SQL Agent 对外入口：自然语言 → 只读查询结果摘要。
 
-    入参：``user_query`` 为字符串或 ``{"user_query": str}``；``model`` 可选注入结构化
-    LLM；``on_tool_end`` 可选逐步回调。
+    入参：``user_query`` 本轮问句；``model`` 可选注入结构化 LLM；``on_tool_end`` 可选逐步回调。
     返回：流水线 dict（JSON 字符串字段 + attempts）。协调器 / 可视化从此导入。
     失败：不抛给调用方，错误落在 ``check_sql_json`` / ``execute_sql_json``。
     """
     rewrite_tool, generate_tool, check_tool, execute_tool = _pipeline_tools(model)
-    uq = _coerce_user_query(user_query)
     return _run_pipeline(
-        uq,
+        user_query,
         rewrite_tool=rewrite_tool,
         generate_tool=generate_tool,
         check_tool=check_tool,

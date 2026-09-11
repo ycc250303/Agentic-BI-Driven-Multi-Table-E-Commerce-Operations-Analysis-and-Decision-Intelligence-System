@@ -6,7 +6,6 @@ from typing import Any
 from unittest.mock import patch
 
 from agents.sql_agent import pipeline as pipeline_mod
-from agents.sql_agent import run as run_mod
 from agents.sql_agent.pipeline import run_sql_pipeline_with_feedback
 
 _PIPELINE_KEYS = {
@@ -40,10 +39,6 @@ def _success_tools() -> tuple[_FakeTool, _FakeTool, _FakeTool, _FakeTool]:
     check = _FakeTool(_const('{"syntax_ok": true, "brief": "ok"}'))
     execute = _FakeTool(_const('{"ok": true, "error_message": null}'))
     return rewrite, generate, check, execute
-
-
-def test_run_reexports_pipeline_entrypoint():
-    assert run_mod.run_sql_pipeline_with_feedback is pipeline_mod.run_sql_pipeline_with_feedback
 
 
 def test_check_failure_does_not_call_execute():
@@ -96,3 +91,41 @@ def test_check_fail_then_pass_retries_then_executes():
     assert len(execute.calls) == 1
     assert "格式与只读校验未通过" in generate.calls[1]["correction_context"]
     assert out["generate_sql_attempts"] == 2
+
+
+def test_plan_sql_mismatch_retries_without_execute():
+    rewrite = _FakeTool(
+        _const(
+            json.dumps(
+                {
+                    "query_for_sql": "q",
+                    "sub_questions": [
+                        {
+                            "id": "q1",
+                            "question_zh": "Top10",
+                            "metric_key": "gmv_total",
+                            "aggregation": "top10",
+                            "scope": {"kind": "platform"},
+                        }
+                    ],
+                    "hit_pre_agg_view": False,
+                    "candidate_views": [],
+                    "confidence": 0.9,
+                }
+            )
+        )
+    )
+    generate = _FakeTool(
+        _const('{"query_sqls":["SELECT `customer_state` FROM `mv_state_sales`"]}')
+    )
+    check = _FakeTool(_const('{"syntax_ok": true, "brief": "ok"}'))
+    execute = _FakeTool(_const('{"ok": true, "error_message": null}'))
+    with patch.object(
+        pipeline_mod, "_pipeline_tools", return_value=(rewrite, generate, check, execute)
+    ):
+        out = run_sql_pipeline_with_feedback("hello")
+
+    assert execute.calls == []
+    assert len(generate.calls) == 3
+    assert "计划-SQL 一致性未通过" in generate.calls[1]["correction_context"]
+    assert out["generate_sql_attempts"] == 3
