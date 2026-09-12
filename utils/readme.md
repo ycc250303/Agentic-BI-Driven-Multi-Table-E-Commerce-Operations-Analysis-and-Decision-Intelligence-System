@@ -1,96 +1,98 @@
 # utils — 数据库初始化与辅助脚本
 
-本目录存放 **Olist 电商原始数据** 的建表、导入、预聚合视图，以及 NLP Agent 衍生表的 DDL 与性能基准脚本。Agentic BI 各 Agent（SQL / Viz / NLP / Decision）均依赖此处准备的数据层。
+本目录存放 Olist 原始表 / NLP 衍生表 / 预聚合视图的 **DDL + 灌库入口**，以及预聚合性能基准。Agentic BI 各 Agent 均依赖此处准备的数据层。
 
 ## 前置条件
 
 1. 已安装项目依赖（`pip install -r requirements.txt`；离线 NLP 灌库另装 `requirements-nlp.txt`）
-2. 已配置数据库环境变量（项目根目录 `.env` 或 shell 导出均可）：
-
-| 变量 | 说明 |
-|------|------|
-| `AGENTIC_BI_DB_HOST` | MySQL 主机 |
-| `AGENTIC_BI_DB_PORT` | 端口（通常 `3306`） |
-| `AGENTIC_BI_DB_NAME` | 目标库名 |
-| `AGENTIC_BI_DB_USER` | 用户名 |
-| `AGENTIC_BI_DB_PASSWORD` | 密码 |
-
-3. 原始 CSV 已放在项目根目录 `data/` 下（Olist 公开数据集，共 9 张表对应 9 个 CSV）
+2. 已配置 `AGENTIC_BI_DB_HOST` / `PORT` / `NAME` / `USER` / `PASSWORD`（根目录 `.env` 或 shell 导出）
+3. 原始 CSV 在 `data/`（9 个文件对应 9 张原始表）
 
 本地 MySQL 也可通过 [`deploy/readme.md`](../deploy/readme.md) 用 Docker 启动。
 
 ## 推荐执行顺序
 
 ```bash
-# 1. 创建目标数据库（若尚不存在）
-python utils/init_database.py
+# 建库 + 原始表 CSV 导入 + 刷新 6 个预聚合视图
+python utils/setup.py
 
-# 2. 建原始表 + 批量导入 CSV
-python utils/load_data_to_mysql.py
-
-# 3. 创建 / 刷新 6 个预聚合视图
-python utils/refresh_views.py
+# 等价于分步：
+python utils/setup.py init
+python utils/setup.py load
+python utils/setup.py views
 ```
 
 **可选（NLP Agent 离线灌库前需先建表）：**
 
 ```bash
-# 在 MySQL 客户端或任意 SQL 工具中执行
-mysql ... < utils/create_review_sentiment_table.sql
-mysql ... < utils/create_review_topics_table.sql
-
-# 然后由 NLP Agent 灌库（见 agents/nlp_agent/readme.md）
+python utils/setup.py nlp-tables
 python -m agents.nlp_agent.tools.sentiment --backfill
 python -m agents.nlp_agent.tools.topic_model --backfill
 ```
 
-**可选（性能对比 / 报告配图）：**
+`nlp-tables` 会 `DROP` 情感/主题表，已灌数据需重新 backfill。
+
+**只重修翻译表**（71 行，不动其余表）：
+
+```bash
+python utils/setup.py translation
+```
+
+CSV 带 UTF-8 BOM，加载一律 `utf-8-sig`。全量 `load` 后会断言翻译表为 71 行。
+
+**可选（性能对比）：**
 
 ```bash
 python utils/benchmark_preagg_vs_raw.py
 python utils/benchmark_preagg_vs_raw.py --warmup 1 --runs 5 --out docs/figures/preagg_benchmark.png
 ```
 
-## 数据层关系概览
+## 数据层关系
 
 ```
 data/*.csv
     │
     ▼
-load_data_to_mysql.py  ──►  create_origin_table.sql  ──►  9 张原始表
-    │                              orders, order_items, products,
-    │                              customers, sellers, payments,
-    │                              order_reviews, geolocation,
-    │                              product_category_name_translation
+utils/setup.py load  ──►  schema.sql @section origin  ──►  9 张原始表
     │
     ▼
-refresh_views.py  ──►  create_materialized_views.sql  ──►  6 个预聚合视图 (mv_*)
+utils/setup.py views ──►  schema.sql @section views   ──►  6 个预聚合视图 (mv_*)
     │
     ▼
 SQL / Viz / Decision Agent 查询
 
-NLP 衍生表（独立 DDL，需离线灌库）：
-  create_review_sentiment_table.sql  →  review_sentiment
-  create_review_topics_table.sql     →  review_topics, review_topic_meta
+utils/setup.py nlp-tables ──► schema.sql @section nlp
+    → review_sentiment, review_topics, review_topic_meta
 ```
+
+当前目录文件：
+
+| 文件 | 作用 |
+|------|------|
+| `setup.py` | 唯一入口：`init` / `load` / `views` / `nlp-tables` / `translation` |
+| `schema.sql` | 全部 DDL，按 `-- @section origin \| nlp \| views` 分段 |
+| `benchmark_preagg_vs_raw.py` | 预聚合 vs 原始 JOIN 耗时对比 |
+| `readme.md` | 本说明 |
 
 ---
 
-## Python 脚本
+## `setup.py`
 
-### `init_database.py`
+| 子命令 | 做什么 | 会否丢数据 |
+|--------|--------|------------|
+| （默认）`all` | `init` + `load` + `views` | `load` 会 DROP 9 张原始表 |
+| `init` | `CREATE DATABASE IF NOT EXISTS` | 否 |
+| `load` | 执行 origin DDL，从 `data/` 批量 `INSERT IGNORE` | DROP 原始表；**不碰** NLP 表 |
+| `views` | DROP/CREATE 6 个 `mv_*` | 否（视图） |
+| `nlp-tables` | DROP/CREATE 情感与主题表 | 清空 NLP 灌库结果 |
+| `translation` | `DELETE` + 插入 71 行翻译 | 只动翻译表 |
 
-连接 MySQL **服务端**（不预先指定 database），创建 `AGENTIC_BI_DB_NAME` 指定的库（`utf8mb4` / `utf8mb4_0900_ai_ci`），并执行 `USE`。仅负责「库是否存在」，不建表、不导数据。
+`load` 对评论/地理的主键重复会静默跳过（评论约 −814 行，地理去重到约 72 万唯一坐标），这是源数据口径，不是少导。
 
-### `load_data_to_mysql.py`
+CSV → 表映射：
 
-数据导入主脚本，完成两件事：
-
-1. 执行 `create_origin_table.sql`
-2. 从 `data/` 读取 9 个 CSV，按表配置做类型转换后 **批量 `INSERT IGNORE`** 入库（每批 5000 行，主键重复自动跳过）
-
-| 目标表 | CSV 文件 |
-|--------|----------|
+| 目标表 | CSV |
+|--------|-----|
 | `orders` | `olist_orders_dataset.csv` |
 | `order_items` | `olist_order_items_dataset.csv` |
 | `products` | `olist_products_dataset.csv` |
@@ -101,88 +103,32 @@ NLP 衍生表（独立 DDL，需离线灌库）：
 | `geolocation` | `olist_geolocation_dataset.csv` |
 | `product_category_name_translation` | `product_category_name_translation.csv` |
 
-### `refresh_views.py`
+## `schema.sql`
 
-读取 `create_materialized_views.sql`，逐条执行 `DROP VIEW` / `CREATE VIEW`，并在完成后：
-
-- 统计各视图行数
-- 列出库中全部 VIEW
-
-供 SQL Agent 与协调器在常见分析场景下走预聚合层，避免每次对原始大表做多表 JOIN 聚合。
-
-### `benchmark_preagg_vs_raw.py`
-
-对比 **同一分析语义** 下三种查询方式的耗时：
-
-| 模式 | 说明 |
-|------|------|
-| `raw_join` | 与视图定义等价的多表 JOIN + GROUP BY |
-| `raw_correlated` | 相关子查询写法（更慢，用于放大差异） |
-| `view` | `SELECT * FROM mv_*` |
-
-覆盖 6 个视图各一组场景，可导出 PNG 柱状图与可选 JSON 原始计时。运行前须已完成 `refresh_views.py`。
-
----
-
-## SQL 脚本
-
-### `create_origin_table.sql`
-
-Olist **原始业务表** DDL：先 `DROP` 再 `CREATE` 共 9 张表，含主键、常用查询索引及字段中文注释。被 `load_data_to_mysql.py` 在导入前自动执行。二级索引不重复主键或主键左前缀；仅按城市过滤走 `(city, state)` 左前缀。
-
-已导入的库可用 `utils/drop_redundant_indexes.sql` 删掉历史冗余索引（不删表）。
-
-| 表名 | 说明 |
-|------|------|
-| `orders` | 订单主表 |
-| `order_items` | 订单明细（商品行） |
-| `products` | 商品属性 |
-| `customers` | 客户与所在州 |
-| `sellers` | 卖家与所在州 |
-| `payments` | 支付记录 |
-| `order_reviews` | 订单评论（NLP 主要输入） |
-| `geolocation` | 邮编 → 经纬度 |
-| `product_category_name_translation` | 葡语类目 → 英文 |
-
-### `create_materialized_views.sql`
-
-定义 **6 个预聚合视图**（MySQL `CREATE VIEW`，非物化表；数据随基表变化实时反映）：
+- **origin**：9 张业务表，主键与常用索引；二级索引不重复主键左前缀。
+- **nlp**：`review_sentiment`（与评论 1:1）；`review_topics` + `review_topic_meta`（BERTopic）。
+- **views**：6 个 `CREATE VIEW`（非物化表，随基表变化）。
 
 | 视图 | 粒度 | 典型用途 |
 |------|------|----------|
 | `mv_monthly_sales` | 年-月 | 月度 GMV、订单量、客单价 |
-| `mv_state_sales` | 年-月-州 | 各州销售排名、区域对比 |
-| `mv_category_sales` | 年-月-品类 | 品类表现、下滑品类识别 |
+| `mv_state_sales` | 年-月-州 | 各州销售排名 |
+| `mv_category_sales` | 年-月-品类 | 品类表现 |
 | `mv_delivery_perf` | 年-月-州 | 配送天数、准时率 |
 | `mv_seller_perf` | 年-月-卖家 | 卖家 GMV 与平均评分 |
-| `mv_payment_dist` | 年-月-支付类型 | 支付方式与分期分布 |
+| `mv_payment_dist` | 年-月-支付类型 | 支付方式与分期 |
 
-视图元数据供 Agent 匹配查询，详见 [`config/view_metadata.json`](../config/view_metadata.json) 与 [`docs/README_VIEWS.md`](../docs/README_VIEWS.md)。
+视图元数据见 [`config/view_metadata.json`](../config/view_metadata.json) 与 [`docs/README_VIEWS.md`](../docs/README_VIEWS.md)。变更 DDL 后须同步该文档与 SQL Agent Prompt。
 
-### `create_review_sentiment_table.sql`
+## `benchmark_preagg_vs_raw.py`
 
-NLP Agent **情感分析结果表** DDL（`review_sentiment`）。与 `order_reviews` 通过 `review_id` 1:1 关联；由 `python -m agents.nlp_agent.tools.sentiment --backfill` 离线写入，在线查询毫秒级聚合。不修改任何原始表。
-
-主要字段：`polarity`（POS/NEU/NEG）、`polarity_score`（pos_prob − neg_prob）、三分类概率、`model_name` 等。
-
-### `create_review_topics_table.sql`
-
-NLP Agent **BERTopic 主题建模** 双表 DDL：
-
-| 表 | 说明 |
-|----|------|
-| `review_topics` | 每条差评 → `topic_id` 及置信度 |
-| `review_topic_meta` | 每个主题的 Top 关键词、样本量、人类可读标签 |
-
-由 `python -m agents.nlp_agent.tools.topic_model --backfill` 离线训练并灌库。详细流程见 [`agents/nlp_agent/readme.md`](../agents/nlp_agent/readme.md)。
-
----
+同一分析语义下对比 `raw_join` / `raw_correlated` / `view`。运行前须已 `python utils/setup.py views`。
 
 ## 相关文档
 
 | 文档 | 内容 |
 |------|------|
-| [项目 README](../README.md) | 快速开始与 Agent 入口 |
-| [docs/README_VIEWS.md](../docs/README_VIEWS.md) | 预聚合视图详细说明与 Agent 用法 |
-| [agents/nlp_agent/readme.md](../agents/nlp_agent/readme.md) | 情感 / 主题离线灌库与在线查询 |
+| [项目 README](../README.md) | 快速开始 |
+| [docs/README_VIEWS.md](../docs/README_VIEWS.md) | 预聚合视图 |
+| [agents/nlp_agent/readme.md](../agents/nlp_agent/readme.md) | 情感 / 主题离线灌库 |
 | [deploy/readme.md](../deploy/readme.md) | Docker 部署 MySQL |

@@ -2,7 +2,7 @@
 """
 预聚合视图 vs 原始表聚合 查询耗时对比。
 
-- 多组场景：与 utils/create_materialized_views.sql 中各视图一一对应。
+- 多组场景：与 utils/schema.sql `@section views` 中各视图一一对应。
 - 每组对比：
   - raw_join：与视图定义等价的多表 JOIN + GROUP BY（规范写法）
   - raw_correlated（可选）：按订单做相关子查询后再聚合，放大与预聚合层的耗时差异
@@ -36,7 +36,7 @@ from db_env import mysql_connector_config
 
 ORDER_STATUS_IN = "('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')"
 
-# 与 create_materialized_views.sql 中视图定义一致（规范 JOIN 聚合）
+# 与 schema.sql @section views 中视图定义一致（规范 JOIN 聚合）
 SQL_RAW: Dict[str, str] = {
     "mv_monthly_sales": f"""
 SELECT
