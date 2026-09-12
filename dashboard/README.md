@@ -21,8 +21,9 @@ streamlit run dashboard/app.py
 ```
 dashboard/
 ├── app.py                 # 入口：页面布局与组件编排
-├── layout.py              # 注入全局 CSS
-├── styles.css             # 主区域与侧边栏样式
+├── layout.py              # 注入全局 CSS 与图表灯箱脚本
+├── styles.css             # 主区域、侧边栏与灯箱样式
+├── chart_lightbox.js      # 点击可视化图表放大 / 灯箱内下载
 ├── constants.py           # UI 常量（面板高度、列宽等）
 ├── models.py              # UI 投影模型（Conversation / ChatMessage / VizRound）
 ├── session_store.py       # Streamlit 壳层 + SessionManager 适配
@@ -66,7 +67,7 @@ dashboard/
 | `session_projection.py` | 将 `runtime/sessions/*.json` 中的 turn 转为 `ChatMessage` / `VizRound` |
 | `turn_runner.py` | 调用 `SessionManager.stream_turn_events()`，消费 `web_events` 形状的事件 |
 | `chat_panel.py` | 渲染历史消息；pending 问题 + rerun 触发分析；实时 trace 与图表预览 |
-| `viz_panel.py` | 按时间顺序展示各轮图表（旧在上、新在下，与对话一致） |
+| `viz_panel.py` | 按时间顺序展示各轮图表（旧在上、新在下，与对话一致）；点击放大 + 下载 PNG |
 | `sidebar.py` | 列出磁盘上全部 session（含 CLI 创建的）；单行省略标题 |
 
 ---

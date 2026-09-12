@@ -33,6 +33,145 @@ section.main img {
     height: auto;
 }
 
+iframe[data-testid="stIFrame"] {
+    position: absolute !important;
+    width: 0 !important;
+    height: 0 !important;
+    border: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+div:has(> iframe[data-testid="stIFrame"]) {
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+section.main [data-testid="stElementToolbar"] {
+    pointer-events: none;
+}
+
+section.main [data-testid="stImage"],
+section.main [data-testid="stImageContainer"] {
+    cursor: zoom-in;
+}
+
+section.main [data-testid="stImage"] img,
+section.main [data-testid="stImageContainer"] img {
+    border-radius: 0.25rem;
+    transition: opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+section.main [data-testid="stImage"] img:hover,
+section.main [data-testid="stImageContainer"] img:hover {
+    opacity: 0.94;
+    box-shadow: 0 0 0 2px var(--primary-color, #ff4b4b);
+}
+
+body.agentic-lightbox-open {
+    overflow: hidden;
+}
+
+.agentic-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    box-sizing: border-box;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.agentic-lightbox[hidden] {
+    display: none !important;
+}
+
+.agentic-lightbox-dialog {
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+    max-height: 100%;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    background: var(--background-color, #fff);
+    border-radius: 0.75rem;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+}
+
+.agentic-lightbox-toolbar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.28);
+}
+
+.agentic-lightbox-title {
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-color);
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.agentic-lightbox-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 0.5rem;
+}
+
+.agentic-lightbox-actions button {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid rgba(128, 128, 128, 0.35);
+    border-radius: 0.4rem;
+    background: var(--secondary-background-color, transparent);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.agentic-lightbox-actions button:hover {
+    background: rgba(128, 128, 128, 0.14);
+}
+
+.agentic-lightbox-download {
+    font-weight: 600;
+}
+
+.agentic-lightbox-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 0.75rem 1rem 1rem;
+    box-sizing: border-box;
+}
+
+.agentic-lightbox-img {
+    display: block;
+    width: auto !important;
+    height: auto !important;
+    max-width: calc(100vw - 5rem) !important;
+    max-height: calc(100vh - 8.5rem) !important;
+    object-fit: contain;
+}
+
 section.main [data-testid="stChatMessage"],
 section.main [data-testid="stMarkdownContainer"] {
     word-break: break-word;

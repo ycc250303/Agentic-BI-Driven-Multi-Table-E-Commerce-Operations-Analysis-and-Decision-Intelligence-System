@@ -15,6 +15,8 @@ def render_viz_panel(conversation: Conversation | None) -> None:
         st.info("提交问题后，图表将在此按提问分组展示")
         return
 
+    st.caption("点击图表可放大查看，放大后可下载到本地")
+
     for viz_round in rounds:
         if live is not None and viz_round.user_query == live.user_query:
             continue
