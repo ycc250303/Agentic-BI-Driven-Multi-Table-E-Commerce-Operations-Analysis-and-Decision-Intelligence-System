@@ -54,6 +54,27 @@ def test_scalar_row_count_fail():
     assert reason == "row_count"
 
 
+def test_scalar_accepts_physical_alias_with_extra_dimension_column():
+    gold = _rs(["total_gmv"], [{"total_gmv": 100}])
+    pred = _rs(
+        ["customer_state", "gmv_total"],
+        [{"customer_state": "SP", "gmv_total": 100}],
+    )
+    spec = CompareSpec(compare="scalar", key_columns=("total_gmv",))
+    ok, reason = compare_result_sets(gold, pred, spec)
+    assert ok is True
+    assert reason == ""
+
+
+def test_scalar_token_order_alias_without_dict():
+    gold = _rs(["avg_basket"], [{"avg_basket": 12.5}])
+    pred = _rs(["basket_avg"], [{"basket_avg": 12.5}])
+    spec = CompareSpec(compare="scalar", key_columns=("avg_basket",))
+    ok, reason = compare_result_sets(gold, pred, spec)
+    assert ok is True
+    assert reason == ""
+
+
 def test_schema_mismatch_when_names_and_arity_differ():
     gold = _rs(["product_category"], [{"product_category": "a"}])
     pred = _rs(["cnt", "n"], [{"cnt": 3, "n": 1}])

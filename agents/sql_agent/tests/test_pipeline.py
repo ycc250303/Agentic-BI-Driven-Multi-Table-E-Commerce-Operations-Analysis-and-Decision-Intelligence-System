@@ -93,7 +93,7 @@ def test_check_fail_then_pass_retries_then_executes():
     assert out["generate_sql_attempts"] == 2
 
 
-def test_plan_sql_mismatch_retries_without_execute():
+def test_scalar_row_shape_mismatch_retries_generate():
     rewrite = _FakeTool(
         _const(
             json.dumps(
@@ -102,9 +102,10 @@ def test_plan_sql_mismatch_retries_without_execute():
                     "sub_questions": [
                         {
                             "id": "q1",
-                            "question_zh": "Top10",
-                            "metric_key": "gmv_total",
-                            "aggregation": "top10",
+                            "question_zh": "全平台 GMV",
+                            "metric_key": "total_gmv",
+                            "dimensions": [],
+                            "aggregation": "",
                             "scope": {"kind": "platform"},
                         }
                     ],
@@ -116,16 +117,30 @@ def test_plan_sql_mismatch_retries_without_execute():
         )
     )
     generate = _FakeTool(
-        _const('{"query_sqls":["SELECT `customer_state` FROM `mv_state_sales`"]}')
+        _const(
+            '{"query_sqls":["SELECT SUM(`total_gmv`) AS `total_gmv` FROM `mv_monthly_sales`"]}'
+        )
     )
     check = _FakeTool(_const('{"syntax_ok": true, "brief": "ok"}'))
-    execute = _FakeTool(_const('{"ok": true, "error_message": null}'))
+
+    def execute_handler(_payload: dict[str, Any], n: int) -> str:
+        rows = 12 if n == 1 else 1
+        return json.dumps(
+            {
+                "ok": True,
+                "error_message": None,
+                "results": [{"index": 0, "ok": True, "row_count_returned": rows}],
+            }
+        )
+
+    execute = _FakeTool(execute_handler)
     with patch.object(
         pipeline_mod, "_pipeline_tools", return_value=(rewrite, generate, check, execute)
     ):
         out = run_sql_pipeline_with_feedback("hello")
 
-    assert execute.calls == []
-    assert len(generate.calls) == 3
-    assert "计划-SQL 一致性未通过" in generate.calls[1]["correction_context"]
-    assert out["generate_sql_attempts"] == 3
+    assert len(execute.calls) == 2
+    assert len(generate.calls) == 2
+    assert "标量行数与计划不一致" in generate.calls[1]["correction_context"]
+    assert out["generate_sql_attempts"] == 2
+    assert json.loads(out["execute_sql_json"])["results"][0]["row_count_returned"] == 1

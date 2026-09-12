@@ -1,7 +1,7 @@
 """SQL Agent 流水线编排：rewrite → generate → check → execute。
 
-rewrite 最多 3 次；generate 最多 3 次（check 未通过、计划-SQL 不一致或 execute
-报错则写入 correction_context 重试）。不负责 CLI。
+rewrite 最多 3 次；generate 最多 3 次（check 未通过、execute 报错或标量子问题
+行数不是 1 则写入 correction_context 重试）。不负责 CLI。
 
 对外入口：`run_sql_pipeline_with_feedback`（问句字符串 + 可选逐步回调）。
 """
@@ -16,7 +16,7 @@ from agents.common.llm import get_structured_llm
 from agents.sql_agent.tools.check_sql import build_check_sql_tool
 from agents.sql_agent.tools.execute_sql import build_execute_sql_tool
 from agents.sql_agent.tools.generate_sql import build_generate_sql_tool
-from agents.sql_agent.tools.plan_sql_guard import plan_sql_consistency
+from agents.sql_agent.tools.result_shape import scalar_result_shape_brief
 from agents.sql_agent.tools.rewrite_to_query import build_rewrite_to_query_tool
 
 MAX_REWRITE_ATTEMPTS = 3
@@ -145,8 +145,8 @@ def _run_retry_loop(
     入参：``rewrite_json`` 转写结果；三个工具；``emit`` 可选；``initial_feedback``
     一般为 rewrite 失败说明。
     返回：``(generate_sql_json, check_sql_json, execute_sql_json, generate 尝试次数)``。
-    失败：check 未通过或计划与 SQL 不一致则不连库；execute 的 ``error_message``
-    非空则重试；3 次仍无成功 execute 时填 skipped 占位，不抛给调用方。
+    失败：check 未通过则不连库；execute 的 ``error_message`` 非空、或标量子问题
+    实际行数不是 1 则重试；3 次仍无成功 execute 时填 skipped 占位，不抛给调用方。
     """
     feedback_lines: list[str] = list(initial_feedback or [])
     sql_json = ""
@@ -180,21 +180,21 @@ def _run_retry_loop(
             feedback_lines.append(f"[格式与只读校验未通过] {brief}")
             continue
 
-        plan_ok, plan_brief = plan_sql_consistency(rewrite_json, sql_json)
-        if not plan_ok:
-            feedback_lines.append(f"[计划-SQL 一致性未通过] {plan_brief}")
-            continue
-
         exec_json = execute_tool.invoke({"generate_sql_json": sql_json})
         if emit:
             emit("execute_sql_tool", exec_json)
 
         has_err, err_s = _execute_error_message_nonempty(exec_json)
-        if not has_err:
-            break
+        if has_err:
+            # 连库失败或 SQL 报错：error_message 带回下一轮 generate
+            feedback_lines.append(f"[查询执行失败] {err_s}")
+            continue
 
-        # 连库失败或 SQL 报错：error_message 带回下一轮 generate
-        feedback_lines.append(f"[查询执行失败] {err_s}")
+        shape_brief = scalar_result_shape_brief(rewrite_json, exec_json)
+        if shape_brief:
+            feedback_lines.append(f"[标量行数与计划不一致] {shape_brief}")
+            continue
+        break
 
     if not exec_json.strip():
         exec_json = json.dumps(_EXECUTE_SKIPPED_STUB, ensure_ascii=False)

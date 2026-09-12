@@ -46,8 +46,8 @@ class SubQuestion(BaseModel):
     question_zh: str = Field(description="面向 SQL 的子问题中文描述")
     metric_key: str = Field(
         description=(
-            "语义指标键（如 gmv_total、on_time_rate、payment_popularity、"
-            "bad_review_count、bad_review_rate）"
+            "数据字典物理列名（如 total_gmv、on_time_rate、total_transactions、"
+            "avg_installments、bad_review_count、bad_review_rate）"
         )
     )
     measure_keys: list[str] = Field(

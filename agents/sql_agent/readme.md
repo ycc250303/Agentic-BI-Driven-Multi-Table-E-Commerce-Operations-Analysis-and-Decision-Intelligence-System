@@ -42,10 +42,10 @@ flowchart TD
 |------|------|
 | **rewrite** | 拆 `sub_questions`，标注 `hit_pre_agg_view` / `candidate_views` |
 | **generate** | 输出 `query_sqls[]`，一子问题一条 `SELECT`，单条内禁止分号 |
-| **check** | 格式、只读、以及对照 rewrite 计划（LIMIT / 继承子查询 / 平台准时率不得只扫视图） |
-| **execute** | 执行前再做只读闸门；顺序执行，每条 SQL 一个 CSV（UTF-8 无 BOM；失败也占 sqlN）；明细不进 LLM 上下文 |
+| **check** | 格式与只读校验（不连库） |
+| **execute** | 执行前再做只读闸门；顺序执行，每条 SQL 一个 CSV（UTF-8 无 BOM；失败也占 sqlN）；明细不进 LLM 上下文；标量子问题若不是 1 行则带回生成重试 |
 
-失败时错误写入 `correction_context` 自动重试（含计划-SQL 不一致）。任一条 SQL 执行失败则顶层 `ok=false`。
+失败时错误写入 `correction_context` 自动重试（含标量行数）。任一条 SQL 执行失败则顶层 `ok=false`。
 
 ---
 
@@ -77,7 +77,7 @@ flowchart TD
 | `check_sql_tool` | 否 | 格式与只读校验（不连库） |
 | `execute_sql_tool` | 否 | 执行前只读闸门，连库执行，写 CSV |
 
-共享规则：`tools/sql_format_rules.py`。LLM：`agents.common.llm.invoke_structured`（DeepSeek，关思考）。
+共享规则：`tools/sql_format_rules.py`、`tools/result_shape.py`。LLM：`agents.common.llm.invoke_structured`（DeepSeek，关思考）。
 
 ---
 
