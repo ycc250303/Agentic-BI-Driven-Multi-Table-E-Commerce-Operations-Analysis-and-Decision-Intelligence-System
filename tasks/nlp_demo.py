@@ -245,14 +245,12 @@ def run_full_agent():
     print(f"  intent:   {intent}")
     print(f"  路由判定 should_run_nlp = {should_run_nlp(question, intent)}\n")
 
-    state = {"question": question, "intent": intent}
     agent = ReviewInsightAgent(
         sample_size=1000,
         wordcloud_top_n=80,
         wordcloud_sample=4000,
     )
-    state = agent.run(state)
-    return state["review_insights"]
+    return agent.run()
 
 
 # ═══════════════════════════════════════════════════════════════════════════

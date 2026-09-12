@@ -41,9 +41,7 @@ def _ensure_nlp(state: dict[str, Any]) -> dict[str, Any]:
             patch["review_insights"] = state["nlp_result"]
         return patch
 
-    agent = ReviewInsightAgent()
-    out = agent.run(dict(state))
-    insights = out.get("review_insights") or {}
+    insights = ReviewInsightAgent().run()
     if not has_nlp_payload(normalize_nlp_result(insights)):
         return {}
     done = dict(state.get("agents_done") or {})

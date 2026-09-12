@@ -117,6 +117,8 @@ def backfill_topics(
 ) -> dict[str, Any]:
     """对差评全量做 BERTopic 训练 + 落库。
 
+    离线路径（请求时不会跑）：embedding → UMAP → HDBSCAN → c-TF-IDF → 双表落库。
+
     - `limit`: 抽样上限，None 则全量
     - `nr_topics`: BERTopic 的 nr_topics 参数，None 表示由 HDBSCAN 自动决定；
       传整数则训练后会"减少"到指定数量；'auto' 会让 BERTopic 自己合并相近主题。
@@ -262,6 +264,7 @@ GROUP BY category, rt.topic_id
 def aggregate_bertopic(top_topics: int = 12,
                       top_categories: int = 10) -> dict[str, Any]:
     """从 review_topics + review_topic_meta 聚合，给 NLP Agent 用。"""
+    # 在线路径：主题列表 + 品类×主题交叉；topic_id=-1 离群点已在 SQL 里排除
     overview = db.query(_TOPIC_OVERVIEW_SQL, (int(top_topics),))
     if not overview:
         return {

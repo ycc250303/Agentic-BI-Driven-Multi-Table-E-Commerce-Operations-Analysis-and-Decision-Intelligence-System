@@ -5,8 +5,8 @@ NLP / 评论洞察 Agent 的 State 类型定义。
 共享状态（StateGraph 用 TypedDict 是结构化合并，多余字段不会冲突）。
 
 NLP Agent 主要：
-- 读取：`question` / `intent`
-- 写入：`review_insights`
+- 读取：`question` / `intent`（路由用；在线工具本身不按问句改 SQL）
+- 产出：洞察 dict（协调器写入 `review_insights`，并镜像为 `nlp_result`）
 """
 
 from __future__ import annotations

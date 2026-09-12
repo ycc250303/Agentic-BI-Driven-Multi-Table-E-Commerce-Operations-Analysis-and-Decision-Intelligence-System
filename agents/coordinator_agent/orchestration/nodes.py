@@ -22,6 +22,7 @@ from agents.coordinator_agent.orchestration.router import (
 from agents.coordinator_agent.state import AgentState
 from agents.coordinator_agent.orchestration.synthesizer import synthesize_final_answer
 from agents.coordinator_agent.events.tracing import TraceCollector
+from agents.coordinator_agent.orchestration.upstream_ensure import ensure_upstream_payloads
 from agents.decision_agent.run import run_decision_state
 from agents.nlp_agent.run import ReviewInsightAgent
 from agents.sql_agent.run import run_sql_pipeline_with_feedback
@@ -44,6 +45,11 @@ def _mark_done(state: AgentState, agent: str) -> dict[str, bool]:
     done = dict(state.get("agents_done") or {})
     done[agent] = True
     return done
+
+
+def _commit(state: AgentState, agent: str, **patch: Any) -> AgentState:
+    """专家产物写入全局 state，并标记该 Agent 完成。"""
+    return {**state, **patch, "agents_done": _mark_done(state, agent)}
 
 
 def _emit_trace(
@@ -73,7 +79,6 @@ def _emit_trace(
 def decompose_node(
     state: AgentState,
     *,
-    use_llm: bool = True,
     model=None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
@@ -102,7 +107,7 @@ def decompose_node(
             summary="问题不属于 Olist 电商 BI 分析范围，进入拒答汇总。",
         )
         return {**state, **off_topic_state_patch(user_query)}
-    result = decompose_query(user_query, use_llm=use_llm, model=model)
+    result = decompose_query(user_query, model=model)
     if result.off_topic:
         _emit_trace(
             trace_collector,
@@ -138,7 +143,6 @@ def decompose_node(
 def orchestrator_node(
     state: AgentState,
     *,
-    use_llm: bool = True,
     model=None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
@@ -182,7 +186,6 @@ def orchestrator_node(
     iterations = int(state.get("orchestrator_iterations") or 0) + 1
     decision = choose_next_agent(
         {**state, "orchestrator_iterations": iterations},
-        use_llm=use_llm,
         model=model,
     )
     _emit_trace(
@@ -227,7 +230,7 @@ def data_analysis_node(
     sql_runs = list(state.get("sql_runs") or [])
     idx = len(sql_runs)
     if idx >= len(sub_questions):
-        return {**state, "agents_done": _mark_done(state, "data_analysis")}
+        return _commit(state, "data_analysis")
 
     question = sub_questions[idx]
     sql_out = run_sql_pipeline_with_feedback(question, model=model, on_tool_end=on_tool_end)
@@ -272,7 +275,7 @@ def data_analysis_node(
         )
 
     if len(sql_runs) >= len(sub_questions):
-        next_state["agents_done"] = _mark_done(next_state, "data_analysis")
+        return _commit(next_state, "data_analysis")
     return next_state
 
 
@@ -301,15 +304,15 @@ def visualization_node(
             title="可视化跳过",
             summary="尚无 SQL 分析结果，跳过可视化。",
         )
-        return {
-            **state,
-            "agents_done": _mark_done(state, "visualization"),
-            "visualization_result": {
+        return _commit(
+            state,
+            "visualization",
+            visualization_result={
                 "skipped": True,
                 "summary_text": "尚无 SQL 分析结果，跳过可视化。",
                 "charts": [],
             },
-        }
+        )
 
     viz_result = run_intelligent_visualization(
         user_query=str(state.get("user_query") or ""),
@@ -342,12 +345,7 @@ def visualization_node(
         metadata={"chart_count": len(charts)},
     )
 
-    return {
-        **state,
-        **patch,
-        "visualization_result": viz_result,
-        "agents_done": _mark_done(state, "visualization"),
-    }
+    return _commit(state, "visualization", visualization_result=viz_result, **patch)
 
 
 def nlp_node(
@@ -356,10 +354,7 @@ def nlp_node(
     on_tool_end: Callable[[str, str], None] | None = None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
-    agent = ReviewInsightAgent()
-    out = agent.run(dict(state), on_tool_end=on_tool_end)
-    out["agents_done"] = _mark_done(out, "nlp")
-    insights = out.get("review_insights") or {}
+    insights = state.get("review_insights") or ReviewInsightAgent().run(on_tool_end=on_tool_end)
     _emit_trace(
         trace_collector,
         agent="nlp_agent",
@@ -368,7 +363,7 @@ def nlp_node(
         title="评论洞察 Agent 完成",
         summary=str(insights.get("summary") or insights.get("summary_text") or "已完成评论主题、情感与词云数据整理。"),
     )
-    return dict(out)
+    return _commit(state, "nlp", review_insights=insights, nlp_result=insights)
 
 
 def decision_node(
@@ -376,8 +371,8 @@ def decision_node(
     *,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
-    out = run_decision_state(state)
-    out["agents_done"] = _mark_done(out, "decision")
+    working = {**state, **ensure_upstream_payloads(state)}
+    out = run_decision_state(working)
     decision = out.get("decision_result") or {}
     what_if = decision.get("what_if_result") or {}
     quality = decision.get("quality_report") or {}
@@ -397,14 +392,13 @@ def decision_node(
             "revision_count": decision.get("revision_count", 0),
         },
     )
-    return out
+    return _commit(out, "decision")
 
 
 def synthesize_node(
     state: AgentState,
     *,
     model=None,
-    use_llm: bool = True,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
     if state.get("off_topic") and state.get("final_answer"):
@@ -416,13 +410,9 @@ def synthesize_node(
             title="最终回答完成",
             summary=str(state.get("final_answer") or ""),
         )
-        return {**state, "agents_done": _mark_done(state, "synthesize")}
-    answer, synth_warning = synthesize_final_answer(state, model=model, use_llm=use_llm)
-    next_state: AgentState = {
-        **state,
-        "final_answer": answer,
-        "agents_done": _mark_done(state, "synthesize"),
-    }
+        return _commit(state, "synthesize")
+    answer, synth_warning = synthesize_final_answer(state, model=model)
+    next_state: AgentState = _commit(state, "synthesize", final_answer=answer)
     if synth_warning:
         next_state["warnings"] = _append_warning(next_state, synth_warning)
     _emit_trace(

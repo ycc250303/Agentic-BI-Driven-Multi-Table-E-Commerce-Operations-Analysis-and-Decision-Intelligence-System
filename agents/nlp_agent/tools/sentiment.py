@@ -257,6 +257,7 @@ def backfill_sentiment(
     `only_missing=True`（默认）：只跑当前 review_sentiment 表里没有的评论（断点续跑友好）。
     `only_missing=False`：全量重跑（用于 --force）。
     """
+    # 离线路径：唯一加载 pysentimiento 的入口；在线 aggregate_sentiment 不会走到这里
     t0 = time.perf_counter()
     pending = _fetch_pending(only_missing=only_missing, limit=limit)
     total = len(pending)
@@ -304,7 +305,7 @@ def backfill_sentiment(
             pos = float(p.get("pos", 0.0))
             neu = float(p.get("neu", 0.0))
             neg = float(p.get("neg", 0.0))
-            score = pos - neg  # ∈ [-1, +1]
+            score = pos - neg  # 综合分 = 正面概率 − 负面概率，∈ [-1, +1]
             rows.append((r["review_id"], polarity, score, pos, neu, neg,
                          used_model, None))
             if polarity == "POS":
@@ -452,6 +453,7 @@ LIMIT 1
 
 def aggregate_sentiment() -> dict[str, Any]:
     """从 review_sentiment 表读出聚合结果，给 NLP Agent 使用。"""
+    # 在线路径：只做 GROUP BY，不加载模型；表空时 summary 会提示先 --backfill
     overall = db.query(_AGG_SQL)
     by_score = db.query(_AGG_BY_REVIEW_SCORE_SQL)
     worst_categories = db.query(_AGG_BY_CATEGORY_SQL)

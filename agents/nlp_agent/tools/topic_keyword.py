@@ -205,6 +205,7 @@ def _classify_topic(text: str, topic_keywords: dict[str, list[str]] | None = Non
     if not t.strip():
         return "empty_text"
     kw_dict = topic_keywords if topic_keywords is not None else _load_topic_keywords()
+    # YAML 主题顺序 = 优先级；一条评论只归一类。大量未命中会落到 other
     for topic, words in kw_dict.items():
         if any(w in t for w in words):
             return topic
@@ -251,6 +252,7 @@ def _summarize_category_complaints(
 
 def run_review_insight(sample_size: int = 1000) -> dict[str, Any]:
     """对差评样本做关键词主题分类，输出结构化洞察 dict。"""
+    # 差评口径：review_score<=2；JOIN 品类/州是为了后面做「主题 × 品类」交叉
     rows = db.query(_NEG_REVIEW_SQL, (int(sample_size),))
     if not rows:
         return ReviewInsightOutput(

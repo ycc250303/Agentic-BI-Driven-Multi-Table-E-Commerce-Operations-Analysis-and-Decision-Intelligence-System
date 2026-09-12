@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 load_dotenv(Path('.env').resolve())
 from agents.nlp_agent.run import ReviewInsightAgent
 agent = ReviewInsightAgent(sample_size=300, wordcloud_top_n=30, wordcloud_sample=600)
-out = agent.run(state=None)
+out = agent.run()
 Path('agents/decision_agent/tests/fixtures/upstream_review_insights_from_agent_tpc.json').write_text(
     json.dumps(out, ensure_ascii=False, indent=2),
     encoding='utf-8',

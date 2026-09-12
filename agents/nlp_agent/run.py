@@ -2,20 +2,15 @@
 NLP / 评论洞察 Agent 入口。
 
 对外暴露：
-- `ReviewInsightAgent`：可独立 `run(state)` 的类，便于离线 / 单测 / 注入自定义工具。
-- `nlp_node(state)`：LangGraph node 函数，签名 state -> state，供 Orchestrator
-  在 `intent ∈ {diagnostic, prescriptive}` 路径上挂接。
-- `should_run_nlp(question, intent)`：路由判定，给 Orchestrator 决策是否需要 NLP 节点。
+- `ReviewInsightAgent`：可独立 `run()` 的类，返回洞察 dict（不写全局 state）。
+- `should_run_nlp(question, intent)`：路由判定，给协调器决定是否调度 NLP 节点。
 
-一次 `run(state)` 内部串行调用三类子工具：
-1. `topic_fn`（默认 `topic_keyword.run_review_insight`）：差评关键词主题分类，
-   含主题 × Top 品类交叉表 `complaints_by_category`
-2. `sentiment_fn`（默认 `sentiment.aggregate_sentiment`）：从 `review_sentiment`
-   表读极性 / 综合分数聚合（不调模型，毫秒级），含按品类 / 客户州 / 卖家州下钻
-3. `wordcloud_fn`（默认 `wordcloud_data.run_wordcloud_data`）：好评 / 差评对比
-   词云数据，给 viz_agent 渲染对比词云使用
+一次 `run()` 内部串行调用：
+1. BERTopic 聚合（表空则回退关键词主题分类）
+2. `sentiment.aggregate_sentiment`：读 `review_sentiment` 毫秒级聚合
+3. `wordcloud_data.run_wordcloud_data`：好评 / 差评对比词云
 
-三者结果合并成单一 `state["review_insights"]` 字典，下游 Decision Agent 直接消费。
+协调器负责把返回值写入 `review_insights` / `nlp_result`。
 任何子工具失败都不会阻塞整体流程（降级写入提示信息）。
 
 CLI 用法：
@@ -62,6 +57,7 @@ def should_run_nlp(question: str = "", intent: str = "") -> bool:
     - intent 为 `diagnostic` / `prescriptive`（往往需要差评原因诊断）
     - 用户问题命中评论 / 差评 / 情感等关键词
     """
+    # 诊断/处方默认走评论洞察；预测仅在问句本身像「评论/满意度」时才触发
     if intent in _PRESCRIPTIVE_INTENTS:
         return True
     if intent == "predictive" and _has_kw(question, _REVIEW_KEYWORDS):
@@ -77,11 +73,7 @@ def should_run_nlp(question: str = "", intent: str = "") -> bool:
 class ReviewInsightAgent:
     """NLP / 评论洞察 Agent。
 
-    一次 `run` 内部串行调用：
-    - `topic_fn`：差评关键词主题分类（含主题 × 品类交叉表）
-    - `sentiment_fn`：情感聚合（按品类 / 客户州 / 卖家州下钻）
-    - `wordcloud_fn`：好评 / 差评对比词云数据
-
+    一次 `run` 返回洞察 dict，不改写协调器 state。
     所有子工具均可注入自定义实现，便于单测 / 离线运行。
     任何子工具失败都不会阻塞整体流程：失败时写入降级 summary，主流程继续。
     """
@@ -104,7 +96,6 @@ class ReviewInsightAgent:
         self._wc_top_n = int(wordcloud_top_n)
         self._wc_sample = int(wordcloud_sample)
 
-    # ----- helpers -----
     def _has_bertopic_data(self) -> bool:
         """快速探测 review_topic_meta 表是否有数据，避免无效回退。"""
         if self._bertopic_fn is None:
@@ -122,9 +113,10 @@ class ReviewInsightAgent:
         优先走 BERTopic 无监督主题（无 other 盲区，粒度更细）；仅在 BERTopic
         表为空时才回退到关键词分类作为兜底。
         """
+        # 在线路径不调 LLM、不跑重模型：主题/情感只读离线表；关键词/词云才碰原始评论
         use_bertopic = self._has_bertopic_data()
 
-        # BERTopic 优先：跳过昂贵的差评抽样 JOIN，直接用 topic meta 聚合
+        # ① 主题：BERTopic 优先（读 review_topics），表空才回退关键词抽样 JOIN
         if use_bertopic:
             bt = self._bertopic_fn()  # type: ignore[misc]
             insight: dict[str, Any] = {
@@ -140,10 +132,10 @@ class ReviewInsightAgent:
                 "topics_bertopic": bt,
             }
         else:
-            # 回退：关键词分类（P0 基线）
+            # 回退：关键词分类（P0 基线，实时抽 order_reviews）
             insight = self._topic_fn(self._sample_size)
 
-        # 情感聚合（软依赖）
+        # ② 情感：只聚合 review_sentiment；表空/失败写占位，不阻塞后面
         if self._sentiment_fn is not None:
             try:
                 sentiment = self._sentiment_fn()
@@ -154,7 +146,7 @@ class ReviewInsightAgent:
                 insight["sentiment"] = {"method": "n/a",
                                         "summary": f"sentiment 聚合失败：{e}"}
 
-        # 词云数据（软依赖）
+        # ③ 词云：好评/差评两路词频，给可视化 Agent 渲染对比词云
         if self._wordcloud_fn is not None:
             try:
                 wc = self._wordcloud_fn(
@@ -171,68 +163,25 @@ class ReviewInsightAgent:
 
         return insight
 
-    # ----- main -----
     def run(
         self,
-        state: dict[str, Any] | None = None,
         on_tool_end: Callable[[str, str], None] | None = None,
     ) -> dict[str, Any]:
-        """执行评论洞察并写回 `state["review_insights"]`。
-
-        - state 为 None 时返回不带 state 的洞察 dict（CLI / 单测使用）。
-        - state["review_insights"] 已存在时按幂等跳过，避免覆盖上游结果。
-        - on_tool_end(tool_name, payload_str) 用于在 Web 端实时推送（与 sql_agent 风格一致）。
-        """
-        def _emit(tool: str, payload: Any) -> None:
-            if on_tool_end is None:
-                return
-            on_tool_end(
-                tool,
-                payload if isinstance(payload, str)
-                else json.dumps(payload, ensure_ascii=False, indent=2),
-            )
-
-        # 无 state 模式：纯工具调用，直接返回洞察 dict
-        if state is None:
-            insight = self._build_insight()
-            _emit("review_insight_tool", insight)
-            return insight
-
-        # 幂等：上游已写入则不重复执行
-        if "review_insights" in state and state.get("review_insights"):
-            _emit("review_insight_tool", state["review_insights"])
-            return state
-
+        """执行评论洞察，返回洞察 dict（不写协调器 state）。"""
         try:
-            state["review_insights"] = self._build_insight()
+            insight = self._build_insight()
         except Exception as e:  # 失败兜底：写入降级 summary，避免阻塞主流程
             logger.warning("NLP Agent 评论洞察执行失败：%s", e)
-            state["review_insights"] = {
+            insight = {
                 "method": "n/a",
                 "summary": f"NLP Agent 评论洞察执行失败：{e}",
             }
-        _emit("review_insight_tool", state["review_insights"])
-        return state
-
-
-# ---------------------------------------------------------------------------
-# LangGraph node
-# ---------------------------------------------------------------------------
-
-
-def nlp_node(state: dict[str, Any]) -> dict[str, Any]:
-    """LangGraph node：使用默认工具构造 Agent，写回更新后的 state。
-
-    Orchestrator 接入示例：
-        workflow.add_node("nlp", nlp_node)
-        workflow.add_conditional_edges(
-            "data_analysis",
-            lambda s: "nlp" if should_run_nlp(s.get("question",""), s.get("intent","")) else "decision",
-            {"nlp": "nlp", "decision": "decision"},
-        )
-        workflow.add_edge("nlp", "decision")
-    """
-    return ReviewInsightAgent().run(state)
+        if on_tool_end is not None:
+            on_tool_end(
+                "review_insight_tool",
+                json.dumps(insight, ensure_ascii=False, indent=2),
+            )
+        return insight
 
 
 # ---------------------------------------------------------------------------
@@ -248,7 +197,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--no-state",
         action="store_true",
-        help="忽略 state，直接调用工具并打印洞察 JSON（适合单跑工具调试）",
+        help="忽略路由判定，直接调用工具并打印洞察 JSON",
     )
     return p
 
@@ -260,13 +209,11 @@ def main() -> None:
     args = _build_argparser().parse_args()
 
     if args.no_state or (not args.question and not args.intent):
-        # 模式 A：直接跑工具
         agent = ReviewInsightAgent(sample_size=args.sample)
-        result = agent.run(state=None, on_tool_end=lambda t, p: None)
+        result = agent.run()
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
 
-    # 模式 B：模拟 LangGraph state 流转
     if not should_run_nlp(args.question, args.intent):
         print(
             json.dumps(
@@ -282,14 +229,19 @@ def main() -> None:
         )
         return
 
-    state: dict[str, Any] = {"question": args.question, "intent": args.intent}
-    agent = ReviewInsightAgent(sample_size=args.sample)
-    state = agent.run(
-        state=state,
+    insights = ReviewInsightAgent(sample_size=args.sample).run(
         on_tool_end=lambda t, p: print(f"\n=== {t} ===\n{p[:1200]}"),
     )
-    print("\n===== final state =====")
-    print(json.dumps(state, ensure_ascii=False, indent=2))
+    print("\n===== review_insights =====")
+    print(json.dumps(
+        {
+            "question": args.question,
+            "intent": args.intent,
+            "review_insights": insights,
+        },
+        ensure_ascii=False,
+        indent=2,
+    ))
 
 
 if __name__ == "__main__":

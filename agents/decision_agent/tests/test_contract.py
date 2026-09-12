@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from agents.decision_agent.langgraph_node import build_decision_node
+from agents.decision_agent.run import run_decision_state
 
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -26,21 +26,22 @@ def _stub_llm(stub_decision_llm):
     )
 
 
-def test_langgraph_node_preserves_state_contract():
+def test_run_decision_state_preserves_state_contract():
     state = load_case("high_delivery_risk.json")
-    node = build_decision_node()
-    out = node(state)
+    out = run_decision_state(state)
     assert isinstance(out, dict)
     assert "decision_result" in out
     assert "final_answer" in out
     assert out["decision_result"]["decision_theme"] == "物流优化"
+    assert out["decision_result"]["action_plan"]
+    assert out["decision_result"]["what_if_result"]["status"] == "not_run"
     assert out["final_answer"] == "这是联调节点测试输出。"
+    assert "warnings" in out
 
 
-def test_langgraph_node_consumes_agent_tpc_upstream_state():
+def test_run_decision_state_consumes_agent_tpc_upstream_state():
     state = load_case("upstream_state_from_agent_tpc.json")
-    node = build_decision_node()
-    out = node(state)
+    out = run_decision_state(state)
     assert out["decision_result"]["action_plan"]
     assert out["decision_result"]["what_if_result"]["scenario_type"] == "remove_top_bad_sellers"
     assert out["decision_result"]["what_if_result"]["status"] == "run"
@@ -51,24 +52,21 @@ def test_langgraph_node_consumes_agent_tpc_upstream_state():
     )
 
 
-def test_langgraph_node_consumes_sql_only_delivery_state():
+def test_run_decision_state_consumes_sql_only_delivery_state():
     state = load_case("upstream_state_sql_agent_delivery_only.json")
-    node = build_decision_node()
-    out = node(state)
+    out = run_decision_state(state)
     assert out["decision_result"]["decision_theme"] == "物流优化"
     assert out["decision_result"]["action_plan"]
 
 
-def test_langgraph_node_consumes_sql_only_seller_state():
+def test_run_decision_state_consumes_sql_only_seller_state():
     state = load_case("upstream_state_sql_agent_seller_only.json")
-    node = build_decision_node()
-    out = node(state)
+    out = run_decision_state(state)
     assert out["decision_result"]["decision_theme"] == "卖家治理"
     assert out["decision_result"]["what_if_result"]["status"] == "not_run"
 
 
-def test_langgraph_node_consumes_sql_only_category_state():
+def test_run_decision_state_consumes_sql_only_category_state():
     state = load_case("upstream_state_sql_agent_category_only.json")
-    node = build_decision_node()
-    out = node(state)
+    out = run_decision_state(state)
     assert out["decision_result"]["decision_theme"] == "品类治理"

@@ -7,50 +7,30 @@ from pathlib import Path
 
 from .adapters import decision_inputs_from_state, merge_decision_result_to_state
 from .schemas import DecisionInputs
-from .service import answer_decision, collect_input_warnings, run_decision
+from .service import collect_input_warnings, run_decision
 from .state import BIState
-from agents.coordinator_agent.orchestration.upstream_ensure import ensure_upstream_payloads
 
 
 def run_decision_state(state: BIState) -> BIState:
-    """协调器入口：补齐 NLP/预测 → 转 DecisionInputs → 跑流水线 → 写回 state。
+    """协调器入口：转 DecisionInputs → 跑流水线 → 写回 decision_result / final_answer。
 
-    写入：decision_result（结构化）、final_answer（叙述）、warnings（缺上游证据时如实告警）。
+    上游 NLP / 预测补齐由协调器 `decision_node` 在调用前完成。
     """
-    working = dict(state)
-    # 决策前补齐：评论洞察缺失则补跑 NLP；predictive 且无预测则从 SQL 趋势或 GMV 外推构造
-    working.update(ensure_upstream_payloads(working))
-    inputs = decision_inputs_from_state(working)
+    inputs = decision_inputs_from_state(state)
     decision_result = run_decision(inputs)
     warnings = collect_input_warnings(
         inputs,
         pipeline={
-            "suggested_agents": working.get("suggested_agents") or [],
-            "agents_done": working.get("agents_done") or {},
-            "forecast_attempted": bool(working.get("_forecast_attempted")),
+            "suggested_agents": state.get("suggested_agents") or [],
+            "agents_done": state.get("agents_done") or {},
+            "forecast_attempted": bool(state.get("_forecast_attempted")),
         },
     )
-    merged = merge_decision_result_to_state(
-        working,
+    return merge_decision_result_to_state(
+        dict(state),
         decision_result,
         warnings=warnings,
     )
-    for key in ("forecast_result", "review_insights", "nlp_result", "agents_done"):
-        if working.get(key) is not None and not merged.get(key):
-            merged[key] = working[key]
-    return merged
-
-
-class DecisionAgent:
-    """Backward-compatible wrapper around the state compatibility path."""
-
-    def run(self, state: BIState) -> BIState:
-        return run_decision_state(state)
-
-
-def decision_node(state: BIState) -> BIState:
-    """Legacy state-compatible function entrypoint."""
-    return run_decision_state(state)
 
 
 def _load_fixture(path: str) -> dict:
@@ -87,7 +67,7 @@ def main() -> None:
 
     data = _load_fixture(args.fixture)
     if args.mode == "state":
-        result = decision_node(data)
+        result = run_decision_state(data)
         _write_output(json.dumps(result, indent=2, ensure_ascii=False))
         return
 

@@ -9,7 +9,6 @@ agents/decision_agent/
 ├── __init__.py
 ├── run.py                 # CLI + state 入口
 ├── service.py             # 核心流水线
-├── langgraph_node.py      # 协调器节点包装
 ├── schemas.py             # 输入输出契约
 ├── state.py
 ├── adapters.py            # 上游 state ↔ DecisionInputs
@@ -38,8 +37,7 @@ agents/decision_agent/
 
 - `run_decision(inputs)`：核心入口，输入 `DecisionInputs`，返回 `DecisionResult`。
 - `answer_decision(...)`：面向调用方的字符串回答入口。
-- `run_decision_state(state)`：兼容 coordinator state 的入口。
-- `build_decision_node()`：LangGraph 节点包装。
+- `run_decision_state(state)`：兼容 coordinator state 的入口（不补齐上游；由协调器决策节点先 `ensure_upstream_payloads`）。
 
 CLI 示例：
 

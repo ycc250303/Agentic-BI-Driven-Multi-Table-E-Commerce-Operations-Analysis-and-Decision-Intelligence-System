@@ -14,7 +14,7 @@ agents/nlp_agent/
 ├── __init__.py
 ├── db.py                       # PyMySQL 封装，连接参数来自 db_env
 ├── state.py                    # ReviewInsightState / ReviewInsightsPayload TypedDict
-├── run.py                      # ReviewInsightAgent + nlp_node(state) + CLI
+├── run.py                      # ReviewInsightAgent.run() 返回洞察 dict + CLI
 ├── tools/
 │   ├── __init__.py
 │   ├── topic_keyword.py        # 葡语关键词主题分类（含主题 × 品类交叉表）
@@ -37,18 +37,18 @@ config/nlp_agent/
 
 ## 2. 输入 / 输出 State 字段
 
-NLP Agent 通过 LangGraph `state` 与其他 Agent 通信。
+NLP Agent 通过 LangGraph `state` 与其他 Agent 通信。在线 `run()` **只返回洞察 dict**，由协调器写入共享状态。
 
-**主要读取**
+**主要读取（路由用）**
 
 | 字段 | 来源 | 说明 |
 |------|------|------|
-| `question` | Orchestrator | 用户原始问题 |
+| `question` / `user_query` | Orchestrator | 用户原始问题 |
 | `intent` | Orchestrator | `descriptive` / `diagnostic` / `predictive` / `what_if` / `prescriptive` |
 
-**主要写入**
+**协调器写入**
 
-`state["review_insights"]`（dict 形式，schema 见 `state.py` 的 `ReviewInsightsPayload`）：
+`state["review_insights"]`（并镜像 `nlp_result`；schema 见 `state.py` 的 `ReviewInsightsPayload`）：
 
 ```jsonc
 {
@@ -130,15 +130,13 @@ NLP Agent 通过 LangGraph `state` 与其他 Agent 通信。
 
 ```mermaid
 flowchart TD
-    A[state in: question + intent] --> B{should_run_nlp?}
-    B -->|否| Z[return state]
-    B -->|是| C{state has review_insights?}
-    C -->|是| D[幂等：跳过] --> Z
-    C -->|否| E[topic_keyword.run_review_insight\n实时抽样 + 关键词分类 + 主题×品类]
-    E --> F[sentiment.aggregate_sentiment\n读 review_sentiment 表，毫秒级]
-    F --> G[topic_model.aggregate_bertopic\n读 review_topics(_meta) 表，毫秒级]
-    G --> H[wordcloud_data.run_wordcloud_data\n好评/差评抽样 + 词频统计]
-    H --> I[合并 review_insights] --> Z
+    A[协调器判定 should_run_nlp] --> B{已有 review_insights?}
+    B -->|是| Z[跳过 run]
+    B -->|否| E[run：BERTopic 或关键词主题]
+    E --> F[sentiment 聚合]
+    F --> G[wordcloud 词频]
+    G --> H[return 洞察 dict]
+    H --> I[协调器写入 review_insights / nlp_result]
 ```
 
 任意子工具失败都不会阻塞主流程：失败的字段会写入 `{"method": "n/a", "summary": "<原因>"}` 占位。
@@ -151,39 +149,16 @@ flowchart TD
 
 ## 4. 在 LangGraph 中的接入方式
 
-```python
-from langgraph.graph import StateGraph, END
-from agents.nlp_agent.run import nlp_node, should_run_nlp
+生产路径由协调器挂节点（`orchestration/nodes.py::nlp_node`）：已有洞察则跳过，否则 `ReviewInsightAgent().run()`，再写入 `review_insights` / `nlp_result`。
 
-workflow = StateGraph(AgentState)
-workflow.add_node("orchestrator", orchestrator_node)
-workflow.add_node("data_analysis", data_analysis_node)
-workflow.add_node("visualization", visualization_node)
-workflow.add_node("nlp", nlp_node)            # ← 新增独立节点
-workflow.add_node("decision", decision_intelligence_node)
-
-workflow.set_entry_point("orchestrator")
-workflow.add_edge("orchestrator", "data_analysis")
-workflow.add_edge("data_analysis", "visualization")
-# 条件分支：仅在需要时触发 NLP
-workflow.add_conditional_edges(
-    "visualization",
-    lambda s: "nlp" if should_run_nlp(s.get("question", ""), s.get("intent", "")) else "decision",
-    {"nlp": "nlp", "decision": "decision"},
-)
-workflow.add_edge("nlp", "decision")
-workflow.add_edge("decision", END)
-```
-
-也可独立使用：
+独立使用：
 
 ```python
 from agents.nlp_agent.run import ReviewInsightAgent
 
 agent = ReviewInsightAgent(sample_size=2000)
-state = {"question": "Top 10 差评品类的主要原因是什么？", "intent": "diagnostic"}
-state = agent.run(state, on_tool_end=lambda t, p: print(t))
-print(state["review_insights"])
+insights = agent.run(on_tool_end=lambda t, p: print(t))
+print(insights)
 ```
 
 ---
@@ -228,10 +203,10 @@ python -m agents.nlp_agent.run \
 
 | 表 / 视图 | 来源 | NLP Agent 用途 |
 |------|------|------|
-| `order_reviews`（原始） | `utils/create_origin_table.sql` | 关键词主题、情感、词云、BERTopic 的输入源 |
+| `order_reviews`（原始） | [`utils/schema.sql`](../../utils/schema.sql) `@section origin` | 关键词主题、情感、词云、BERTopic 的输入源 |
 | `order_items / products / sellers / customers / product_category_name_translation`（原始） | 同上 | 各工具按品类 / 卖家州 / 客户州下钻 |
-| **`review_sentiment`**（NLP 自有） | **[`utils/create_review_sentiment_table.sql`](../../utils/create_review_sentiment_table.sql)** | 存放离线灌库的情感预测结果；`sentiment.py --backfill` 写入，`aggregate_sentiment()` 在线读 |
-| **`review_topics` + `review_topic_meta`**（NLP 自有） | **[`utils/create_review_topics_table.sql`](../../utils/create_review_topics_table.sql)** | 存放 BERTopic 无监督主题模型结果；`topic_model.py --backfill` 写入，`aggregate_bertopic()` 在线读 |
+| **`review_sentiment`**（NLP 自有） | [`utils/schema.sql`](../../utils/schema.sql) `@section nlp`；`python utils/setup.py nlp-tables` | 存放离线灌库的情感预测结果；`sentiment.py --backfill` 写入，`aggregate_sentiment()` 在线读 |
+| **`review_topics` + `review_topic_meta`**（NLP 自有） | 同上 | 存放 BERTopic 无监督主题模型结果；`topic_model.py --backfill` 写入，`aggregate_bertopic()` 在线读 |
 
 > 灌库一次后，所有在线查询均为毫秒级。详细灌库命令见 §9。
 
@@ -264,7 +239,7 @@ python -m agents.nlp_agent.run \
 5. 最负面客户州 / 卖家州排行
 6. 主题 × 品类交叉表（差评原因下钻）
 7. 好评 / 差评高频词对比（词云原始数据）
-8. NLP Agent 完整 `run(state)` 一次跑通
+8. NLP Agent 完整 `run()` 一次跑通
 
 ### 9.2 单工具级 CLI
 
@@ -275,7 +250,8 @@ python -m agents.nlp_agent.tools.topic_keyword
 # 情感聚合（读 review_sentiment 表，毫秒级）
 python -m agents.nlp_agent.tools.sentiment --aggregate
 
-# 情感离线灌库（首次需 pip install -r requirements-nlp.txt；约 7 分钟，下载 ~500MB 模型）
+# 情感离线灌库（表不存在时先：python utils/setup.py nlp-tables）
+# 首次需 pip install -r requirements-nlp.txt；约 7 分钟，下载 ~500MB 模型
 python -m agents.nlp_agent.tools.sentiment --backfill
 python -m agents.nlp_agent.tools.sentiment --backfill --limit 200   # 试水
 

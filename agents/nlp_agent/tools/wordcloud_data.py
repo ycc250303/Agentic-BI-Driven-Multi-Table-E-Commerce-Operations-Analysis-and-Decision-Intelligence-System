@@ -142,6 +142,7 @@ def run_wordcloud_data(
     """
     stopwords = _load_stopwords()
 
+    # 两路独立抽样：避免好评数量碾压差评词频；中评 (score=3) 不进词云
     pos_msgs = _fetch_messages(">= 4", pos_sample)
     neg_msgs = _fetch_messages("<= 2", neg_sample)
 
