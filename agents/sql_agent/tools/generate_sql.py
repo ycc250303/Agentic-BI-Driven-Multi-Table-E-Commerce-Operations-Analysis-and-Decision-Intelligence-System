@@ -21,7 +21,7 @@ class GenerateSqlOutput(BaseModel):
 
     analysis_grain: str = Field(
         default="",
-        description="分析粒度（可选），如 year_month + customer_state；多 SQL 时可概括并列子问题",
+        description="分析粒度（可选），如 sales_month + customer_state；多 SQL 时可概括并列子问题",
     )
     used_tables: list[str] = Field(
         default_factory=list,

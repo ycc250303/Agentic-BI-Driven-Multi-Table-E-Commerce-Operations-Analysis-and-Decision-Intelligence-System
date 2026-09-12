@@ -40,7 +40,7 @@ ORDER_STATUS_IN = "('delivered', 'shipped', 'created', 'approved', 'processing',
 SQL_RAW: Dict[str, str] = {
     "mv_monthly_sales": f"""
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     SUM(oi.price + oi.freight_value) AS total_gmv,
     COUNT(DISTINCT o.order_id) AS total_orders,
     SUM(oi.price + oi.freight_value) / COUNT(DISTINCT o.order_id) AS avg_basket,
@@ -52,7 +52,7 @@ GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m')
 """,
     "mv_state_sales": f"""
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     c.customer_state,
     SUM(oi.price + oi.freight_value) AS total_gmv,
     COUNT(DISTINCT o.order_id) AS total_orders,
@@ -65,7 +65,7 @@ GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m'), c.customer_state
 """,
     "mv_category_sales": f"""
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     COALESCE(pct.product_category_name_english, p.product_category_name) AS product_category_english,
     SUM(oi.price) AS total_gmv,
     COUNT(DISTINCT oi.order_id) AS total_orders,
@@ -80,7 +80,7 @@ GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m'),
 """,
     "mv_delivery_perf": """
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     c.customer_state,
     AVG(DATEDIFF(o.order_delivered_customer_date, o.order_purchase_timestamp)) AS avg_delivery_days,
     SUM(CASE WHEN o.order_delivered_customer_date <= o.order_estimated_delivery_date THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS on_time_rate,
@@ -93,7 +93,7 @@ GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m'), c.customer_state
 """,
     "mv_seller_perf": f"""
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     s.seller_id,
     s.seller_state,
     SUM(oi.price + oi.freight_value) AS total_gmv,
@@ -108,7 +108,7 @@ GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m'), s.seller_id, s.seller
 """,
     "mv_payment_dist": f"""
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     p.payment_type,
     COUNT(DISTINCT p.order_id) AS total_transactions,
     AVG(p.payment_installments) AS avg_installments,

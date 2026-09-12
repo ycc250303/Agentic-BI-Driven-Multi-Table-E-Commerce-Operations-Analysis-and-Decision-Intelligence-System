@@ -66,12 +66,12 @@
 
 | 视图名称                | 粒度           | 核心字段                                                                       | 用途                         |
 | ----------------------- | -------------- | ------------------------------------------------------------------------------ | ---------------------------- |
-| mv_monthly_sales        | 年-月          | year_month, total_gmv, total_orders, avg_basket, total_freight                 | 月度销售趋势、GMV 环比增长   |
-| mv_state_sales          | 年-月-州       | year_month, customer_state, total_gmv, total_orders, unique_customers          | 各州销售额排名、区域市场对比 |
-| mv_category_sales       | 年-月-品类     | year_month, product_category_english, total_gmv, total_orders, avg_price       | 品类表现分析、哪些品类在下降 |
-| mv_delivery_perf        | 年-月-州       | year_month, customer_state, avg_delivery_days, on_time_rate, delayed_orders    | 配送延迟诊断、准时率分析     |
-| mv_seller_perf（推荐）  | 年-月-卖家     | year_month, seller_id, seller_state, total_gmv, total_orders, avg_review_score | 卖家绩效监控、高差评卖家定位 |
-| mv_payment_dist（推荐） | 年-月-支付类型 | year_month, payment_type, total_transactions, avg_installments, total_value    | 支付偏好分析、分期率对比     |
+| mv_monthly_sales        | 年-月          | sales_month, total_gmv, total_orders, avg_basket, total_freight                 | 月度销售趋势、GMV 环比增长   |
+| mv_state_sales          | 年-月-州       | sales_month, customer_state, total_gmv, total_orders, unique_customers          | 各州销售额排名、区域市场对比 |
+| mv_category_sales       | 年-月-品类     | sales_month, product_category_english, total_gmv, total_orders, avg_price       | 品类表现分析、哪些品类在下降 |
+| mv_delivery_perf        | 年-月-州       | sales_month, customer_state, avg_delivery_days, on_time_rate, delayed_orders    | 配送延迟诊断、准时率分析     |
+| mv_seller_perf（推荐）  | 年-月-卖家     | sales_month, seller_id, seller_state, total_gmv, total_orders, avg_review_score | 卖家绩效监控、高差评卖家定位 |
+| mv_payment_dist（推荐） | 年-月-支付类型 | sales_month, payment_type, total_transactions, avg_installments, total_value    | 支付偏好分析、分期率对比     |
 
 ### 实现要求
 

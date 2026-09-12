@@ -41,8 +41,8 @@ flowchart TD
 | 阶段 | 说明 |
 |------|------|
 | **rewrite** | 拆 `sub_questions`，标注 `hit_pre_agg_view` / `candidate_views` |
-| **generate** | 输出 `query_sqls[]`，一子问题一条 `SELECT`，单条内禁止分号 |
-| **check** | 格式与只读校验（不连库） |
+| **generate** | 输出 `query_sqls[]`，一子问题一条 `SELECT`，标识符小写裸写（禁止反引号），单条内禁止分号 |
+| **check** | 格式与只读校验（不连库；反引号即格式失败） |
 | **execute** | 执行前再做只读闸门；顺序执行，每条 SQL 一个 CSV（UTF-8 无 BOM；失败也占 sqlN）；明细不进 LLM 上下文；标量子问题若不是 1 行则带回生成重试 |
 
 失败时错误写入 `correction_context` 自动重试（含标量行数）。任一条 SQL 执行失败则顶层 `ok=false`。

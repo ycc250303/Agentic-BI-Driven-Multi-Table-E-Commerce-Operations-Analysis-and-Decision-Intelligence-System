@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-_TIME_COLS = ("year_month", "month", "year", "period")
+_TIME_COLS = ("sales_month", "year_month", "month", "year", "period")
 _CATEGORY_COLS = ("product_category_english", "category", "product_category")
 _RATE_COLS = ("bad_review_rate", "negative_rate", "rate")
 _COUNT_COLS = ("bad_review_count", "bad_reviews", "negative_count")
@@ -209,7 +209,7 @@ def try_build_gmv_forecast_result() -> dict[str, Any]:
 
 
 def enrich_forecast_from_state(state: dict[str, Any]) -> dict[str, Any]:
-    """若 state 尚无 forecast_result，按问题类型尝试构建。"""
+    """state 尚无预测时按问题类型补：差评率近 3 月对比，否则周度 GMV 线性外推。决策层仍不查原始订单表。"""
     if state.get("forecast_result"):
         return {}
     built = build_bad_review_forecast_result(

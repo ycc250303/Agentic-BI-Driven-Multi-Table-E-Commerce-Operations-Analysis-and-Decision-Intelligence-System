@@ -21,7 +21,7 @@ def test_build_bad_review_forecast_from_sql_csv(tmp_path: Path):
     ]:
         rows.append(
             {
-                "year_month": month,
+                "sales_month": month,
                 "product_category_english": "tools",
                 "bad_review_rate": rate,
             }

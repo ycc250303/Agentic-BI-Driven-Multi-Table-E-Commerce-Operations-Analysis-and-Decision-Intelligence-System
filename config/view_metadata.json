@@ -7,7 +7,7 @@
       "business_purpose": "月度销售趋势、GMV环比增长分析",
       "fields": [
         {
-          "name": "year_month",
+          "name": "sales_month",
           "type": "VARCHAR(7)",
           "description": "年月，格式YYYY-MM",
           "example": "2017-12"
@@ -50,7 +50,7 @@
         "哪个季度的销售额最高？",
         "平均客单价有什么变化趋势？"
       ],
-      "sql_example": "SELECT * FROM mv_monthly_sales WHERE year_month >= '2017-01' ORDER BY year_month"
+      "sql_example": "SELECT * FROM mv_monthly_sales WHERE sales_month >= '2017-01' ORDER BY sales_month"
     },
     "mv_state_sales": {
       "name": "mv_state_sales",
@@ -59,7 +59,7 @@
       "business_purpose": "各州销售额排名、区域市场对比",
       "fields": [
         {
-          "name": "year_month",
+          "name": "sales_month",
           "type": "VARCHAR(7)",
           "description": "年月，格式YYYY-MM",
           "example": "2017-12"
@@ -101,7 +101,7 @@
         "各州的订单量排名是什么？",
         "哪个州的客户最多？"
       ],
-      "sql_example": "SELECT * FROM mv_state_sales WHERE year_month = '2017-12' ORDER BY total_gmv DESC LIMIT 10"
+      "sql_example": "SELECT * FROM mv_state_sales WHERE sales_month = '2017-12' ORDER BY total_gmv DESC LIMIT 10"
     },
     "mv_category_sales": {
       "name": "mv_category_sales",
@@ -110,7 +110,7 @@
       "business_purpose": "品类表现分析、识别下降品类",
       "fields": [
         {
-          "name": "year_month",
+          "name": "sales_month",
           "type": "VARCHAR(7)",
           "description": "年月，格式YYYY-MM",
           "example": "2017-12"
@@ -152,7 +152,7 @@
         "哪些品类在下降？",
         "电子产品品类的平均价格是多少？"
       ],
-      "sql_example": "SELECT * FROM mv_category_sales WHERE year_month >= '2017-01' ORDER BY year_month, total_gmv DESC"
+      "sql_example": "SELECT * FROM mv_category_sales WHERE sales_month >= '2017-01' ORDER BY sales_month, total_gmv DESC"
     },
     "mv_delivery_perf": {
       "name": "mv_delivery_perf",
@@ -161,7 +161,7 @@
       "business_purpose": "配送延迟诊断、准时率分析",
       "fields": [
         {
-          "name": "year_month",
+          "name": "sales_month",
           "type": "VARCHAR(7)",
           "description": "年月，格式YYYY-MM",
           "example": "2017-12"
@@ -203,7 +203,7 @@
         "2017年各州的平均配送时长是多少？",
         "巴西东北部地区的配送准时率如何？"
       ],
-      "sql_example": "SELECT * FROM mv_delivery_perf WHERE year_month = '2017-12' ORDER BY avg_delivery_days DESC"
+      "sql_example": "SELECT * FROM mv_delivery_perf WHERE sales_month = '2017-12' ORDER BY avg_delivery_days DESC"
     },
     "mv_seller_perf": {
       "name": "mv_seller_perf",
@@ -212,7 +212,7 @@
       "business_purpose": "卖家绩效监控、高差评卖家定位",
       "fields": [
         {
-          "name": "year_month",
+          "name": "sales_month",
           "type": "VARCHAR(7)",
           "description": "年月，格式YYYY-MM",
           "example": "2017-12"
@@ -260,7 +260,7 @@
         "哪个州的卖家平均评分最高？",
         "找出销售额高但评分低的卖家"
       ],
-      "sql_example": "SELECT * FROM mv_seller_perf WHERE year_month = '2017-12' ORDER BY total_gmv DESC LIMIT 20"
+      "sql_example": "SELECT * FROM mv_seller_perf WHERE sales_month = '2017-12' ORDER BY total_gmv DESC LIMIT 20"
     },
     "mv_payment_dist": {
       "name": "mv_payment_dist",
@@ -269,7 +269,7 @@
       "business_purpose": "支付偏好分析、分期率对比",
       "fields": [
         {
-          "name": "year_month",
+          "name": "sales_month",
           "type": "VARCHAR(7)",
           "description": "年月，格式YYYY-MM",
           "example": "2017-12"
@@ -311,7 +311,7 @@
         "各支付方式的市场份额如何？",
         "boleto支付的使用趋势是什么？"
       ],
-      "sql_example": "SELECT * FROM mv_payment_dist WHERE year_month = '2017-12' ORDER BY total_transactions DESC"
+      "sql_example": "SELECT * FROM mv_payment_dist WHERE sales_month = '2017-12' ORDER BY total_transactions DESC"
     }
   },
   "agent_usage_guide": {

@@ -104,9 +104,9 @@
 ## 2) 预聚合视图（Pre-Aggregation Views）
 
 ### `mv_monthly_sales`
-- 粒度：`year_month`
+- 粒度：`sales_month`
 - 字段：
-  - `year_month`
+  - `sales_month`：年月，格式 `YYYY-MM`（非保留字，查询无需反引号）
   - `total_gmv`
   - `total_orders`
   - `avg_basket`
@@ -114,9 +114,9 @@
 - 用途：月度 GMV、订单量、客单价、运费趋势
 
 ### `mv_state_sales`
-- 粒度：`year_month + customer_state`
+- 粒度：`sales_month + customer_state`
 - 字段：
-  - `year_month`
+  - `sales_month`
   - `customer_state`
   - `total_gmv`
   - `total_orders`
@@ -124,9 +124,9 @@
 - 用途：州级销售排名、区域对比
 
 ### `mv_category_sales`
-- 粒度：`year_month + product_category_english`
+- 粒度：`sales_month + product_category_english`
 - 字段：
-  - `year_month`
+  - `sales_month`
   - `product_category_english`
   - `total_gmv`
   - `total_orders`
@@ -134,9 +134,9 @@
 - 用途：品类表现、下降品类识别
 
 ### `mv_delivery_perf`
-- 粒度：`year_month + customer_state`
+- 粒度：`sales_month + customer_state`
 - 字段：
-  - `year_month`
+  - `sales_month`
   - `customer_state`
   - `avg_delivery_days`
   - `on_time_rate`
@@ -145,9 +145,9 @@
 - **grain 注意**：`on_time_rate` 是「年-月 × 州」单元内比率，不是全平台订单级比率；`delayed_orders` 是同 grain 的延迟单量。跨 grain 汇总或改维度时按下方「指标语义」处理。
 
 ### `mv_seller_perf`
-- 粒度：`year_month + seller_id + seller_state`
+- 粒度：`sales_month + seller_id + seller_state`
 - 字段：
-  - `year_month`
+  - `sales_month`
   - `seller_id`
   - `seller_state`
   - `total_gmv`
@@ -156,9 +156,9 @@
 - 用途：卖家绩效、低评分卖家识别
 
 ### `mv_payment_dist`
-- 粒度：`year_month + payment_type`
+- 粒度：`sales_month + payment_type`
 - 字段：
-  - `year_month`
+  - `sales_month`
   - `payment_type`
   - `total_transactions`
   - `avg_installments`
@@ -171,6 +171,7 @@
 ## 3) 常用口径说明
 
 - 默认 GMV 口径优先采用：`price + freight_value`（若问题要求仅商品金额，改用 `price`）。
+- **对外输出列名与视图字段一致**：销售额用 `total_gmv`（不要 `gmv_total`）；支付笔数用 `total_transactions`（不要 `payment_transactions`）。
 - 订单数口径优先：`COUNT(DISTINCT order_id)`。
 - 客户数口径优先：`COUNT(DISTINCT customer_unique_id)`。
 - 差评：`review_score <= 2` 的计数或比率；`avg_review_score` 是另一指标，用户问「差评」时不得改写成平均评分。

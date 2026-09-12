@@ -21,17 +21,15 @@ def query_sql_format_ok(sql: str) -> bool:
     统一格式约束：
     - 语句以大写 SELECT 开头
     - 单条语句内不允许分号
-    - 反引号内标识符必须全小写
+    - 不得使用反引号（标识符一律小写裸写）
     """
     s = sql.strip()
     if not s.startswith("SELECT"):
         return False
     if ";" in s:
         return False
-    for m in re.finditer(r"`([^`]*)`", s):
-        inner = m.group(1)
-        if inner and inner != inner.lower():
-            return False
+    if "`" in s:
+        return False
     return True
 
 

@@ -60,7 +60,7 @@ class SubQuestion(BaseModel):
     )
     dimensions: list[str] = Field(
         default_factory=list,
-        description="目标分析维度（如 year_month、customer_state、payment_type）",
+        description="目标分析维度（如 sales_month、customer_state、payment_type）",
     )
     time_range: str = Field(default="", description="时间范围说明（如 2017、最近12个月）")
     aggregation: str = Field(default="", description="聚合/排序目标（如 top1、top10、trend）")

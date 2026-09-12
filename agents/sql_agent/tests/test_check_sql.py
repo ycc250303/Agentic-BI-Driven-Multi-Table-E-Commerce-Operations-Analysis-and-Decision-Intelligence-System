@@ -8,7 +8,7 @@ from agents.sql_agent.tools.generate_sql import GenerateSqlOutput
 
 
 def _ok_sql() -> str:
-    return "SELECT `year_month`, `total_gmv` FROM `mv_monthly_sales` LIMIT 5"
+    return "SELECT sales_month, total_gmv FROM mv_monthly_sales LIMIT 5"
 
 
 def test_check_accepts_readonly_select():

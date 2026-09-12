@@ -41,7 +41,7 @@ def check_generate_sql_model(payload: GenerateSqlOutput) -> CheckSqlOutput:
                 syntax_ok=False,
                 brief=(
                     f"query_sqls[{i}] 格式不符：须以大写 SELECT 开头，"
-                    "反引号内标识符全部小写，且单条内不得含分号。"
+                    "不得使用反引号，且单条内不得含分号。"
                 ),
             )
         safe_ok, safe_reason = read_only_select_ok(sql_raw)
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     demo = GenerateSqlOutput(
         analysis_grain="month",
         used_tables=["mv_monthly_sales"],
-        query_sqls=["SELECT `year_month`, `total_gmv` FROM `mv_monthly_sales` LIMIT 5"],
+        query_sqls=["SELECT sales_month, total_gmv FROM mv_monthly_sales LIMIT 5"],
         result_explanation="演示",
     ).model_dump_json(indent=2, ensure_ascii=False)
     print("===== 演示：check_sql_tool =====")

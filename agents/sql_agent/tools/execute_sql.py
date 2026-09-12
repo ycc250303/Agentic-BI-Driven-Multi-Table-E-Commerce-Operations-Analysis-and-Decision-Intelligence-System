@@ -495,7 +495,7 @@ if __name__ == "__main__":
     demo = GenerateSqlOutput(
         analysis_grain="month",
         used_tables=["mv_monthly_sales"],
-        query_sqls=["SELECT `year_month`, `total_gmv` FROM `mv_monthly_sales` LIMIT 5"],
+        query_sqls=["SELECT sales_month, total_gmv FROM mv_monthly_sales LIMIT 5"],
         result_explanation="演示：取月度 GMV 前 5 行",
     ).model_dump_json(indent=2, ensure_ascii=False)
     print("===== 演示：execute_sql_tool =====")

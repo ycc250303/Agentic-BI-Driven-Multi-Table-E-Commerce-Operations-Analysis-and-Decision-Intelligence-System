@@ -274,6 +274,7 @@ def _human_axis_label(column: str) -> str:
         "payment_installments": "分期数",
         "month": "月份",
         "year_month": "年月",
+        "sales_month": "年月",
         "customer_state": "州",
         "state": "州",
     }

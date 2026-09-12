@@ -21,12 +21,12 @@
 
 | 视图名称 | 粒度 | 记录数 | 核心字段 | 用途 |
 |---------|------|--------|---------|------|
-| **mv_monthly_sales** | 年-月 | 24 | year_month, total_gmv, total_orders, avg_basket, total_freight | 月度销售趋势、GMV环比增长 |
-| **mv_state_sales** | 年-月-州 | 558 | year_month, customer_state, total_gmv, total_orders, unique_customers | 各州销售额排名、区域市场对比 |
-| **mv_category_sales** | 年-月-品类 | 1,282 | year_month, product_category_english, total_gmv, total_orders, avg_price | 品类表现分析、识别下降品类 |
-| **mv_delivery_perf** | 年-月-州 | 556 | year_month, customer_state, avg_delivery_days, on_time_rate, delayed_orders | 配送延迟诊断、准时率分析 |
-| **mv_seller_perf** | 年-月-卖家 | 16,308 | year_month, seller_id, seller_state, total_gmv, total_orders, avg_review_score | 卖家绩效监控、高差评卖家定位 |
-| **mv_payment_dist** | 年-月-支付类型 | 87 | year_month, payment_type, total_transactions, avg_installments, total_value | 支付偏好分析、分期率对比 |
+| **mv_monthly_sales** | 年-月 | 24 | sales_month, total_gmv, total_orders, avg_basket, total_freight | 月度销售趋势、GMV环比增长 |
+| **mv_state_sales** | 年-月-州 | 558 | sales_month, customer_state, total_gmv, total_orders, unique_customers | 各州销售额排名、区域市场对比 |
+| **mv_category_sales** | 年-月-品类 | 1,282 | sales_month, product_category_english, total_gmv, total_orders, avg_price | 品类表现分析、识别下降品类 |
+| **mv_delivery_perf** | 年-月-州 | 556 | sales_month, customer_state, avg_delivery_days, on_time_rate, delayed_orders | 配送延迟诊断、准时率分析 |
+| **mv_seller_perf** | 年-月-卖家 | 16,308 | sales_month, seller_id, seller_state, total_gmv, total_orders, avg_review_score | 卖家绩效监控、高差评卖家定位 |
+| **mv_payment_dist** | 年-月-支付类型 | 87 | sales_month, payment_type, total_transactions, avg_installments, total_value | 支付偏好分析、分期率对比 |
 
 ---
 
@@ -36,40 +36,33 @@
 Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System/
 │
 ├── utils/
-│   ├── create_origin_table.sql       # 原始表创建脚本（已存在）
-│   ├── load_data_to_mysql.py         # 数据导入脚本（已存在）
-│   ├── create_materialized_views.sql # ✨ 预聚合视图创建SQL脚本（新增）
-│   ├── refresh_views.py              # ✨ 视图刷新脚本（新增）
-│   └── VIEWS_README.md               # ✨ 视图使用说明（新增）
+│   ├── setup.py                      # 建库 / 导 CSV / 刷新视图
+│   ├── schema.sql                    # 原始表 + NLP 表 + 预聚合视图 DDL
+│   └── readme.md
 │
 └── config/
-    └── view_metadata.json            # ✨ 视图元数据配置（新增）
+    └── view_metadata.json            # 视图元数据配置
 ```
 
 ### 文件说明
 
-#### 1. `utils/create_materialized_views.sql`
-预聚合视图的SQL定义文件，包含：
-- 6个视图的完整CREATE VIEW语句
+#### 1. `utils/schema.sql`（`@section views`）
+预聚合视图的 SQL 定义，包含：
+- 6 个视图的完整 CREATE VIEW 语句
 - 详细的注释说明
-- 使用反引号避免保留字冲突
+- 年月列命名为 `sales_month`（YYYY-MM），避免 MySQL 保留字 `YEAR_MONTH`
 
 **特点**：
 - 基于原始表一次性计算
-- 过滤掉canceled和unavailable状态的订单
+- 过滤掉 canceled 和 unavailable 状态的订单
 - 自动反映基础表数据变化
 
-#### 2. `utils/refresh_views.py`
-Python自动化脚本，功能包括：
-- 🔄 一键删除并重建所有视图
-- ✅ 验证每个视图创建成功
-- 📊 显示每个视图的记录数
-- 📝 输出详细的执行日志
+#### 2. `utils/setup.py views`
+一键删除并重建所有视图，并打印各视图行数。
 
 **使用方法**：
 ```bash
-cd utils
-python refresh_views.py
+python utils/setup.py views
 ```
 
 #### 3. `config/view_metadata.json`
@@ -104,27 +97,20 @@ python refresh_views.py
 ### 方法1：命令行刷新视图
 
 ```bash
-# 进入utils目录
-cd utils
-
-# 执行刷新脚本
-python refresh_views.py
+python utils/setup.py views
 ```
 
 ## ⚠️ 重要注意事项
 
-### 1. 字段名必须使用反引号
-由于 `year_month` 是MySQL中的保留字，必须使用反引号包裹，否则会导致语法错误：
-**错误示例** ❌：
+### 1. 年月列名为 sales_month
+
+视图把购买时间聚成 `YYYY-MM` 字符串，物理列名是 **`sales_month`**（不是保留字 `YEAR_MONTH`）。查询时直接写裸标识符即可，不要加反引号：
+
 ```sql
-SELECT * FROM mv_monthly_sales ORDER BY year_month DESC;
--- 报错：语法错误
+SELECT * FROM mv_monthly_sales ORDER BY sales_month DESC;
 ```
 
-**正确示例** ✅：
-```sql
-SELECT * FROM mv_monthly_sales ORDER BY `year_month` DESC;
-```
+旧名 `year_month` 已废弃；若仍按旧名查询会报未知列。
 
 ### 2. 订单状态过滤
 
@@ -140,7 +126,7 @@ SELECT * FROM mv_monthly_sales ORDER BY `year_month` DESC;
 - ✅ 优点：自动反映基础表数据变化，无需手动刷新
 - ⚠️ 注意：查询时实时计算，不是物化表
 
-如需更新视图定义（如修改SQL逻辑），重新运行 `refresh_views.py` 即可。
+如需更新视图定义（如修改SQL逻辑），重新运行 `python utils/setup.py views` 即可。
 
 ### 4. 数据时间范围
 
@@ -175,7 +161,7 @@ Agent根据关键词匹配可用视图：
 # 伪代码示例
 def generate_sql(question, matched_view):
     if matched_view == "mv_monthly_sales":
-        return "SELECT * FROM mv_monthly_sales WHERE `year_month` LIKE '2017%'"
+        return "SELECT * FROM mv_monthly_sales WHERE sales_month LIKE '2017%'"
 ```
 
 #### 步骤4：查询执行
@@ -243,15 +229,12 @@ if "订单详情" in question and "order_id" in question:
 
 ## 🔍 常见问题 FAQ
 
-### Q1: 为什么查询时报语法错误？
+### Q1: 为什么查询时报未知列 year_month？
 
-**A**: 检查是否给 `year_month` 字段加了反引号：
+**A**: 年月列已改名为 `sales_month`。正确写法：
+
 ```sql
--- 错误
-ORDER BY year_month DESC
-
--- 正确
-ORDER BY `year_month` DESC
+ORDER BY sales_month DESC
 ```
 
 ### Q2: 视图数据会自动更新吗？
@@ -261,8 +244,8 @@ ORDER BY `year_month` DESC
 ### Q3: 如何修改视图定义？
 
 **A**:
-1. 编辑 `utils/create_materialized_views.sql`
-2. 运行 `python utils/refresh_views.py` 重建视图
+1. 编辑 `utils/schema.sql` 的 `@section views`
+2. 运行 `python utils/setup.py views` 重建视图
 
 ### Q4: 为什么 mv_delivery_perf 的记录数少于其他视图？
 
@@ -307,7 +290,7 @@ mysql-connector-python==9.5.0
 
 1. **DATE_FORMAT函数**：将日期转换为年月格式
    ```sql
-   DATE_FORMAT(order_purchase_timestamp, '%Y-%m') AS `year_month`
+   DATE_FORMAT(order_purchase_timestamp, '%Y-%m') AS sales_month
    ```
 
 2. **COALESCE函数**：处理NULL值，优先使用英文翻译

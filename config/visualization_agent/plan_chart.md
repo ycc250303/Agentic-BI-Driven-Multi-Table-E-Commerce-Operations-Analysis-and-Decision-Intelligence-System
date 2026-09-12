@@ -21,8 +21,8 @@
 
 - **必须使用 CSV 表头中的确切列名**，大小写一致，勿臆造字段。
 - 若数据不适合任何一种高级图表（例如纯 ID 列表），选择 **bar** 或对首个类别列做 **bar**（计数），并在 title 中说明「分布概览」。
-- 时间轴尽量选明显日期/年月字段（如 year_month、order_purchase_timestamp）。
-- **多系列折线**：当 CSV 同时含「时间列 + 分系列别列 + 数值列」（如 year_month + customer_state + gmv_total）时，必须指定 `category_column`（或 `hue_column`）为分系列别列，否则所有点会被连成一条线。
+- 时间轴尽量选明显日期/年月字段（如 sales_month、order_purchase_timestamp）。
+- **多系列折线**：当 CSV 同时含「时间列 + 分系列别列 + 数值列」（如 sales_month + customer_state + total_gmv）时，必须指定 `category_column`（或 `hue_column`）为分系列别列，否则所有点会被连成一条线。
 - 分系列别基数过大（>8）时，程序会自动只展示 Top 8 系列并在图例注明。
 - 热力图要求 pivot_row_col、pivot_col_col 基数不要过大（各自 ≤20 更佳）；过大则改选 bar 或对维度 Top N 截断说明写在 reasoning。
 

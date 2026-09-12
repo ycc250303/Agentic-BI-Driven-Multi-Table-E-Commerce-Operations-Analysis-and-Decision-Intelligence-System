@@ -12,9 +12,9 @@
     {
       "id": "唯一子问题 ID，推荐 q1/q2/q3",
       "question_zh": "面向查数的中文子问题，写清指标、维度、时间与过滤对象",
-      "metric_key": "语义指标键，对齐用户问的概念。常用：gmv_total / on_time_rate / delay_rate / payment_popularity / bad_review_count / bad_review_rate",
+      "metric_key": "数据字典物理列名。常用：total_gmv / on_time_rate / delay_rate / total_transactions / avg_installments / bad_review_count / bad_review_rate",
       "measure_keys": ["同一条 SQL 同时输出的度量；单度量则为 []"],
-      "dimensions": ["分析维度，如 year_month、customer_state、payment_type；全平台汇总则为 []"],
+      "dimensions": ["分析维度，如 sales_month、customer_state、payment_type；全平台汇总则为 []"],
       "time_range": "时间范围，如 2017、最近12个月；未指定则为空字符串",
       "aggregation": "聚合或排序目标，如 top1、top10、trend、share；纯总量则为空字符串",
       "scope": {
@@ -43,7 +43,7 @@
     {
       "id": "q1",
       "question_zh": "2017 年哪个州的 GMV 最高",
-      "metric_key": "gmv_total",
+      "metric_key": "total_gmv",
       "measure_keys": [],
       "dimensions": ["customer_state"],
       "time_range": "2017",
@@ -92,6 +92,7 @@
 
 ## 最小规则
 
+- `metric_key` / `measure_keys` 用数据字典**物理列名**：GMV 写 `total_gmv`（不要 `gmv_total`）；支付笔数写 `total_transactions`（不要 `payment_transactions`）。
 - 用户一次输入中的全部子意图必须覆盖。
 - 同一 grain、同一过滤对象上并列多个度量（如按月比较 GMV / 订单量 / 客单价，或同一实体的订单量与均价）：**合成一条** `sub_question`，把度量写入 `measure_keys`，不要拆成多条。
 - 同一实体跨两个时间窗的对比（两期 GMV、差额）：一条子问题，`measure_keys` 含两期度量；不要先单独输出实体再拆两条年度查询。

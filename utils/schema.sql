@@ -283,7 +283,7 @@ DROP VIEW IF EXISTS mv_monthly_sales;
 
 CREATE VIEW mv_monthly_sales AS
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     SUM(oi.price + oi.freight_value) AS total_gmv,
     COUNT(DISTINCT o.order_id) AS total_orders,
     SUM(oi.price + oi.freight_value) / COUNT(DISTINCT o.order_id) AS avg_basket,
@@ -302,7 +302,7 @@ DROP VIEW IF EXISTS mv_state_sales;
 
 CREATE VIEW mv_state_sales AS
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     c.customer_state,
     SUM(oi.price + oi.freight_value) AS total_gmv,
     COUNT(DISTINCT o.order_id) AS total_orders,
@@ -322,7 +322,7 @@ DROP VIEW IF EXISTS mv_category_sales;
 
 CREATE VIEW mv_category_sales AS
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     COALESCE(pct.product_category_name_english, p.product_category_name) AS product_category_english,
     SUM(oi.price) AS total_gmv,
     COUNT(DISTINCT oi.order_id) AS total_orders,
@@ -343,7 +343,7 @@ DROP VIEW IF EXISTS mv_delivery_perf;
 
 CREATE VIEW mv_delivery_perf AS
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     c.customer_state,
     AVG(DATEDIFF(o.order_delivered_customer_date, o.order_purchase_timestamp)) AS avg_delivery_days,
     SUM(CASE WHEN o.order_delivered_customer_date <= o.order_estimated_delivery_date THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS on_time_rate,
@@ -363,7 +363,7 @@ DROP VIEW IF EXISTS mv_seller_perf;
 
 CREATE VIEW mv_seller_perf AS
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     s.seller_id,
     s.seller_state,
     SUM(oi.price + oi.freight_value) AS total_gmv,
@@ -385,7 +385,7 @@ DROP VIEW IF EXISTS mv_payment_dist;
 
 CREATE VIEW mv_payment_dist AS
 SELECT
-    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS `year_month`,
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month,
     p.payment_type,
     COUNT(DISTINCT p.order_id) AS total_transactions,
     AVG(p.payment_installments) AS avg_installments,

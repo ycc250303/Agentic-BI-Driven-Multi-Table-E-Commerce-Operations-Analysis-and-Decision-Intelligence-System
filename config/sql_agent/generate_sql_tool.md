@@ -25,7 +25,7 @@
     {
       "id": "q1",
       "question_zh": "2017 年哪个州的 GMV 最高",
-      "metric_key": "gmv_total",
+      "metric_key": "total_gmv",
       "dimensions": ["customer_state"],
       "time_range": "2017",
       "aggregation": "top1",
@@ -61,14 +61,14 @@
 
 ```json
 {
-  "analysis_grain": "q1:customer_state; q2:order; q3:payment_type",
-  "used_tables": ["mv_state_sales", "orders", "customers", "mv_payment_dist"],
+  "analysis_grain": "q1:customer_state; q2:customer_state; q3:payment_type",
+  "used_tables": ["mv_state_sales", "mv_delivery_perf", "mv_payment_dist"],
   "query_sqls": [
-    "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1",
-    "SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1)",
-    "SELECT `payment_type`, SUM(`avg_installments` * `total_transactions`) / NULLIF(SUM(`total_transactions`), 0) AS `avg_installments` FROM `mv_payment_dist` WHERE `year_month` LIKE '2017%' AND `payment_type` = 'credit_card' GROUP BY `payment_type`"
+    "SELECT customer_state, SUM(total_gmv) AS total_gmv FROM mv_state_sales WHERE sales_month LIKE '2017%' GROUP BY customer_state ORDER BY total_gmv DESC LIMIT 1",
+    "SELECT AVG(on_time_rate) AS on_time_rate FROM mv_delivery_perf WHERE sales_month LIKE '2017%' AND customer_state = (SELECT customer_state FROM mv_state_sales WHERE sales_month LIKE '2017%' GROUP BY customer_state ORDER BY SUM(total_gmv) DESC LIMIT 1)",
+    "SELECT SUM(avg_installments * total_transactions) / NULLIF(SUM(total_transactions), 0) AS avg_installments FROM mv_payment_dist WHERE sales_month LIKE '2017%' AND payment_type = 'credit_card'"
   ],
-  "result_explanation": "1) 2017 年各州 GMV（含运费）排名，取最高州。2) 该州 2017 订单级准时交付率（单值）。3) 仅信用卡支付的平均分期数。"
+  "result_explanation": "1) 2017 年 GMV 最高的州。2) 该州 2017 准时率。3) 信用卡平均分期数。"
 }
 ```
 
@@ -91,13 +91,13 @@
 ## SQL 约束（最小集合）
 
 - **一条子问题一条 SQL**：`query_sqls` 与 `sub_questions` 等长、顺序对齐。禁止把同一子问题的多个度量拆成多条 SELECT。
-- `measure_keys` 非空时，该条 SELECT 必须同时输出这些度量（可用 `metric_key` 的同义列名作别名）；跨年对比须同时给出两期列，不要拆年。
+- `measure_keys` 非空时，该条 SELECT 必须同时输出这些度量；**AS 别名必须用数据字典物理列名**（`total_gmv` 不是 `gmv_total`；`total_transactions` 不是 `payment_transactions`）。`metric_key` 若仍是旧别名，输出列仍用物理名。跨年对比须同时给出两期列，不要拆年。
 - 仅 MySQL 兼容语法；**仅当**该子问题 `aggregation` 为 `topN`（如 `top1`/`top10`/`top20`）时才在**最外层**加对应 `LIMIT N`。分布、对比、趋势输出全部分组，用 `ORDER BY` 表示排序，禁止用外层 `LIMIT` 截断。
-- **主排序列对齐该子问题的 `metric_key`**；比率用 `NULLIF(denominator, 0)`；避免 `SELECT *`；GMV 口径在解释中注明是否含运费。
+- **主排序列对齐该子问题的物理度量列**；比率用 `NULLIF(denominator, 0)`；避免 `SELECT *`；GMV 口径在解释中注明是否含运费。
 - 历史快照场景下，“最近12个月”以库内最新月份为锚点，不单独依赖 `CURDATE()`。
 - `scope.kind=inherit_previous`：用子查询（或等价绑定）把过滤对象接到前序子问题，不得改成全平台。后续均值若计划标明 platform，不要偷偷加上「仅前序 Top1 类别」过滤。
 - `SELECT` / `GROUP BY` 必须覆盖该子问题 `dimensions`；多维趋势不得先收到更粗 grain 再做 TopN。
-- **一条 SQL 一个 grain**：全表标量（总体均值、相关系数等恰好 1 行）与 `GROUP BY` 分布/分桶拆成不同 `query_sqls`，不要写进同一条。
+- **一条 SQL 一个 grain**：`dimensions` 为空且 `aggregation` 非 topN/trend/share 时是全表标量（恰好 1 行），**禁止外层 GROUP BY**；与分布/分桶拆成不同 `query_sqls`。
 - **HAVING 只用于比率 topN 排名**；列出全部分组的比率/对比不要 HAVING 丢掉小样本组。
 - 差评率按**订单**计：分子分母都是 `COUNT(DISTINCT order_id)`（差评单 / 已评单），不要对评论行 `SUM`。
 - 品类名称展示尽量使用 `COALESCE(英文映射, 原始品类名)`，避免因翻译缺失导致 `NULL` 品类聚合错误。
@@ -107,8 +107,7 @@
 
 ### `query_sqls` 每一项的书写格式（必须）
 
-- **表名、视图名、列名、表别名**：一律 **小写字母**，并用反引号包裹（例：`` `mv_monthly_sales` ``、`` `year_month` ``、`` `s` ``）。
-- **SQL 关键字**（如 `SELECT`、`FROM`、`WHERE`、`JOIN`、`ON`、`GROUP`、`BY`、`ORDER`、`AND`、`AS`、`LIMIT`、`DESC`、`ASC`、`INNER`、`LEFT`）及 **MySQL 内建函数名**（如 `SUM`、`COUNT`、`DATE_FORMAT`、`DATE_SUB`、`CURDATE`、`NULLIF`）：一律 **大写**。
-- 每条语句**必须以 `SELECT` 起始**（当前校验器不接受 `WITH` 开头）；需要 CTE 语义时改写为子查询。
-- **不得**给关键字或函数名加反引号。
-- **不得**出现换行符，生成的每条 sql 无需下游工具转化即可直接使用。
+- **表名、视图名、列名、表别名**：一律 **小写字母**，不要用反引号（例：mv_monthly_sales、sales_month、s）。年月列物理名是 sales_month（值仍为 '2017-01'），不要写成 year_month。
+- **SQL 关键字**（如 SELECT、FROM、WHERE、JOIN、ON、GROUP BY、ORDER BY、AND、AS、LIMIT、DESC、ASC、INNER、LEFT）及 **MySQL 内建函数名**（如 SUM、COUNT、DATE_FORMAT、DATE_SUB、CURDATE、NULLIF）：一律 **大写**。
+- 每条语句必须以 SELECT 起始（当前校验器不接受 WITH 开头）；需要 CTE 语义时改写为子查询。
+- 不得出现反引号或换行符，生成的每条 sql 无需下游工具转化即可直接使用。
