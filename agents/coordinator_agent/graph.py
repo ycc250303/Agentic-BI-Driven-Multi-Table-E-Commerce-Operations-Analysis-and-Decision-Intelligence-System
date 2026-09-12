@@ -71,7 +71,7 @@ def build_coordinator_graph(
         return nlp_node(s, on_tool_end=_tool_end, trace_collector=trace_collector)
 
     def _decision(s: AgentState) -> AgentState:
-        return decision_node(s, model=model, trace_collector=trace_collector)
+        return decision_node(s, trace_collector=trace_collector)
 
     def _synthesize(s: AgentState) -> AgentState:
         return synthesize_node(

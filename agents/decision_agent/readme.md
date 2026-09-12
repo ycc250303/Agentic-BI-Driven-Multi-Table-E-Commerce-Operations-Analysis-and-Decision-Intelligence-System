@@ -36,10 +36,10 @@ agents/decision_agent/
 
 ## 主要入口
 
-- `run_decision(inputs, model=None)`：核心入口，输入 `DecisionInputs`，返回 `DecisionResult`。
+- `run_decision(inputs)`：核心入口，输入 `DecisionInputs`，返回 `DecisionResult`。
 - `answer_decision(...)`：面向调用方的字符串回答入口。
-- `run_decision_state(state, model=None)`：兼容 coordinator state 的入口。
-- `build_decision_node(model=None)`：LangGraph 节点包装。
+- `run_decision_state(state)`：兼容 coordinator state 的入口。
+- `build_decision_node()`：LangGraph 节点包装。
 
 CLI 示例：
 
@@ -98,7 +98,7 @@ What-if 不再以固定业务场景作为主入口。当前流程是：
 
 ## LLM 与 fallback
 
-`run_decision(..., model=...)` 支持注入测试模型或外部模型。叙述生成经 `agents.common.llm.invoke_structured`；未传入模型时使用默认 DeepSeek 结构化模型。
+叙述 / What-if 规划经 `agents.common.llm.invoke_structured`，默认 DeepSeek。决策 Agent 不接受独立模型注入；换模型或测试替身应在 `agents.common` 扩展。
 
 如果叙述层 LLM 返回空值、非结构化结果或抛出异常，Decision Agent 会：
 
@@ -115,7 +115,7 @@ $env:PYTHONIOENCODING='utf-8'
 .venv\Scripts\python.exe -m pytest agents\decision_agent\tests -q --tb=short
 ```
 
-快速定位模型注入和契约问题：
+快速定位契约与 fallback 问题：
 
 ```powershell
 .venv\Scripts\python.exe -m pytest agents\decision_agent\tests\test_service.py -q

@@ -52,6 +52,7 @@ def _iter_negative_topics(raw_topics: Any) -> list[dict[str, Any]]:
 
 
 def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
+    """从标准化上游结果抽 DecisionSignal。阈值写死在规则层，LLM 不参与本步。"""
     user_query = str(state.get("user_query", "")).strip()
     analysis_result = state.get("analysis_result") or {}
     nlp_result = state.get("nlp_result") or {}
@@ -62,6 +63,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
     kpis = analysis_result.get("kpis") or {}
     findings = analysis_result.get("findings") or []
 
+    # KPI 硬阈值：准时率 < 82%、配送天数 > 8 天 → 物流信号
     on_time_rate = _safe_float(kpis.get("on_time_rate"))
     if on_time_rate is not None and on_time_rate < 0.82:
         gap = 0.82 - on_time_rate
@@ -239,8 +241,8 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
                 )
             )
 
-    # BERTopic 发现 40 个细粒度主题，单个占比最高 ~14%。
-    # 按 4 大类聚合后判断（基于 review_topic_meta 表 40 个真实标签做葡语词根分类）。
+    # BERTopic 约 40 个细粒度主题，单个占比最高约 14%，需先按四大类聚合再比阈值。
+    # 分类依据 review_topic_meta 的葡语词根：配送 / 质量 / 货不对板 / 售后。
     topic_delivery_share = 0.0
     topic_quality_share = 0.0
     topic_wrong_item_share = 0.0
@@ -407,6 +409,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
 
     trend_direction = str(forecast_result.get("trend_direction") or "").lower()
     risk_flags = forecast_result.get("risk_flags") or []
+    # 预测走平/下行或带风险旗 → forecast 域信号，供保增长动作使用
     if trend_direction in {"down", "flat"} or risk_flags:
         severity = 0.5 if trend_direction == "flat" else 0.72
         if any("放缓" in str(flag) or "slow" in str(flag).lower() for flag in risk_flags):

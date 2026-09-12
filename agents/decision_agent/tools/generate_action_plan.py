@@ -4,6 +4,7 @@ from ..schemas import ActionPlanItem, ScoredProblem
 
 
 def generate_action_plan(problems: list[ScoredProblem]) -> list[ActionPlanItem]:
+    """按问题类型套模板动作（对象/责任人/KPI/时限）。叙述层可改写措辞，不能改这些字段来源。"""
     plan: list[ActionPlanItem] = []
     for index, problem in enumerate(problems[:3], start=1):
         priority = f"P{index}"

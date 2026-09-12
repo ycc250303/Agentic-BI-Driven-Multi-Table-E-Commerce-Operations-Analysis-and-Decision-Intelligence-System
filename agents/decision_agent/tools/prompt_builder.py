@@ -8,6 +8,7 @@ from ..schemas import DecisionResult, EvidenceBundle, ScoredProblem
 
 
 def build_system_prompt() -> str:
+    """叙述层 system：护栏 + 决策规则 + 输出格式，均来自 config/decision_agent/。"""
     return compose_system_prompt_parts(
         "# 核心规则\n\n" + load_config_text("decision_agent", "system_core.md"),
         "# 决策规则\n\n" + load_config_text("decision_agent", "decision_rules.md"),

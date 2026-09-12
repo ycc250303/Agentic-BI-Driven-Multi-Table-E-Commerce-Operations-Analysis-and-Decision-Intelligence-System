@@ -1,3 +1,14 @@
+"""决策核心流水线：规则层出结构化草稿，LLM 只负责把草稿写成叙述。
+
+LLM 只经 ``agents.common.llm.invoke_structured``（默认 DeepSeek）；
+换模型在 common 扩展，本模块不接收独立 model 注入。
+
+步骤（`run_decision`）：
+1. 标准化上游字段 → 2. 抽信号 → 3. 打分排序 → 4. 行动计划
+5. What-if 规划/执行 → 6. 组装 DecisionResult → 7. LLM 叙述（失败则规则摘要）
+8. 质量检查，必要时修订一遍。
+"""
+
 from __future__ import annotations
 
 import logging
@@ -38,6 +49,7 @@ class NarrativeResponse(BaseModel):
 
 
 def _normalize_inputs(inputs: DecisionInputs) -> DecisionInputs:
+    """把 SQL/NLP/预测/图表/What-if 的异构字段收成规则层能读的统一形状。"""
     data = inputs.model_dump(mode="python")
     return DecisionInputs(
         user_query=inputs.user_query,
@@ -80,13 +92,12 @@ def _select_what_if_result(
     bundle,
     problems: list[ScoredProblem],
     state_like: dict[str, Any],
-    model=None,
 ) -> WhatIfResult:
+    """优先沿用上游已有模拟；仅当本轮明确是 What-if 且旧场景过期时才重跑。"""
     plan = plan_what_if(
         inputs=inputs,
         bundle=bundle,
         problems=problems,
-        model=model,
     )
     if inputs.what_if_result and not (
         plan.has_what_if_intent and _is_legacy_what_if(inputs.what_if_result)
@@ -104,6 +115,7 @@ def _coerce_narrative_response(response: Any) -> NarrativeResponse:
 
 
 def _fallback_narrative(decision_result: DecisionResult) -> NarrativeResponse:
+    """叙述 LLM 失败时的确定性摘要：优先问题 + 两条证据 + 第一条动作，链路不中断。"""
     evidence = []
     for finding in decision_result.key_findings[:2]:
         for item in finding.get("evidence") or []:
@@ -145,11 +157,11 @@ def _append_quality_issues(report, issues: list[str]) -> None:
 
 def compose_final_answer(
     *,
-    model,
     bundle,
     problems,
     decision_result: DecisionResult,
 ) -> NarrativeResponse:
+    """LLM 只润色规则草稿，禁止新增输入中不存在的事实。Prompt 见 config/decision_agent/。"""
     messages = [
         SystemMessage(content=build_system_prompt()),
         HumanMessage(
@@ -160,13 +172,12 @@ def compose_final_answer(
             )
         ),
     ]
-    response = invoke_structured(NarrativeResponse, messages, model=model)
+    response = invoke_structured(NarrativeResponse, messages)
     return _coerce_narrative_response(response)
 
 
 def revise_final_answer(
     *,
-    model,
     bundle,
     problems,
     decision_result: DecisionResult,
@@ -190,26 +201,31 @@ def revise_final_answer(
             )
         ),
     ]
-    response = invoke_structured(NarrativeResponse, messages, model=model)
+    response = invoke_structured(NarrativeResponse, messages)
     return _coerce_narrative_response(response)
 
 
-def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
+def run_decision(inputs: DecisionInputs) -> DecisionResult:
+    # 1) 异构上游 → 统一 DecisionInputs（不查库）
     inputs = _normalize_inputs(inputs)
     state_like = inputs.model_dump(mode="python")
 
+    # 2) KPI/NLP/预测超阈值 → DecisionSignal 列表
     bundle = build_evidence_bundle(state_like)
+    # 3) 按域聚合打分，priority 降序
     problems = score_problems(bundle)
+    # 4) 取 Top3 问题套模板动作（owner / KPI / 时限）
     action_plan = generate_action_plan(problems)
 
+    # 5) 先规划再执行；缺 baseline/弹性则 missing_inputs，不编造
     what_if_result = _select_what_if_result(
         inputs,
         bundle,
         problems,
         state_like,
-        model=model,
     )
 
+    # 6) 规则层草稿：主题 / 问题陈述 / 发现 / 根因 / 动作 / 模拟，均有证据指针
     root_causes = [
         RootCauseItem(
             cause=cause,
@@ -244,10 +260,10 @@ def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
         ],
     )
 
+    # 7) 叙述层：结构化输出；空结果/异常则规则摘要兜底，保留上面的草稿
     narrative_issues: list[str] = []
     try:
         narrative = compose_final_answer(
-            model=model,
             bundle=bundle,
             problems=problems,
             decision_result=decision_result,
@@ -262,6 +278,7 @@ def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
     if narrative.assumptions:
         decision_result.assumptions = narrative.assumptions
 
+    # 8) 质量门：过强表述 / 无指标 / 代理证据未声明边界 → 最多修订 1 次
     report = evaluate_decision_quality(bundle=bundle, decision_result=decision_result)
     _append_quality_issues(report, narrative_issues)
     max_revisions = int(os.getenv("DECISION_AGENT_MAX_REVISIONS", "1") or "0")
@@ -273,7 +290,6 @@ def run_decision(inputs: DecisionInputs, *, model=None) -> DecisionResult:
     ):
         try:
             revised = revise_final_answer(
-                model=model,
                 bundle=bundle,
                 problems=problems,
                 decision_result=decision_result,
@@ -308,8 +324,8 @@ def answer_decision(
     what_if_result: dict[str, Any] | None = None,
     intent: str = "prescriptive",
     conversation_history: list[dict[str, str]] | None = None,
-    model=None,
 ) -> str:
+    """调用方只要自然语言建议时走这里；结构化字段仍由 run_decision 产出。"""
     inputs = DecisionInputs(
         user_query=user_query,
         intent=intent,
@@ -320,5 +336,5 @@ def answer_decision(
         what_if_result=what_if_result or {},
         conversation_history=conversation_history or [],
     )
-    result = run_decision(inputs, model=model)
+    result = run_decision(inputs)
     return result.narrative_answer

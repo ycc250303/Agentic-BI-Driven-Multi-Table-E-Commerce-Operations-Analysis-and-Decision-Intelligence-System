@@ -63,6 +63,7 @@ def evaluate_decision_quality(
     bundle: EvidenceBundle,
     decision_result: DecisionResult,
 ) -> DecisionQualityReport:
+    """检查叙述是否越权：过强措辞、无指标、代理证据未声明边界、What-if 状态与数值不一致。"""
     answer = decision_result.narrative_answer or ""
     issues: list[str] = []
     unsupported_claims: list[str] = []

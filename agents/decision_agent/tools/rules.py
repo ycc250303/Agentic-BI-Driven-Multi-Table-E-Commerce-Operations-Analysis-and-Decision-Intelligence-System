@@ -22,6 +22,7 @@ def _severity_from_score(score: float) -> str:
 
 
 def _priority_score(impact: float, urgency: float, feasibility: float) -> float:
+    """影响 50% + 紧急 30% + 可落地 20%；便于物流/卖家/品类横向比较。"""
     return round(0.5 * impact + 0.3 * urgency + 0.2 * feasibility, 4)
 
 
@@ -61,6 +62,7 @@ def _problem(
 
 
 def detect_problems_and_score(bundle: EvidenceBundle) -> list[ScoredProblem]:
+    """按域聚合信号；impact < 0.45 丢弃。无命中则给一条「继续监控」的 general 问题。"""
     problems: list[ScoredProblem] = []
     delivery_signals = [s for s in bundle.signals if s.domain == "delivery"]
     seller_signals = [s for s in bundle.signals if s.domain == "seller"]

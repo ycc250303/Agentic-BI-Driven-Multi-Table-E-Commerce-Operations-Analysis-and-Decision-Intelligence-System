@@ -12,12 +12,16 @@ from .state import BIState
 from agents.coordinator_agent.orchestration.upstream_ensure import ensure_upstream_payloads
 
 
-def run_decision_state(state: BIState, *, model=None) -> BIState:
-    """Compatibility path for orchestrator-style state input/output."""
+def run_decision_state(state: BIState) -> BIState:
+    """协调器入口：补齐 NLP/预测 → 转 DecisionInputs → 跑流水线 → 写回 state。
+
+    写入：decision_result（结构化）、final_answer（叙述）、warnings（缺上游证据时如实告警）。
+    """
     working = dict(state)
+    # 决策前补齐：评论洞察缺失则补跑 NLP；predictive 且无预测则从 SQL 趋势或 GMV 外推构造
     working.update(ensure_upstream_payloads(working))
     inputs = decision_inputs_from_state(working)
-    decision_result = run_decision(inputs, model=model)
+    decision_result = run_decision(inputs)
     warnings = collect_input_warnings(
         inputs,
         pipeline={
@@ -40,11 +44,8 @@ def run_decision_state(state: BIState, *, model=None) -> BIState:
 class DecisionAgent:
     """Backward-compatible wrapper around the state compatibility path."""
 
-    def __init__(self, model=None):
-        self.model = model
-
     def run(self, state: BIState) -> BIState:
-        return run_decision_state(state, model=self.model)
+        return run_decision_state(state)
 
 
 def decision_node(state: BIState) -> BIState:

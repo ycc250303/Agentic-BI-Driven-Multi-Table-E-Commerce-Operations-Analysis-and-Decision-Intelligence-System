@@ -374,10 +374,9 @@ def nlp_node(
 def decision_node(
     state: AgentState,
     *,
-    model=None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
-    out = run_decision_state(state, model=model)
+    out = run_decision_state(state)
     out["agents_done"] = _mark_done(out, "decision")
     decision = out.get("decision_result") or {}
     what_if = decision.get("what_if_result") or {}

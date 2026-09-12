@@ -20,6 +20,7 @@ def _looks_like_rate(metric: str, unit: str) -> bool:
 
 
 def _apply_formula(computation: WhatIfComputation) -> float:
+    """只执行计划里写明的五种算术；比率类结果夹到 [0, 1]，不引入业务弹性。"""
     baseline = float(computation.baseline_value)
     change = float(computation.change_value)
     formula = computation.formula
@@ -113,11 +114,10 @@ def _directional_result(plan: WhatIfPlan) -> WhatIfResult:
 
 
 def run_what_if(plan: WhatIfPlan | Mapping[str, Any], state: Mapping[str, Any] | None = None) -> WhatIfResult:
-    """Run a generic What-if plan.
+    """执行通用 What-if。
 
-    `state` is accepted for future evidence lookups. The current runner only
-    executes computations whose baseline and change values are explicit in the
-    plan, so it does not infer hidden business parameters from state.
+    `state` 预留给以后做证据回查。当前 runner 只算计划里显式给出的 baseline/change，
+    不从 state 推断 GMV 弹性、转化率等隐藏参数。
     """
     del state
     plan = plan if isinstance(plan, WhatIfPlan) else WhatIfPlan.model_validate(plan)

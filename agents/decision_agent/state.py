@@ -4,11 +4,10 @@ from typing import Any, TypedDict
 
 
 class BIState(TypedDict, total=False):
-    """Compatibility-only state shape for orchestrators such as LangGraph.
+    """协调器兼容态（LangGraph 共享 state 的子集）。
 
-    This is not the primary Decision-Agent input contract. New integrations
-    should prefer `DecisionInputs` and the `answer_decision` / `run_decision`
-    interfaces.
+    主契约是 DecisionInputs / DecisionResult。本 TypedDict 只服务
+    `run_decision_state`：读入上游证据，写出 decision_result / final_answer。
     """
 
     user_query: str

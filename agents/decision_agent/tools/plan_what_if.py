@@ -79,8 +79,8 @@ def plan_what_if(
     inputs: DecisionInputs,
     bundle: EvidenceBundle,
     problems: list[ScoredProblem],
-    model=None,
 ) -> WhatIfPlan:
+    """结构化规划反事实：有无意图、公式、缺口。失败则 has_what_if_intent=False，不用关键词猜意图。"""
     try:
         response = invoke_structured(
             WhatIfPlan,
@@ -94,7 +94,6 @@ def plan_what_if(
                     )
                 ),
             ],
-            model=model,
         )
         if isinstance(response, WhatIfPlan):
             return response

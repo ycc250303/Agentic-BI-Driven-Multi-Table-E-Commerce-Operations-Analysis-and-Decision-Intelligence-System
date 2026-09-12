@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-"""Boundary adapters for legacy state and upstream agent payloads.
+"""上游异构 payload → DecisionInputs 的唯一边界。
 
-Core Decision-Agent execution uses `DecisionInputs`. This module is the only
-place that should understand historical state keys such as `analysis_summary`,
-`review_insights`, or `chart_result`.
+规则层只认标准化后的 analysis/nlp/forecast/visualization/what_if。
+历史键（analysis_summary、review_insights、chart_result）只在本文件消化，
+避免服务层和工具层再写一套字段兼容。
 """
 
 from copy import deepcopy
@@ -30,6 +30,7 @@ def _pick_first(source: dict[str, Any], keys: list[str], default: Any = None) ->
 
 
 def normalize_analysis_result(raw: dict[str, Any] | None) -> dict[str, Any]:
+    """SQL 证据收口：统一成 summary_text / kpis / findings / tables / simulation_inputs。"""
     source = deepcopy(raw or {})
     if not source:
         return {}
@@ -71,9 +72,11 @@ def normalize_analysis_result(raw: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def normalize_nlp_result(raw: dict[str, Any] | None) -> dict[str, Any]:
+    """评论证据收口：BERTopic 优先，关键词主题回退；决策不再重训情感/主题模型。"""
     source = deepcopy(raw or {})
     if not source:
         return {}
+    # 决策层只吃标准化后的 negative_topics / worst_categories / sentiment_overview
     # 优先用 BERTopic 无监督主题（无 other 盲区），回退到关键词 topic_distribution
     bertopic_topics = source.get("topics_bertopic") or {}
     if bertopic_topics.get("topics"):
@@ -279,7 +282,7 @@ def normalize_state(state: dict[str, Any]) -> BIState:
 
 
 def decision_inputs_from_state(state: dict[str, Any]) -> DecisionInputs:
-    """Convert compatibility state into the core `DecisionInputs` contract."""
+    """协调器 state → 核心契约。NLP 同时认 nlp_result 与 review_insights。"""
     normalized = normalize_state(state)
     return DecisionInputs(
         user_query=str(normalized.get("user_query") or ""),
@@ -299,7 +302,7 @@ def merge_decision_result_to_state(
     *,
     warnings: list[str] | None = None,
 ) -> BIState:
-    """Write a `DecisionResult` back to compatibility state fields."""
+    """写回协调器：decision_result 给 synthesize / Dashboard，final_answer 给用户可见叙述。"""
     next_state = dict(state)
     next_state["decision_result"] = decision_result.model_dump(mode="json")
     next_state["final_answer"] = decision_result.narrative_answer

@@ -79,6 +79,7 @@ def collect_input_warnings(
     *,
     pipeline: dict[str, Any] | PipelineContext | None = None,
 ) -> list[str]:
+    """补齐之后仍缺必需上游时告警。缺证据就说缺，不当成「业务上没问题」。"""
     ctx = (
         pipeline
         if isinstance(pipeline, PipelineContext)
