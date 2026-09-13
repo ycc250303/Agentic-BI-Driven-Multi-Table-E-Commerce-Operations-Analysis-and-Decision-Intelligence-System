@@ -10,9 +10,7 @@
 streamlit run dashboard/app.py
 ```
 
-依赖根目录 `.env` 中的 LLM 与数据库配置（与 CLI / 协调器相同）。
-
-另有一个零依赖的 HTTP + SSE 示例见 [`examples/session_web_demo/`](../examples/session_web_demo/)，本 Dashboard **进程内直接调用** `SessionManager`，不经过 HTTP。
+依赖根目录 `.env` 中的 LLM 与数据库配置（与 CLI / 协调器相同）。侧边栏「模型设置」可在 DeepSeek 与通义千问（`qwen3.8-max`）之间切换。本 Dashboard **进程内直接调用** `SessionManager`，不经过 HTTP。
 
 ---
 
@@ -48,7 +46,8 @@ dashboard/
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Sidebar          │  对话（chat_panel）  │  可视化（viz）   │
-│  · 新建对话        │  3 : 2 宽屏两列，各自独立滚动          │
+│  · 模型设置        │  3 : 2 宽屏两列，各自独立滚动          │
+│  · 新建对话        │                                      │
 │  · 会话列表        │                                      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -68,7 +67,7 @@ dashboard/
 | `turn_runner.py` | 调用 `SessionManager.stream_turn_events()`，消费 `web_events` 形状的事件 |
 | `chat_panel.py` | 渲染历史消息；pending 问题 + rerun 触发分析；实时 trace 与图表预览 |
 | `viz_panel.py` | 按时间顺序展示各轮图表（旧在上、新在下，与对话一致）；点击放大 + 下载 PNG |
-| `sidebar.py` | 列出磁盘上全部 session（含 CLI 创建的）；单行省略标题 |
+| `sidebar.py` | 列出磁盘上全部 session（含 CLI 创建的）；单行省略标题；模型 / 思考模式 |
 
 ---
 

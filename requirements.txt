@@ -12,6 +12,7 @@
 langchain==1.4.0
 langchain-core==1.6.2
 langchain-deepseek==1.1.0
+langchain-openai==1.6.0
 langgraph==1.2.11
 pydantic==2.13.4
 python-dotenv==1.2.2
@@ -20,7 +21,7 @@ python-dotenv==1.2.2
 # 数据库连接：sql_agent / nlp_agent / decision_agent 共用
 # -----------------------------------------------------------------------------
 PyMySQL==1.2.0                 # 各 Agent 在线查询主用
-mysql-connector-python==26.7.0  # utils/load_data_to_mysql.py 等管理脚本用
+mysql-connector-python==26.7.0  # utils/benchmark_preagg_vs_raw.py 用
 
 # -----------------------------------------------------------------------------
 # 数据处理与可视化：viz_agent + 预聚合性能对比作图

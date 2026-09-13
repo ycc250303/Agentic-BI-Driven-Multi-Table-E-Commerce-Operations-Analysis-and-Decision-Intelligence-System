@@ -24,10 +24,13 @@ pip install -r requirements.txt
 # pip install -r requirements-nlp.txt
 ```
 
-- 设置环境变量（项目根目录 `.env` 含 `DEEPSEEK_API_KEY` 及 `AGENTIC_BI_DB_*` 时，从项目根执行 Python 即可；`db_env` 负责读库配置，`agents.common.llm` 负责读 API Key。也可仅用 shell 导出逐项设置）
+- 设置环境变量（项目根目录 `.env` 含当前 LLM 提供商的 API Key 及 `AGENTIC_BI_DB_*` 时，从项目根执行 Python 即可；`db_env` 负责读库配置，`agents.common.llm` 负责读 API Key。也可仅用 shell 导出逐项设置）
 
 ```bash
 export DEEPSEEK_API_KEY='your_api_key'
+# 可选：通义千问（Dashboard 可切换；模型固定 qwen3.8-max）
+# export DASHSCOPE_API_KEY='your_dashscope_key'
+# export AGENTIC_BI_LLM_PROVIDER=qwen
 export AGENTIC_BI_DB_HOST='your_db_host'
 export AGENTIC_BI_DB_PORT='3306'
 export AGENTIC_BI_DB_NAME='your_database_name'
@@ -45,9 +48,7 @@ export AGENTIC_BI_DB_PASSWORD='your_database_password'
 - 导入数据
 
 ```bash
-python utils/init_database.py
-python utils/load_data_to_mysql.py
-python utils/refresh_views.py
+python utils/setup.py
 ```
 
 ## 协调器 Agent（多 Agent 编排）
@@ -58,7 +59,7 @@ python utils/refresh_views.py
 
 ```bash
 python -m agents.coordinator_agent.run --query "2017年哪个州的销售额最高？"
-python -m agents.coordinator_agent.run --decompose-only --no-llm-plan --query "A？B？"
+python -m agents.coordinator_agent.run --decompose-only --query "A？B？"
 ```
 
 多轮会话入口：
@@ -79,7 +80,7 @@ Dashboard 与协调器共用 `SessionManager` 与 `runtime/sessions/` 持久化�
 streamlit run dashboard/app.py
 ```
 
-- 侧边栏展示磁盘上全部 session（含 CLI / web demo 创建的会话）
+- 侧边栏展示磁盘上全部 session（含 CLI 创建的会话）
 - 刷新页面后会话不丢失
 - 同一会话内可追问（如「那 SP 州呢？」），由协调器 `resolve_conversation_context` 处理
 

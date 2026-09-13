@@ -165,7 +165,7 @@ def plan_with_llm(
 ) -> tuple[VizPlan, str]:
     """单图选型：CSV 样本 + 列画像 → VizPlan（chart_type 与列映射）。
 
-    Prompt: config/visualization_agent/plan_chart.md。默认 ``get_structured_llm()``（DeepSeek）；
+    Prompt: config/visualization_agent/plan_chart.md。默认 ``get_structured_llm()``；
     ``model`` 仅测试注入。模型不写 matplotlib 代码。
     """
     system = compose_system_prompt("visualization_agent", "plan_chart.md")

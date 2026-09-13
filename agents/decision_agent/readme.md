@@ -96,7 +96,7 @@ What-if 不再以固定业务场景作为主入口。当前流程是：
 
 ## LLM 与 fallback
 
-叙述 / What-if 规划经 `agents.common.llm.invoke_structured`，默认 DeepSeek。决策 Agent 不接受独立模型注入；换模型或测试替身应在 `agents.common` 扩展。
+叙述 / What-if 规划经 `agents.common.llm.invoke_structured`（默认 DeepSeek，可切 Qwen）。决策 Agent 不接受独立模型注入；换模型或测试替身应在 `agents.common` 扩展。
 
 如果叙述层 LLM 返回空值、非结构化结果或抛出异常，Decision Agent 会：
 

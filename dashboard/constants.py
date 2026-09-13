@@ -8,5 +8,6 @@ SESSION_TITLE_MAX_CHARS = 40
 
 SIDEBAR_CONV_COL_WEIGHTS = (9, 1)
 
-# Streamlit session_state：DeepSeek 思考模式开关（Dashboard 侧边栏）
+# Streamlit session_state：LLM 提供商与思考模式（Dashboard 侧边栏）
+LLM_PROVIDER_SESSION_KEY = "llm_provider"
 DEEPSEEK_THINKING_SESSION_KEY = "deepseek_thinking_enabled"

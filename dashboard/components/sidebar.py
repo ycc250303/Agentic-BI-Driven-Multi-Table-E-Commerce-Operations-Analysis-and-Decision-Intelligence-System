@@ -2,8 +2,15 @@ from __future__ import annotations
 
 import streamlit as st
 
+from agents.common.llm import (
+    LLM_PROVIDER_LABELS,
+    LLM_PROVIDERS,
+    has_provider_api_key,
+    provider_api_key_env,
+)
 from dashboard import session_store
 from dashboard.constants import DEEPSEEK_THINKING_SESSION_KEY
+from dashboard.constants import LLM_PROVIDER_SESSION_KEY
 from dashboard.constants import SIDEBAR_CONV_COL_WEIGHTS
 from dashboard.models import Conversation
 from dashboard.text_utils import format_session_button_label
@@ -47,16 +54,28 @@ def render_sidebar() -> None:
     st.caption("Olist 电商运营分析与决策智能系统")
 
     with st.expander("模型设置", expanded=False):
+        st.selectbox(
+            "模型",
+            options=list(LLM_PROVIDERS),
+            format_func=lambda p: LLM_PROVIDER_LABELS.get(p, p),
+            key=LLM_PROVIDER_SESSION_KEY,
+            help="DeepSeek 与通义千问共用同一套编排；Qwen 固定 qwen3.8-max。",
+        )
         thinking = st.toggle(
-            "DeepSeek 思考模式",
-            help="开启后模型会先进行链式推理再作答，响应更慢，复杂分析可能更细致。",
+            "思考模式",
+            help="开启后自由文本步骤会先推理再作答，响应更慢。结构化查数 / 分解 / 路由仍关闭思考（API 限制）。",
             key=DEEPSEEK_THINKING_SESSION_KEY,
         )
-        session_store.apply_deepseek_thinking_from_session()
+        session_store.apply_llm_settings_from_session()
+        provider = str(st.session_state.get(LLM_PROVIDER_SESSION_KEY) or "deepseek")
+        if not has_provider_api_key(provider):
+            st.warning(
+                f"当前模型缺少 {provider_api_key_env(provider)}，请在项目根目录 .env 中配置。"
+            )
         if thinking:
             st.caption(
-                "当前：思考模式已开启（分解/路由/汇总等步骤）；"
-                "SQL 结构化步骤仍用快速模式（API 限制）"
+                "当前：思考模式已开启（汇总等自由文本步骤）；"
+                "分解 / 路由 / SQL 结构化步骤仍关闭思考（API 限制）"
             )
         else:
             st.caption("当前：思考模式已关闭（响应更快）")

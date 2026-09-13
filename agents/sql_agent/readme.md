@@ -7,7 +7,7 @@
 ## 快速运行
 
 ```bash
-export DEEPSEEK_API_KEY=...
+export DEEPSEEK_API_KEY=...   # 或 DASHSCOPE_API_KEY=... 且 AGENTIC_BI_LLM_PROVIDER=qwen
 export AGENTIC_BI_DB_HOST=... AGENTIC_BI_DB_PORT=3306
 export AGENTIC_BI_DB_USER=... AGENTIC_BI_DB_PASSWORD=... AGENTIC_BI_DB_NAME=...
 
@@ -77,7 +77,7 @@ flowchart TD
 | `check_sql_tool` | 否 | 格式与只读校验（不连库） |
 | `execute_sql_tool` | 否 | 执行前只读闸门，连库执行，写 CSV |
 
-共享规则：`tools/sql_format_rules.py`、`tools/result_shape.py`。LLM：`agents.common.llm.invoke_structured`（DeepSeek，关思考）。
+共享规则：`tools/sql_format_rules.py`、`tools/result_shape.py`。LLM：`agents.common.llm.invoke_structured`（当前提供商，关思考）。
 
 ---
 
@@ -85,7 +85,8 @@ flowchart TD
 
 | 变量 | 用途 |
 |------|------|
-| `DEEPSEEK_API_KEY` | LLM |
+| `DEEPSEEK_API_KEY` / `DASHSCOPE_API_KEY` | 当前 LLM 提供商对应的 Key |
+| `AGENTIC_BI_LLM_PROVIDER` | 可选，`deepseek`（默认）或 `qwen` |
 | `AGENTIC_BI_DB_*` | MySQL 连接（execute 必填） |
 | `AGENTIC_BI_SQL_MAX_ROWS` | 行数上限，默认 5000 |
 | `AGENTIC_BI_SQL_CSV_DIR` | CSV 目录，默认 `query_results/` |
@@ -115,7 +116,7 @@ flowchart TD
 pytest agents/sql_agent/tests/test_ex_compare.py agents/sql_agent/tests/test_eval_ex_helpers.py -q
 ```
 
-实库评测（需 `.env` 与 `DEEPSEEK_API_KEY`）：
+实库评测（需 `.env` 与当前提供商的 API Key）：
 
 ```bash
 # 只检查金标 SQL 能否执行、行数形态是否符合 scalar / topk

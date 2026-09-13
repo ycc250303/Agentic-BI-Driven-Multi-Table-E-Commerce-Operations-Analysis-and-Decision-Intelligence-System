@@ -7,6 +7,7 @@ import streamlit as st
 from agents.coordinator_agent.session.session_manager import SessionManager
 
 from dashboard.constants import DEEPSEEK_THINKING_SESSION_KEY
+from dashboard.constants import LLM_PROVIDER_SESSION_KEY
 from dashboard.models import Conversation, VizRound
 from dashboard.session_projection import (
     list_item_to_conversation,
@@ -25,7 +26,9 @@ def get_manager() -> SessionManager:
 def init_session_store() -> None:
     if DEEPSEEK_THINKING_SESSION_KEY not in st.session_state:
         st.session_state[DEEPSEEK_THINKING_SESSION_KEY] = False
-    apply_deepseek_thinking_from_session()
+    if LLM_PROVIDER_SESSION_KEY not in st.session_state:
+        st.session_state[LLM_PROVIDER_SESSION_KEY] = "deepseek"
+    apply_llm_settings_from_session()
     if "active_conversation_id" not in st.session_state:
         sessions = get_manager().list_sessions()
         st.session_state.active_conversation_id = (
@@ -80,13 +83,19 @@ def is_deepseek_thinking_enabled() -> bool:
 
 def set_deepseek_thinking_enabled(enabled: bool) -> None:
     st.session_state[DEEPSEEK_THINKING_SESSION_KEY] = bool(enabled)
-    apply_deepseek_thinking_from_session()
+    apply_llm_settings_from_session()
 
 
 def apply_deepseek_thinking_from_session() -> None:
-    from agents.common.llm import set_deepseek_thinking_enabled as sync_llm
+    apply_llm_settings_from_session()
 
-    sync_llm(is_deepseek_thinking_enabled())
+
+def apply_llm_settings_from_session() -> None:
+    from agents.common.llm import set_llm_provider, set_thinking_enabled
+
+    provider = str(st.session_state.get(LLM_PROVIDER_SESSION_KEY) or "deepseek")
+    set_llm_provider(provider)
+    set_thinking_enabled(is_deepseek_thinking_enabled())
 
 
 def _pending_query_key(conv_id: str) -> str:
