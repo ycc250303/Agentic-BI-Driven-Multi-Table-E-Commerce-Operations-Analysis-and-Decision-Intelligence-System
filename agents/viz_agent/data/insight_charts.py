@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 def _topic_zh(key: str) -> str:
-    from agents.viz_agent.plan.viz_planner import _TOPIC_ZH
+    from agents.viz_agent.plan.tasks import _TOPIC_ZH
 
     return _TOPIC_ZH.get(key, key)
 

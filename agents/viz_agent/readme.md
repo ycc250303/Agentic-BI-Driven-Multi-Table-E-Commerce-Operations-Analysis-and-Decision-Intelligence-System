@@ -10,7 +10,12 @@ agents/viz_agent/
 ├── run.py                 # 单图调试 CLI + 单图选型
 ├── intelligent_viz.py     # 产品路径入口（套件 → 取数 → 选型 → 渲染）
 ├── schema.py              # VizPlan / 单图输出契约
-├── plan/                  # 套件规划、折线列规范化
+├── plan/
+│   ├── viz_planner.py     # 套件规划入口（LLM / 启发式 → 规则后处理）
+│   ├── tasks.py           # VizSuitePlan / VizChartTask
+│   ├── columns.py         # 列解析、单值 KPI 判定
+│   ├── postprocess.py     # 补漏图、拆多 SQL、去重、诊断评论图
+│   └── line_plan.py       # 折线时间/系列列规范化
 ├── data/                  # 查数 CSV 选择、评论洞察表、GMV 预测
 ├── render/                # PNG 渲染与输出目录
 └── tests/
@@ -22,7 +27,7 @@ agents/viz_agent/
 
 ## 1. 依赖与环境
 
-- 规划图表时需 **`DEEPSEEK_API_KEY`**。
+- 规划图表时需当前 LLM 提供商对应的 Key（`DEEPSEEK_API_KEY` 或 `DASHSCOPE_API_KEY`）。
 - 可选：`AGENTIC_BI_VIZ_DIR` — PNG 输出目录；默认 `agents/viz_agent/chart_output/`。
 - 可选：`AGENTIC_BI_VIZ_FONT` — 中文字体（`.ttf` / `.ttc`）。未设置时按系统探测：Windows 微软雅黑、macOS 冬青黑体/黑体/宋体/苹方、Linux Noto CJK。仍显示方框时再设该变量。
 
@@ -46,7 +51,7 @@ from agents.viz_agent.intelligent_viz import run_intelligent_visualization
 | `review_insights` | `dict \| None` | 评论洞察（词云 / 主题分布等）；协调器传入 `review_insights` 或 `nlp_result` |
 | `on_tool_end` | 可选 | 每张图渲染完回调 `(name, json_str)`，供 SSE / 调试 |
 
-规划与单图选型走 `agents.common.llm.invoke_structured`（默认 DeepSeek）。`model` 仅测试注入；产品路径不要再传 `use_llm`。LLM 失败回退启发式，不是可配置开关。
+规划与单图选型走 `agents.common.llm.invoke_structured`（默认 DeepSeek，可切 Qwen）。`model` 仅测试注入；产品路径不要再传 `use_llm`。LLM 失败回退启发式，不是可配置开关。
 
 `sql_runs[]` 一条（协调器写入）：
 

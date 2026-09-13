@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from agents.viz_agent.plan.viz_planner import (
-    VizChartTask,
+from agents.viz_agent.plan.columns import extract_columns_from_exec_payload
+from agents.viz_agent.plan.postprocess import (
     _dedupe_viz_charts,
     _ensure_sql_run_chart_tasks,
     _enrich_diagnostic_review_charts,
@@ -11,9 +11,8 @@ from agents.viz_agent.plan.viz_planner import (
     _normalize_chart_tasks,
     _strip_unrenderable_insight_charts,
     chart_task_fingerprint,
-    extract_columns_from_exec_payload,
-    heuristic_viz_suite,
 )
+from agents.viz_agent.plan.viz_planner import VizChartTask, heuristic_viz_suite
 
 
 def test_infer_hint_no_wordcloud_without_text_column():

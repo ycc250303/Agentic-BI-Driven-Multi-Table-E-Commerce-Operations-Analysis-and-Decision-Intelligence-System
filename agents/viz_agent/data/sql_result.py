@@ -6,7 +6,7 @@ import json
 from typing import Any
 
 from agents.viz_agent.plan.line_plan import column_is_category, column_is_time
-from agents.viz_agent.plan.viz_planner import (
+from agents.viz_agent.plan.columns import (
     _parse_columns_from_summary_zh,
     _read_csv_header_columns,
     build_column_profiles_for_viz,
