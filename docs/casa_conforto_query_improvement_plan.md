@@ -208,21 +208,7 @@ WHERE product_category_english = %s
 
 建议动作：
 
-1. 检查 `utils/load_data_to_mysql.py` 中 schema 文件路径。
-
-当前代码指向：
-
-```python
-SCHEMA_SQL = ROOT_DIR / "utils" / "origin_table.sql"
-```
-
-但仓库实际文件是：
-
-```text
-utils/create_origin_table.sql
-```
-
-需要统一文件名，避免初始化脚本无法可靠建表。
+1. 检查 `utils/setup.py` / `utils/schema.sql` 中 origin 段是否被 `load` 执行。
 
 2. 读取 CSV 时使用 `utf-8-sig`，避免 BOM 造成首列字段名无法匹配。
 
@@ -426,13 +412,13 @@ GROUP BY product_category_english;
 
 ```sql
 SELECT
-    year_month,
+    sales_month,
     ROUND(SUM(total_gmv), 2) AS total_gmv,
     SUM(total_orders) AS total_orders
 FROM mv_category_sales
 WHERE product_category_english = 'casa_conforto'
-GROUP BY year_month
-ORDER BY year_month;
+GROUP BY sales_month
+ORDER BY sales_month;
 ```
 
 ## 7. 验收标准

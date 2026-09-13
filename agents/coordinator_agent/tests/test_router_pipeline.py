@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agents.coordinator_agent.orchestration.router import choose_next_agent, route_next_rule
+from agents.coordinator_agent.orchestration.router import route_next_rule
 
 
 def _base_state(user_query: str) -> dict:
@@ -67,5 +67,5 @@ def test_gmv_only_skips_post_agents_when_not_suggested():
 
 def test_choose_next_agent_rule_mode():
     state = _base_state("Top 10 差评品类及其主要差评原因是什么？")
-    d = choose_next_agent(state, use_llm=False)
+    d = route_next_rule(state)
     assert d.next_agent == "nlp"

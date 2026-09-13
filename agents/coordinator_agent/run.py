@@ -3,7 +3,7 @@
 
 用法（项目根目录）：
     python -m agents.coordinator_agent.run --query "2017年哪个州的销售额最高？"
-    python -m agents.coordinator_agent.run --decompose-only --no-llm-plan --query "..."
+    python -m agents.coordinator_agent.run --decompose-only --query "..."
 """
 
 from __future__ import annotations
@@ -30,16 +30,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="协调器 Agent：迭代式多 Agent 编排")
     parser.add_argument("--query", required=True, help="用户自然语言问题")
     parser.add_argument(
-        "--no-llm-plan",
-        action="store_true",
-        help="问题分解与路由仅用规则引擎",
-    )
-    parser.add_argument(
-        "--no-llm-synthesize",
-        action="store_true",
-        help="最终回答仅用规则模板，不调用 LLM",
-    )
-    parser.add_argument(
         "--decompose-only",
         action="store_true",
         help="仅输出问题分解 JSON",
@@ -52,7 +42,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.decompose_only:
-        result = decompose_query(args.query, use_llm=not args.no_llm_plan)
+        result = decompose_query(args.query)
         _write(dump_decompose_json(result))
         return
 
@@ -63,8 +53,6 @@ def main() -> None:
 
     state = run_coordinator(
         args.query,
-        use_llm_plan=not args.no_llm_plan,
-        use_llm_synthesize=not args.no_llm_synthesize,
         on_tool_end=_emit,
     )
 

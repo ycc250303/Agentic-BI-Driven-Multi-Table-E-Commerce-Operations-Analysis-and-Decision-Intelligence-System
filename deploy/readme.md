@@ -99,7 +99,7 @@ mysql -h 127.0.0.1 -P 3306 -u agentic_bi -pagentic_bi -e "SELECT 1 AS ok;"
 mysql -h HOST -P 3306 -u agentic_bi -pagentic_bi -e "SELECT 1 AS ok;"
 
 # 项目脚本（读取仓库根目录 .env 的 AGENTIC_BI_DB_*）
-python utils/init_database.py
+python utils/setup.py init
 ```
 
 `SELECT 1` 或打印出版本 / 库列表即连接成功。若出现 `Connection refused`，先查容器和 `ss`，再查云安全组是否放行 3306。

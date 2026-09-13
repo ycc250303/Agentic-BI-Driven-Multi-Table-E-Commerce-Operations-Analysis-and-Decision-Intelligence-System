@@ -85,10 +85,7 @@ def test_first_turn_replaces_placeholder_title(tmp_path):
     manager = SessionManager(LocalSessionStore(tmp_path))
     session = manager.create_session(title="新对话")
     sid = session["session_id"]
-    options = CoordinatorRunOptions(
-        use_llm_plan=False,
-        use_llm_synthesize=False,
-    )
+    options = CoordinatorRunOptions()
     model = _FakeModel(
         {
             "SessionMemorySummary": {
@@ -113,10 +110,7 @@ def test_first_turn_keeps_custom_title(tmp_path):
     manager = SessionManager(LocalSessionStore(tmp_path))
     session = manager.create_session(title="我的分析专题")
     sid = session["session_id"]
-    options = CoordinatorRunOptions(
-        use_llm_plan=False,
-        use_llm_synthesize=False,
-    )
+    options = CoordinatorRunOptions()
     model = _FakeModel(
         {
             "SessionMemorySummary": {
@@ -324,10 +318,7 @@ def test_summarize_tool_payload_handles_generate_sql():
 
 def test_session_manager_stream_turn_events_emits_realtime_shape(tmp_path):
     manager = SessionManager(LocalSessionStore(tmp_path))
-    options = CoordinatorRunOptions(
-        use_llm_plan=False,
-        use_llm_synthesize=False,
-    )
+    options = CoordinatorRunOptions()
     model = _FakeModel(
         {
             "SessionMemorySummary": {

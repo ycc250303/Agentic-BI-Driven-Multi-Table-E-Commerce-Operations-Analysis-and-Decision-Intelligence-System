@@ -47,15 +47,9 @@ def synthesize_final_answer(
     state: dict,
     *,
     model=None,
-    use_llm: bool = True,
 ) -> tuple[str, str | None]:
-    """撰写最终回答。返回 ``(answer, warning)``；warning 非空表示已回退或空结果。"""
+    """撰写最终回答。默认 DeepSeek；失败或空文本回退规则摘要。返回 ``(answer, warning)``。"""
     evidence = build_synthesis_evidence(state)
-    if not use_llm:
-        text = _format_rows_fallback(evidence)
-        if text:
-            return text, None
-        return EMPTY_FINAL_ANSWER, "规则汇总没有可用证据。"
 
     from agents.common.llm import invoke_chat
 

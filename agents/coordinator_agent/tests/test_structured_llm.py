@@ -100,7 +100,6 @@ def test_orchestrator_warns_on_route_llm_fallback():
     }
     out = orchestrator_node(
         state,
-        use_llm=True,
         model=_StructuredModel(error=ValueError("bad schema")),
     )
     assert out["next_agent"] == "synthesize"

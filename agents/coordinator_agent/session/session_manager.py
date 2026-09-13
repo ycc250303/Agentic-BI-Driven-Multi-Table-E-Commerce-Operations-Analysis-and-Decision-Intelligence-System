@@ -26,8 +26,6 @@ from agents.coordinator_agent.events.tracing import TraceCollector
 
 @dataclass(frozen=True)
 class CoordinatorRunOptions:
-    use_llm_plan: bool = True
-    use_llm_synthesize: bool = True
     full_state: bool = False
 
 
@@ -234,8 +232,6 @@ class SessionManager:
             state = run_coordinator(
                 resolved_task,
                 model=model,
-                use_llm_plan=opts.use_llm_plan,
-                use_llm_synthesize=opts.use_llm_synthesize,
                 conversation_history=history,
                 seed_state=seed_state_from_session(
                     session,

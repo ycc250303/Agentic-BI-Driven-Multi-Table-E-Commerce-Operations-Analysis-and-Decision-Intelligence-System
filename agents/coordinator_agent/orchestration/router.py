@@ -210,6 +210,9 @@ def _build_router_context(state: dict) -> str:
     post_pending = _pending_post_sql_agents(state)
     log = state.get("execution_log") or []
     recent = log[-6:] if log else []
+    decision = state.get("decision_result") or {}
+    what_if = decision.get("what_if_result") or state.get("what_if_result") or {}
+    evidence_status, _ = inspect_agent_outputs(state)
     return json.dumps(
         {
             "user_query": state.get("user_query"),
@@ -220,6 +223,10 @@ def _build_router_context(state: dict) -> str:
             "agents_done": done,
             "suggested_agents": _suggested_agents(state),
             "pending_post_sql_agents": post_pending,
+            "evidence_status": evidence_status,
+            "what_if_status": what_if.get("status"),
+            "missing_inputs": what_if.get("missing_inputs") or [],
+            "replan_count": int(state.get("replan_count") or 0),
             "recent_execution_log": recent,
         },
         ensure_ascii=False,
@@ -254,13 +261,12 @@ def route_next_llm(state: dict, *, model=None) -> RouteDecision:
         )
 
 
-def choose_next_agent(state: dict, *, use_llm: bool = True, model=None) -> RouteDecision:
+def choose_next_agent(state: dict, *, model=None) -> RouteDecision:
+    """默认 DeepSeek 结构化路由；失败回退规则。"""
     iterations = int(state.get("orchestrator_iterations") or 0)
     if iterations >= MAX_ORCHESTRATOR_ITERATIONS:
         return RouteDecision(
             next_agent="synthesize",
             reasoning=f"已达最大迭代次数 {MAX_ORCHESTRATOR_ITERATIONS}，强制汇总。",
         )
-    if use_llm:
-        return route_next_llm(state, model=model)
-    return route_next_rule(state)
+    return route_next_llm(state, model=model)

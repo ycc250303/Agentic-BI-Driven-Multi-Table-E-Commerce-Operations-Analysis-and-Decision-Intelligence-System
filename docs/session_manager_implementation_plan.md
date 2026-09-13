@@ -284,9 +284,9 @@ Turn: 2
 | `--trace-json` | 输出 trace JSON，便于 Web 端消费 |
 | `--har-out` | 可选捕获本轮 HAR |
 | `--full-state` | 调试时保存/输出完整 state |
-| `--no-llm-plan` | 透传 coordinator 原参数 |
-| `--no-llm-viz` | 透传 coordinator 原参数 |
-| `--no-llm-synthesize` | 透传 coordinator 原参数 |
+| `--no-llm-plan` | （已删除：分解/路由默认 DeepSeek，失败回退规则） |
+| `--no-llm-viz` | （已删除：出图规划默认 DeepSeek） |
+| `--no-llm-synthesize` | （已删除：汇总默认 DeepSeek，失败回退规则摘要） |
 
 ## 10. HAR 捕获集成
 
@@ -390,7 +390,7 @@ python -m agents.coordinator_agent.run_session --list
 
 集成测试：
 
-- 使用 `--no-llm-plan --no-llm-viz --no-llm-synthesize` 跑快速多轮 smoke test。
+- 无 API Key 时依赖各步 LLM 失败回退规则，不宜作为产品开关。
 - 检查第二轮确实读取第一轮 session。
 - 检查 trace event 数量和关键 agent 字段。
 
@@ -404,8 +404,8 @@ pytest agents/decision_agent/tests/ -q
 CLI smoke：
 
 ```powershell
-python -m agents.coordinator_agent.run --query "2017年哪个州的销售额最高？" --no-llm-plan --no-llm-synthesize
-python -m agents.coordinator_agent.run_session --new --query "2017年哪个州的销售额最高？" --no-llm-plan --no-llm-synthesize
+python -m agents.coordinator_agent.run --query "2017年哪个州的销售额最高？"
+python -m agents.coordinator_agent.run_session --new --query "2017年哪个州的销售额最高？"
 ```
 
 ## 13. 风险与处理

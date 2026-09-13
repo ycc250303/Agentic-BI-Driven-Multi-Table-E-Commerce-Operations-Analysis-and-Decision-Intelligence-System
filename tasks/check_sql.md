@@ -1,6 +1,6 @@
 我现在需要你完成一项任务，任务步骤和要求包括：
 
-1.根据 `create_origin_table.sql`、`create_materialized_views.sql`和`schema_dictionary.md`对数据库的说明，生成以下问题的sql语句：
+1.根据 `utils/schema.sql`（origin / views 段）和 `schema_dictionary.md` 对数据库的说明，生成以下问题的sql语句：
 
 ```
 TEST_QUESTIONS = [

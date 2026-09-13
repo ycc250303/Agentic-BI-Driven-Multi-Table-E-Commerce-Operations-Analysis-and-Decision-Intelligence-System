@@ -251,10 +251,9 @@ def decompose_query_llm(user_query: str, *, model=None) -> DecomposeResult:
         )
 
 
-def decompose_query(user_query: str, *, use_llm: bool = True, model=None) -> DecomposeResult:
-    if use_llm:
-        return decompose_query_llm(user_query, model=model)
-    return decompose_query_rule(user_query)
+def decompose_query(user_query: str, *, model=None) -> DecomposeResult:
+    """默认 DeepSeek 结构化分解；失败回退规则。"""
+    return decompose_query_llm(user_query, model=model)
 
 
 def decompose_to_state_patch(user_query: str, result: DecomposeResult) -> dict:

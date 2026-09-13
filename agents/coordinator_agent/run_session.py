@@ -116,8 +116,6 @@ def _print_run_result(
 
 def _options_from_args(args: argparse.Namespace) -> CoordinatorRunOptions:
     return CoordinatorRunOptions(
-        use_llm_plan=not args.no_llm_plan,
-        use_llm_synthesize=not args.no_llm_synthesize,
         full_state=args.full_state,
     )
 
@@ -220,8 +218,6 @@ def main() -> None:
         action="store_true",
         help="仅在 HAR entry 写入 Agent 标签，不向外部 API 发送 X-Agentic-BI-* 请求头",
     )
-    parser.add_argument("--no-llm-plan", action="store_true")
-    parser.add_argument("--no-llm-synthesize", action="store_true")
     args = parser.parse_args()
 
     manager = SessionManager()

@@ -22,8 +22,6 @@ from agents.coordinator_agent.events.tracing import TraceCollector
 def build_coordinator_graph(
     *,
     model=None,
-    use_llm_plan: bool = True,
-    use_llm_synthesize: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
     trace_collector: TraceCollector | None = None,
 ):
@@ -38,7 +36,6 @@ def build_coordinator_graph(
     def _decompose(s: AgentState) -> AgentState:
         return decompose_node(
             s,
-            use_llm=use_llm_plan,
             model=model,
             trace_collector=trace_collector,
         )
@@ -46,7 +43,6 @@ def build_coordinator_graph(
     def _orchestrator(s: AgentState) -> AgentState:
         return orchestrator_node(
             s,
-            use_llm=use_llm_plan,
             model=model,
             trace_collector=trace_collector,
         )
@@ -77,7 +73,6 @@ def build_coordinator_graph(
         return synthesize_node(
             s,
             model=model,
-            use_llm=use_llm_synthesize,
             trace_collector=trace_collector,
         )
 
@@ -116,8 +111,6 @@ def run_coordinator(
     user_query: str,
     *,
     model=None,
-    use_llm_plan: bool = True,
-    use_llm_synthesize: bool = True,
     on_tool_end: Callable[[str, str], None] | None = None,
     conversation_history: list[dict[str, str]] | None = None,
     seed_state: dict[str, Any] | None = None,
@@ -125,8 +118,6 @@ def run_coordinator(
 ) -> dict[str, Any]:
     graph = build_coordinator_graph(
         model=model,
-        use_llm_plan=use_llm_plan,
-        use_llm_synthesize=use_llm_synthesize,
         on_tool_end=on_tool_end,
         trace_collector=trace_collector,
     )

@@ -174,7 +174,7 @@ def test_orchestrator_replans_missing_inputs_before_synthesizing():
         },
     }
 
-    out = orchestrator_node(state, use_llm=False, model=DummyMixedModel())
+    out = orchestrator_node(state, model=DummyMixedModel())
 
     assert out["next_agent"] == "data_analysis"
     assert out["sub_questions"] == ["查询全市场与排除指定部分后的核心经营指标对比？"]

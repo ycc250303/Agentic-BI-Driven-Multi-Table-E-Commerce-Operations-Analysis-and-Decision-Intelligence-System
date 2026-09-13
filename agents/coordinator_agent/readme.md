@@ -2,7 +2,7 @@
 
 解析用户问题 → **拆分为多个单问题** → **迭代式**调度子 Agent → **LLM 撰写**面向业务的 `final_answer`。
 
-调模型只经 `agents.common.llm`（汇总用 `invoke_chat`，分解 / 路由 / 会话解析 / 记忆 / 重规划用 `invoke_structured`）。查数经 `from agents.sql_agent.run import run_sql_pipeline_with_feedback`。
+调模型只经 `agents.common.llm`（汇总用 `invoke_chat`，分解 / 路由 / 会话解析 / 记忆 / 重规划用 `invoke_structured`；默认 DeepSeek，可切 Qwen）。查数经 `from agents.sql_agent.run import run_sql_pipeline_with_feedback`。
 
 ## 核心设计
 
@@ -34,7 +34,7 @@ flowchart TD
 python -m agents.coordinator_agent.run --query "2017年哪个州的销售额最高？"
 
 # 只看问题拆分
-python -m agents.coordinator_agent.run --decompose-only --no-llm-plan --query "2017年哪个州的销售额最高？交付准时率是多少？"
+python -m agents.coordinator_agent.run --decompose-only --query "2017年哪个州的销售额最高？交付准时率是多少？"
 
 # 完整 state
 python -m agents.coordinator_agent.run --query "..." --full-state
@@ -82,14 +82,6 @@ for event in manager.stream_turn_events(query="...", new_session=True):
     ...  # 实时发送给 SSE/WebSocket 前端
 ```
 
-项目内提供了一个零新增依赖的网页调用示例：
-
-```bash
-python examples/session_web_demo/server.py --host 127.0.0.1 --port 8010
-```
-
-打开 `http://127.0.0.1:8010/`，代码位于 [`examples/session_web_demo/`](../../examples/session_web_demo/)。
-
 ## 代码入口
 
 ```python
@@ -122,9 +114,12 @@ agents/coordinator_agent/
 
 | 文件 | 用途 |
 |------|------|
-| `config/coordinator_agent/decompose_query.md` | 问题分解提示词 |
-| `config/coordinator_agent/route_next.md` | 迭代路由提示词 |
-| `config/coordinator_agent/synthesize_answer.md` | 最终回答撰写提示词 |
+| `config/coordinator_agent/decompose_query.md` | 问题分解（意图、子问题、建议调度） |
+| `config/coordinator_agent/route_next.md` | 迭代路由（下一步只选一个专精智能体） |
+| `config/coordinator_agent/replan_query.md` | 证据不足时是否补充查数 |
+| `config/coordinator_agent/synthesize_answer.md` | 最终业务回答撰写 |
+| `config/coordinator_agent/resolve_conversation_context.md` | 多轮：把追问解析成本轮完整任务 |
+| `config/coordinator_agent/summarize_session_memory.md` | 多轮：压缩会话摘要 |
 | `config/prompt_guardrails.md` | **各 Agent 共用防注入 / 任务边界**（经 `compose_system_prompt` 注入 LLM） |
 
 ## 测试
