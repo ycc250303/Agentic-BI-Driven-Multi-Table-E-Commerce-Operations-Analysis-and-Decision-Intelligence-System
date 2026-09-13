@@ -63,6 +63,7 @@ def _emit_trace(
     payload: Any | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
+    """Emit a trace event to the trace collector."""
     if trace_collector is None:
         return
     trace_collector.emit(
@@ -82,6 +83,7 @@ def decompose_node(
     model=None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
+    """本轮只规划一次：识别意图、列出建议专长，写入 state；不在这里执行子 Agent。"""
     user_query = str(state.get("user_query") or state.get("question") or "").strip()
     if not user_query:
         _emit_trace(
@@ -118,9 +120,12 @@ def decompose_node(
             summary="分解器判断问题越界，进入拒答汇总。",
         )
         return {**state, **off_topic_state_patch(user_query)}
+
+    # 将分解结果应用到状态中
     patch = decompose_to_state_patch(user_query, result)
     next_state: AgentState = {**state, **patch}
     if LLM_STRUCTURED_FALLBACK in (result.reasoning or ""):
+        # 如果分解结果中包含 LLM_STRUCTURED_FALLBACK，则添加警告
         next_state["warnings"] = _append_warning(
             next_state,
             result.reasoning.split("；", 1)[0],
@@ -146,6 +151,7 @@ def orchestrator_node(
     model=None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
+    """执行循环枢纽：按当前进度每次只选下一个专长或汇总；不是按规划清单逐步弹出。"""
     if state.get("off_topic"):
         iterations = int(state.get("orchestrator_iterations") or 0) + 1
         _emit_trace(
@@ -170,8 +176,10 @@ def orchestrator_node(
                 },
             ),
         }
+    # 计划恢复查询
     replan = plan_recovery_queries(state, model=model)
     if replan.should_replan:
+        # 应用恢复查询决策
         state = {**state, **apply_replan_decision(state, replan)}
         _emit_trace(
             trace_collector,
@@ -184,6 +192,7 @@ def orchestrator_node(
         )
 
     iterations = int(state.get("orchestrator_iterations") or 0) + 1
+    # 选择下一个代理
     decision = choose_next_agent(
         {**state, "orchestrator_iterations": iterations},
         model=model,
@@ -197,6 +206,7 @@ def orchestrator_node(
         summary=decision.reasoning,
         metadata={"next_agent": decision.next_agent, "iteration": iterations},
     )
+    # 添加日志
     log = _append_log(
         state,
         {
@@ -205,6 +215,7 @@ def orchestrator_node(
             "reasoning": decision.reasoning,
         },
     )
+    # 更新状态
     next_state: AgentState = {
         **state,
         "orchestrator_iterations": iterations,
@@ -212,6 +223,7 @@ def orchestrator_node(
         "execution_log": log,
     }
     if ROUTE_LLM_FALLBACK in (decision.reasoning or ""):
+        # 如果路由结果中包含 ROUTE_LLM_FALLBACK，则添加警告
         next_state["warnings"] = _append_warning(
             next_state,
             decision.reasoning.split("；", 1)[0],
@@ -226,14 +238,21 @@ def data_analysis_node(
     on_tool_end: Callable[[str, str], None] | None = None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
+    # 获取子问题列表
     sub_questions = state.get("sub_questions") or [str(state.get("user_query") or "")]
+    # 获取 SQL 运行结果
     sql_runs = list(state.get("sql_runs") or [])
+    # 获取当前 SQL 运行索引
     idx = len(sql_runs)
     if idx >= len(sub_questions):
+        # 如果当前 SQL 运行索引大于等于子问题数量，则提交状态
         return _commit(state, "data_analysis")
 
+    # 获取当前子问题
     question = sub_questions[idx]
+    # 运行 SQL 流水线
     sql_out = run_sql_pipeline_with_feedback(question, model=model, on_tool_end=on_tool_end)
+    # 构建分析结果
     analysis = build_analysis_result_from_sql_pipeline(
         user_query=question,
         sql_pipeline=sql_out,
@@ -257,7 +276,9 @@ def data_analysis_node(
             "execute_sql_json": sql_out.get("execute_sql_json", ""),
         }
     )
+    # 合并 SQL 运行结果
     merged = merge_sql_runs(sql_runs)
+    # 更新状态
     next_state: AgentState = {
         **state,
         "sql_runs": sql_runs,
@@ -269,6 +290,7 @@ def data_analysis_node(
     }
     exec_payload = json.loads(sql_out.get("execute_sql_json") or "{}")
     if not exec_payload.get("ok"):
+        # 如果 SQL 运行结果中包含错误，则添加警告
         next_state["warnings"] = _append_warning(
             next_state,
             f"子问题「{question}」SQL 未完全成功：{exec_payload.get('error_message') or '未知'}",
@@ -314,6 +336,7 @@ def visualization_node(
             },
         )
 
+    # 运行智能可视化
     viz_result = run_intelligent_visualization(
         user_query=str(state.get("user_query") or ""),
         intent=str(state.get("intent") or "descriptive"),
@@ -351,9 +374,14 @@ def visualization_node(
 def nlp_node(
     state: AgentState,
     *,
+    model=None,
     on_tool_end: Callable[[str, str], None] | None = None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
+    """评论洞察 Agent 节点：消费已有 sql_runs / 评论洞察，写出 review_insights。"""
+    # NLP 在线路径不调 LLM；保留 model 以匹配图节点统一调用约定。
+    _ = model
+
     insights = state.get("review_insights") or ReviewInsightAgent().run(on_tool_end=on_tool_end)
     _emit_trace(
         trace_collector,
@@ -369,9 +397,15 @@ def nlp_node(
 def decision_node(
     state: AgentState,
     *,
+    model=None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
+    """决策 Agent 节点：消费已有 review_insights / 决策结果，写出 decision_result。"""
+    # 决策内部自行取模型；保留 model 以匹配图节点统一调用约定。
+    _ = model
+    # 确保上游负载
     working = {**state, **ensure_upstream_payloads(state)}
+    # 运行决策状态
     out = run_decision_state(working)
     decision = out.get("decision_result") or {}
     what_if = decision.get("what_if_result") or {}
@@ -401,6 +435,8 @@ def synthesize_node(
     model=None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
+    """最终回答节点：消费已有 state，写出 final_answer。"""
+
     if state.get("off_topic") and state.get("final_answer"):
         _emit_trace(
             trace_collector,
@@ -411,7 +447,9 @@ def synthesize_node(
             summary=str(state.get("final_answer") or ""),
         )
         return _commit(state, "synthesize")
+    # 生成最终回答
     answer, synth_warning = synthesize_final_answer(state, model=model)
+    # 更新状态
     next_state: AgentState = _commit(state, "synthesize", final_answer=answer)
     if synth_warning:
         next_state["warnings"] = _append_warning(next_state, synth_warning)

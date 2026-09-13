@@ -30,7 +30,7 @@ def test_ensure_nlp_runs_when_missing():
 def test_nlp_node_skips_run_when_insights_exist():
     existing = {"summary": "会话缓存的差评主题"}
     with patch("agents.coordinator_agent.orchestration.nodes.ReviewInsightAgent") as mock_cls:
-        out = nlp_node({"review_insights": existing, "user_query": "差评原因"})
+        out = nlp_node({"review_insights": existing, "user_query": "差评原因"}, model=object())
 
     mock_cls.assert_not_called()
     assert out["review_insights"] is existing
@@ -48,3 +48,22 @@ def test_nlp_node_writes_nlp_result_from_run():
     assert out["review_insights"] == fake
     assert out["nlp_result"] == fake
     assert out["agents_done"]["nlp"] is True
+
+
+def test_graph_specialist_nodes_accept_model_kwarg():
+    """图节点统一传入 model；NLP/决策即使不用也必须能接收，避免 TypeError 中断整轮。"""
+    import inspect
+
+    from agents.coordinator_agent.orchestration import nodes as orch_nodes
+
+    for name in (
+        "data_analysis_node",
+        "visualization_node",
+        "nlp_node",
+        "decision_node",
+        "decompose_node",
+        "orchestrator_node",
+        "synthesize_node",
+    ):
+        sig = inspect.signature(getattr(orch_nodes, name))
+        assert "model" in sig.parameters, name

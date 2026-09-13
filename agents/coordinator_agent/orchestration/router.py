@@ -262,7 +262,7 @@ def route_next_llm(state: dict, *, model=None) -> RouteDecision:
 
 
 def choose_next_agent(state: dict, *, model=None) -> RouteDecision:
-    """默认 DeepSeek 结构化路由；失败回退规则。"""
+    """按已完成进度选下一步；建议名单未跑完时规则禁止汇总。失败回退纯规则。"""
     iterations = int(state.get("orchestrator_iterations") or 0)
     if iterations >= MAX_ORCHESTRATOR_ITERATIONS:
         return RouteDecision(

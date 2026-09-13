@@ -126,6 +126,7 @@ def set_turn_preview(
     final_answer: str,
     resolved_task: str | None = None,
     trace_events: list[dict[str, Any]] | None = None,
+    warnings: list[str] | None = None,
 ) -> None:
     """缓存本轮刚完成的回答，供 rerun 未及时刷新时兜底展示。"""
     if not final_answer.strip():
@@ -135,6 +136,7 @@ def set_turn_preview(
         "final_answer": final_answer,
         "resolved_task": resolved_task,
         "trace_events": list(trace_events or []),
+        "warnings": list(warnings or []),
     }
 
 

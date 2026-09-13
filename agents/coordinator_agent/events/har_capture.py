@@ -445,14 +445,3 @@ class HttpxHarCapture:
         if out is None:
             raise ValueError("未指定 HAR 输出路径。")
         return write_har(out, self.entries)
-
-
-def install_httpx_har_capture(
-    entries: list[dict[str, Any]],
-    *,
-    send_trace_headers: bool = True,
-) -> None:
-    """Backward-compatible install function for the legacy misc script."""
-    capture = HttpxHarCapture(send_trace_headers=send_trace_headers)
-    capture.entries = entries
-    capture.install()

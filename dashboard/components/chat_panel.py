@@ -54,10 +54,19 @@ def _render_messages(conversation: Conversation) -> None:
     if preview and not session_store.turn_preview_already_in_conversation(
         conversation, preview
     ):
+        preview_query = str(preview.get("user_query") or "").strip()
+        last_user = next(
+            (m.content for m in reversed(conversation.messages) if m.role == "user"),
+            "",
+        )
+        if preview_query and preview_query != last_user:
+            with st.chat_message("user"):
+                st.markdown(preview_query)
         _render_assistant_turn(
             content=str(preview.get("final_answer") or ""),
             resolved_task=str(preview.get("resolved_task") or "") or None,
             trace_events=list(preview.get("trace_events") or []),
+            warnings=list(preview.get("warnings") or []) or None,
         )
 
 
@@ -134,6 +143,14 @@ def _run_turn(
 
     if error_message:
         session_store.set_live_viz(conversation.id, None)
+        session_store.set_turn_preview(
+            conversation.id,
+            user_query=user_query,
+            final_answer="本轮未能完成分析。",
+            resolved_task=resolved_task,
+            trace_events=traces,
+            warnings=[error_message],
+        )
         with progress_slot.container():
             st.error(error_message)
 

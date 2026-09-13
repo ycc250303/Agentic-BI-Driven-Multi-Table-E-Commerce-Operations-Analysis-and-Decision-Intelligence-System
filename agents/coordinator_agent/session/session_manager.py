@@ -163,6 +163,7 @@ class SessionManager:
         har_out: Path | str | None = None,
         trace_event_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> dict[str, Any]:
+        # 一轮时序：拼历史 → 语义还原本轮任务 →（需澄清则停）→ 进图 → 同步更新摘要 → 落盘
         opts = options
         turn_id = len(session.get("turns") or []) + 1
         history = build_conversation_history(session)

@@ -6,40 +6,11 @@ IntentName = Literal[
     "descriptive", "diagnostic", "predictive", "prescriptive", "what_if"
 ]
 
+# 意图规则：意图名称 + 关键词列表
 _INTENT_RULES: list[tuple[IntentName, tuple[str, ...]]] = [
-    (
-        "prescriptive",
-        (
-            "如何",
-            "怎么",
-            "策略",
-            "方案",
-            "改进",
-            "优化",
-            "建议",
-            "优先",
-            "三大",
-            "运营改进",
-            "降低",
-        ),
-    ),
-    ("predictive", ("预测", "未来", "forecast", "prophet", "外推", "接下来")),
-    (
-        "diagnostic",
-        (
-            "为什么",
-            "原因",
-            "诊断",
-            "哪些卖家",
-            "差评率",
-            "差评",
-            "差评品类",
-            "差评原因",
-            "延迟严重",
-            "显著高于",
-            "根本原因",
-        ),
-    ),
+    ("prescriptive", ("如何", "怎么", "策略", "方案", "改进", "优化", "建议", "优先", "运营改进", "降低"),),
+    ("predictive", ("预测", "未来", "forecast", "prophet", "外推", "接下来"),),
+    ("diagnostic",("为什么", "原因", "诊断", "哪些卖家", "差评率", "差评", "差评品类", "差评原因", "延迟严重", "显著高于", "根本原因"),),
 ]
 
 

@@ -59,15 +59,6 @@ def _extract_sqls(payload: Any) -> list[str]:
     return sqls
 
 
-def _format_sql_list(sqls: list[str], *, limit: int = 900) -> str:
-    if not sqls:
-        return ""
-    lines = []
-    for i, sql in enumerate(sqls, start=1):
-        lines.append(f"SQL#{i}: {sql}")
-    return _truncate("\n".join(lines), limit)
-
-
 def _tool_agent(tool_name: str) -> str:
     if tool_name.startswith("visualization"):
         return "visualization_agent"

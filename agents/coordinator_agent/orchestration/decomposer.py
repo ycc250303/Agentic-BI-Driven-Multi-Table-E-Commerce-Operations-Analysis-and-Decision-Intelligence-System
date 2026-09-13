@@ -252,7 +252,7 @@ def decompose_query_llm(user_query: str, *, model=None) -> DecomposeResult:
 
 
 def decompose_query(user_query: str, *, model=None) -> DecomposeResult:
-    """默认 DeepSeek 结构化分解；失败回退规则。"""
+    """规划入口：产出意图与建议专长集合（名单无执行顺序）；失败回退规则。"""
     return decompose_query_llm(user_query, model=model)
 
 

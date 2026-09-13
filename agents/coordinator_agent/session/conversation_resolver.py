@@ -113,13 +113,7 @@ def resolve_conversation_context(
     *,
     model=None,
 ) -> dict[str, Any]:
-    """Resolve the current user utterance into a semantic BI task.
-
-    The resolver is intentionally not rule-based. If previous context exists,
-    the LLM must explicitly decide whether this turn continues, narrows,
-    corrects, contrasts with, or replaces the prior task. Errors are allowed to
-    surface instead of being hidden behind a guessed query.
-    """
+    """从第二轮起用滚动摘要和近 4 轮要点，把本轮问题补成完整任务；首轮直接用原话。有历史时不靠规则拼接。"""
     query = str(user_query or "").strip()
     if not query:
         raise ValueError("user_query 不能为空。")
