@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from agents.common.prompts import compose_system_prompt
 
 
-DEFAULT_RECENT_TURNS = 3
+DEFAULT_RECENT_TURNS = 5
 SUMMARY_LIMIT = 1600
 ANSWER_SNIPPET_LIMIT = 500
 
@@ -35,7 +35,7 @@ def build_conversation_history(
     *,
     recent_turns: int = DEFAULT_RECENT_TURNS,
 ) -> list[dict[str, str]]:
-    """Build a compact chat history for the next coordinator turn."""
+    """下一轮注入编排的上下文：滚动摘要 + 最近若干轮问答原文（默认 5 轮）；不含工具轨迹。"""
     history: list[dict[str, str]] = []
     summary = str(session.get("memory_summary") or "").strip()
     if summary:
@@ -53,7 +53,7 @@ def build_conversation_history(
 
 
 def build_state_summary(state: dict[str, Any]) -> dict[str, Any]:
-    """Keep the session file readable by persisting only high-signal state."""
+    """本轮执行要点（意图、子问题、是否出图等），写入会话文件；不是喂给模型的滚动摘要。"""
     charts = [
         {
             "ok": c.get("ok"),
@@ -103,6 +103,7 @@ def update_memory_summary(
     max_turns: int = 6,
     limit: int = SUMMARY_LIMIT,
 ) -> str:
+    """每轮保存前同步压缩滚动摘要：旧摘要 + 最近 6 轮要点 → 截断后写回会话。"""
     if not (session.get("turns") or []):
         return str(session.get("memory_summary") or "").strip()
 
