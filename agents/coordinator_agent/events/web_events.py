@@ -62,6 +62,7 @@ def make_trace_event(
     turn_id: int,
     sequence: int,
 ) -> dict[str, Any]:
+    """过程事件的对外形状：页面收到后只刷新进度占位。"""
     trace_id = str(trace.get("event_id") or f"trace-{sequence}")
     return _event(
         event_type="trace.event",
@@ -80,6 +81,7 @@ def make_answer_final_event(
     turn_id: int,
     sequence: int,
 ) -> dict[str, Any]:
+    """整轮结束：带上正式回答和图表路径，供页面替换进度占位。"""
     state_summary = result.get("state_summary") or {}
     return _event(
         event_type="answer.final",

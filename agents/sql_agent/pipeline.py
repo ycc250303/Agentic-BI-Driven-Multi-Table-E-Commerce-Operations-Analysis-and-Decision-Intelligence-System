@@ -66,10 +66,23 @@ def _execute_error_message_nonempty(exec_json: str) -> tuple[bool, str]:
     if d is None:
         return True, "execute_sql 返回非合法 JSON"
     msg = d.get("error_message")
-    if msg is None:
-        return False, ""
-    s = str(msg).strip()
+    s = str(msg).strip() if msg is not None else ""
+    if d.get("ok") is not True:
+        return True, s or "execute_sql 返回 ok=false"
     return bool(s), s
+
+
+def _tool_exception_json(*, stage: str, error: Exception) -> str:
+    """把工具边界上的异常转成统一 JSON，让后续尝试可以消费 correction_context。"""
+    return json.dumps(
+        {
+            "ok": False,
+            "executed": False,
+            "error_stage": stage,
+            "error_message": f"工具调用异常：{error}",
+        },
+        ensure_ascii=False,
+    )
 
 
 def _pipeline_tools(model=None) -> tuple[Any, Any, Any, Any]:
@@ -170,7 +183,15 @@ def _run_retry_loop(
         if emit:
             emit("generate_sql_tool", sql_json)
 
-        check_json = check_tool.invoke({"generate_sql_json": sql_json})
+        try:
+            check_json = check_tool.invoke({"generate_sql_json": sql_json})
+        except Exception as e:
+            # 检查工具异常也属于可恢复的单轮失败，不能让异常越过流水线边界。
+            check_json = _tool_exception_json(stage="check_tool_exception", error=e)
+            feedback_lines.append(f"[SQL 校验工具异常] {e}")
+            if emit:
+                emit("check_sql_tool", check_json)
+            continue
         if emit:
             emit("check_sql_tool", check_json)
 
@@ -180,7 +201,15 @@ def _run_retry_loop(
             feedback_lines.append(f"[格式与只读校验未通过] {brief}")
             continue
 
-        exec_json = execute_tool.invoke({"generate_sql_json": sql_json})
+        try:
+            exec_json = execute_tool.invoke({"generate_sql_json": sql_json})
+        except Exception as e:
+            # 连接驱动、CSV 写入或自定义工具异常统一进入下一次生成尝试。
+            exec_json = _tool_exception_json(stage="execute_tool_exception", error=e)
+            feedback_lines.append(f"[SQL 执行工具异常] {e}")
+            if emit:
+                emit("execute_sql_tool", exec_json)
+            continue
         if emit:
             emit("execute_sql_tool", exec_json)
 

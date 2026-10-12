@@ -235,11 +235,23 @@ DEEPSEEK_API_KEY=your_api_key
 AGENTIC_BI_DB_HOST=127.0.0.1
 AGENTIC_BI_DB_PORT=3306
 AGENTIC_BI_DB_NAME=agentic_bi
+# 维护/灌库账号（utils/setup.py、NLP 离线写入）
 AGENTIC_BI_DB_USER=agentic_bi
 AGENTIC_BI_DB_PASSWORD=your_password
+# 运行时查询账号（SQL Agent、Dashboard、NLP 在线查询）
+AGENTIC_BI_DB_READONLY_USER=agentic_bi_ro
+AGENTIC_BI_DB_READONLY_PASSWORD=your_readonly_password
 ```
 
 连接参数只来自环境变量 / `.env`，代码中不硬编码主机或密码。
+
+SQL Agent 运行时强制使用 `AGENTIC_BI_DB_READONLY_USER/PASSWORD`，维护账号仅用于建库、导入数据、刷新视图和 NLP 离线灌库。首次创建只读账号可运行：
+
+```bash
+python utils/create_readonly_user.py --host-pattern '<Agent 实际来源地址>'
+```
+
+`--host-pattern '%'` 只建议用于临时验证；生产环境应限制为 Dashboard/Agent 的实际来源地址。Docker 创建的业务账号通常没有 `CREATE USER` 权限，首次建只读账号请用 `AGENTIC_BI_DB_ADMIN_USER/PASSWORD` 提供管理员凭据；权限不足时脚本会打印可交给管理员执行的 SQL。日常查数只需 `AGENTIC_BI_DB_READONLY_*`，不要把管理员账号留给运行时。
 
 ### 3. 启动 MySQL（可选）
 

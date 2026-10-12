@@ -21,11 +21,12 @@ def stream_turn(
     new_session: bool = False,
     on_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
-    """Run one coordinator turn via SessionManager; yield web_events-shaped dicts."""
+    """消费后台线程产出的事件流：逐条交给页面回调，并收齐最终结果。"""
     session_store.apply_llm_settings_from_session()
     manager = session_store.get_manager()
     last_result: dict[str, Any] = {}
 
+    # 生成器每取出一条事件就回调；页面在此刷新进度占位
     for event in manager.stream_turn_events(
         query=query,
         session_id=session_id,

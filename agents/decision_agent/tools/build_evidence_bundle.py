@@ -79,6 +79,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
             )
         )
 
+    # 配送天数硬阈值：配送天数 > 8 天 → 物流信号
     avg_delivery_days = _safe_float(kpis.get("avg_delivery_days"))
     if avg_delivery_days is not None and avg_delivery_days > 8.0:
         delta = avg_delivery_days - 8.0
@@ -103,6 +104,7 @@ def build_evidence_bundle(state: Mapping[str, Any]) -> EvidenceBundle:
         gap = _safe_float(finding.get("gap"))
         benchmark = _safe_float(finding.get("benchmark"))
 
+        
         if topic == "delivery" or metric in {"on_time_rate", "avg_delivery_days"}:
             severity = 0.55
             if gap is not None and gap < 0:

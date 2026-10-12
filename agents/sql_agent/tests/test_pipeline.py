@@ -144,3 +144,61 @@ def test_scalar_row_shape_mismatch_retries_generate():
     assert "标量行数与计划不一致" in generate.calls[1]["correction_context"]
     assert out["generate_sql_attempts"] == 2
     assert json.loads(out["execute_sql_json"])["results"][0]["row_count_returned"] == 1
+
+
+def test_check_tool_exception_is_retried_and_reported_to_next_attempt():
+    rewrite, generate, _, execute = _success_tools()
+
+    def check_handler(payload: dict[str, Any], n: int) -> str:
+        if n == 1:
+            raise RuntimeError("校验服务暂时不可用")
+        return '{"syntax_ok": true, "brief": "ok"}'
+
+    check = _FakeTool(check_handler)
+    with patch.object(
+        pipeline_mod, "_pipeline_tools", return_value=(rewrite, generate, check, execute)
+    ):
+        out = run_sql_pipeline_with_feedback("hello")
+
+    assert len(check.calls) == 2
+    assert len(execute.calls) == 1
+    assert "SQL 校验工具异常" in generate.calls[1]["correction_context"]
+    assert out["generate_sql_attempts"] == 2
+
+
+def test_execute_tool_exception_is_retried_and_reported_to_next_attempt():
+    rewrite, generate, check, _ = _success_tools()
+
+    def execute_handler(_payload: dict[str, Any], n: int) -> str:
+        if n == 1:
+            raise ConnectionError("数据库连接被重置")
+        return '{"ok": true, "error_message": null}'
+
+    execute = _FakeTool(execute_handler)
+    with patch.object(
+        pipeline_mod, "_pipeline_tools", return_value=(rewrite, generate, check, execute)
+    ):
+        out = run_sql_pipeline_with_feedback("hello")
+
+    assert len(execute.calls) == 2
+    assert "SQL 执行工具异常" in generate.calls[1]["correction_context"]
+    assert out["generate_sql_attempts"] == 2
+
+
+def test_execute_ok_false_without_message_is_retried():
+    rewrite, generate, check, _ = _success_tools()
+
+    def execute_handler(_payload: dict[str, Any], n: int) -> str:
+        if n == 1:
+            return '{"ok": false, "error_message": null}'
+        return '{"ok": true, "error_message": null}'
+
+    execute = _FakeTool(execute_handler)
+    with patch.object(
+        pipeline_mod, "_pipeline_tools", return_value=(rewrite, generate, check, execute)
+    ):
+        out = run_sql_pipeline_with_feedback("hello")
+
+    assert len(execute.calls) == 2
+    assert "ok=false" in generate.calls[1]["correction_context"]
+    assert out["generate_sql_attempts"] == 2

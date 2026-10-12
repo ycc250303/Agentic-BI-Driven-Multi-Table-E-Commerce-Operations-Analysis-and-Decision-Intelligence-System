@@ -12,18 +12,26 @@ from typing import Any
 import pymysql
 from pymysql.cursors import DictCursor
 
-from db_env import json_safe_value, pymysql_config
+from db_env import (
+    json_safe_value,
+    readonly_pymysql_config,
+    writer_pymysql_config,
+)
 
 
-def _connect() -> pymysql.connections.Connection:
-    cfg = pymysql_config(autocommit=False)
+def _connect(*, readonly: bool = False) -> pymysql.connections.Connection:
+    cfg = (
+        readonly_pymysql_config(autocommit=False)
+        if readonly
+        else writer_pymysql_config(autocommit=False)
+    )
     cfg["cursorclass"] = DictCursor
     return pymysql.connect(**cfg)
 
 
 def query(sql: str, params: tuple | None = None) -> list[dict[str, Any]]:
     """执行只读 SELECT，返回反序列化后的 list[dict]。"""
-    conn = _connect()
+    conn = _connect(readonly=True)
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params or ())

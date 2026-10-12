@@ -19,7 +19,7 @@ def _render_trace_items(traces: list[dict]) -> None:
 
 
 def render_trace_timeline(traces: list[dict], *, live: bool = False) -> None:
-    """渲染 Agent 编排过程。live=True 为运行中；完成后用 expander 展示全部步骤。"""
+    """画进进度占位：live 为进行中状态条，结束后改为可折叠时间线。"""
     if not traces:
         return
 

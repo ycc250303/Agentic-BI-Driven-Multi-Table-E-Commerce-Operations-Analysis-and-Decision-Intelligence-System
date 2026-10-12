@@ -154,6 +154,7 @@ class TraceCollector:
         preview_chars: int = TRACE_PREVIEW_CHARS,
         on_event: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
+        # on_event：实时路径里指向队列 put，让前台生成器不必等整轮结束
         self.session_id = session_id
         self.turn_id = int(turn_id)
         self.preview_chars = int(preview_chars)
@@ -192,6 +193,7 @@ class TraceCollector:
         if metadata:
             event["metadata"] = dict(metadata)
         self._events.append(event)
+        # 立刻回调：实时路径里会把事件放进 stream_turn_events 的队列
         if self.on_event is not None:
             try:
                 self.on_event(dict(event))

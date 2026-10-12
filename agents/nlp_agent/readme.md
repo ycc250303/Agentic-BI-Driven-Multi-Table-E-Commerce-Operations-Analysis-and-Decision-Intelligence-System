@@ -197,7 +197,9 @@ python -m agents.nlp_agent.run \
 
 | 变量 | 用途 |
 |------|------|
-| `AGENTIC_BI_DB_HOST/PORT/USER/PASSWORD/NAME` | NLP Agent 内部所有 SQL 工具的 MySQL 连接 |
+| `AGENTIC_BI_DB_HOST/PORT/NAME` | NLP Agent 的 MySQL 服务与数据库 |
+| `AGENTIC_BI_DB_READONLY_USER/PASSWORD` | NLP 在线查询使用的只读账号 |
+| `AGENTIC_BI_DB_USER/PASSWORD` | NLP 离线情感/主题灌库使用的维护账号 |
 
 ### 数据库依赖
 

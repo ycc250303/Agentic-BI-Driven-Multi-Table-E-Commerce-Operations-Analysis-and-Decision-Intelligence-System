@@ -63,7 +63,7 @@ def _emit_trace(
     payload: Any | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    """Emit a trace event to the trace collector."""
+    """节点内打点：emit 后立刻经 on_event 入队，前台不必等图跑完。"""
     if trace_collector is None:
         return
     trace_collector.emit(
@@ -238,6 +238,7 @@ def data_analysis_node(
     on_tool_end: Callable[[str, str], None] | None = None,
     trace_collector: TraceCollector | None = None,
 ) -> AgentState:
+    """编排中逐个执行查数子问题，将结构化查询结果与告警写回共享状态。"""
     # 获取子问题列表
     sub_questions = state.get("sub_questions") or [str(state.get("user_query") or "")]
     # 获取 SQL 运行结果

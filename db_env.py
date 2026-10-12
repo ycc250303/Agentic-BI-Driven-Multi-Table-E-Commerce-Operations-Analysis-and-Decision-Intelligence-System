@@ -1,4 +1,8 @@
-"""从环境变量读取数据库连接参数，并提供 MySQL 结果的 JSON 安全转换。"""
+"""共享数据库配置入口。
+
+运行时查询使用 ``readonly_*`` 配置，建库/灌库使用 ``writer_*`` 配置；
+调用方不再直接拼接 ``AGENTIC_BI_DB_*`` 环境变量。
+"""
 
 from __future__ import annotations
 
@@ -11,13 +15,17 @@ from typing import Any
 _ENV_KEYS = (
     "AGENTIC_BI_DB_HOST",
     "AGENTIC_BI_DB_PORT",
-    "AGENTIC_BI_DB_USER",
-    "AGENTIC_BI_DB_PASSWORD",
     "AGENTIC_BI_DB_NAME",
+)
+_WRITER_ENV_KEYS = ("AGENTIC_BI_DB_USER", "AGENTIC_BI_DB_PASSWORD")
+_READONLY_ENV_KEYS = (
+    "AGENTIC_BI_DB_READONLY_USER",
+    "AGENTIC_BI_DB_READONLY_PASSWORD",
 )
 
 
-def _load_dotenv() -> None:
+def load_dotenv() -> None:
+    """加载仓库根目录 ``.env``，不覆盖调用进程已显式设置的变量。"""
     env_path = Path(__file__).resolve().parent / ".env"
     if not env_path.exists():
         return
@@ -32,39 +40,68 @@ def _load_dotenv() -> None:
         if key and key not in os.environ:
             os.environ[key] = value
 
+load_dotenv()
 
-_load_dotenv()
 
-
-def _base_mysql_params() -> dict[str, Any]:
-    missing = [k for k in _ENV_KEYS if os.environ.get(k) in (None, "")]
+def _base_mysql_params(*, readonly: bool = False) -> dict[str, Any]:
+    credential_keys = _READONLY_ENV_KEYS if readonly else _WRITER_ENV_KEYS
+    required = (*_ENV_KEYS, *credential_keys)
+    missing = [k for k in required if os.environ.get(k) in (None, "")]
     if missing:
         raise ValueError("缺少或未设置数据库环境变量：" + ", ".join(missing))
     try:
         port = int(os.environ["AGENTIC_BI_DB_PORT"])
     except ValueError as e:
         raise ValueError("AGENTIC_BI_DB_PORT 须为整数") from e
+    user_key, password_key = credential_keys
     return {
         "host": os.environ["AGENTIC_BI_DB_HOST"],
         "port": port,
-        "user": os.environ["AGENTIC_BI_DB_USER"],
-        "password": os.environ["AGENTIC_BI_DB_PASSWORD"],
+        "user": os.environ[user_key],
+        "password": os.environ[password_key],
         "database": os.environ["AGENTIC_BI_DB_NAME"],
     }
 
 
-def pymysql_config(*, autocommit: bool = False) -> dict[str, Any]:
-    cfg = _base_mysql_params()
+def pymysql_config(*, autocommit: bool = False, readonly: bool = False) -> dict[str, Any]:
+    """返回 PyMySQL 配置；``readonly=True`` 强制使用独立只读账号。"""
+    cfg = _base_mysql_params(readonly=readonly)
     cfg["charset"] = "utf8mb4"
     cfg["autocommit"] = autocommit
     return cfg
 
 
-def mysql_connector_config(*, autocommit: bool = True) -> dict[str, Any]:
-    cfg = _base_mysql_params()
+def readonly_pymysql_config(*, autocommit: bool = False) -> dict[str, Any]:
+    """返回 Agent/在线查询专用的只读 PyMySQL 配置。"""
+    return pymysql_config(autocommit=autocommit, readonly=True)
+
+
+def writer_pymysql_config(*, autocommit: bool = False) -> dict[str, Any]:
+    """返回建库、灌数和离线写入专用的 PyMySQL 配置。"""
+    return pymysql_config(autocommit=autocommit, readonly=False)
+
+
+def mysql_connector_config(
+    *, autocommit: bool = True, readonly: bool = False
+) -> dict[str, Any]:
+    cfg = _base_mysql_params(readonly=readonly)
     cfg["charset"] = "utf8mb4"
     cfg["autocommit"] = autocommit
     return cfg
+
+
+def readonly_mysql_connector_config(*, autocommit: bool = True) -> dict[str, Any]:
+    """返回只读查询专用的 mysql-connector 配置。"""
+    return mysql_connector_config(autocommit=autocommit, readonly=True)
+
+
+def writer_mysql_connector_config(*, autocommit: bool = True) -> dict[str, Any]:
+    """返回维护脚本专用的 mysql-connector 配置。"""
+    return mysql_connector_config(autocommit=autocommit, readonly=False)
+
+
+# 兼容旧脚本/外部调用；新代码应使用公开的 ``load_dotenv``。
+_load_dotenv = load_dotenv
 
 
 def json_safe_value(v: Any) -> Any:

@@ -33,7 +33,7 @@
     if (!path.length && target) path = [target];
     for (var i = 0; i < path.length; i++) {
       var node = path[i];
-      if (!node || !node.querySelector) continue;
+      if (!node || node.nodeType !== 1 || !node.querySelector) continue;
       if (node.tagName === "IMG" && node.classList && node.classList.contains("agentic-viz-chart")) {
         return node;
       }
@@ -46,9 +46,6 @@
         var fromHost = node.querySelector("img");
         if (fromHost) return fromHost;
       }
-      var images = node.querySelectorAll('[data-testid="stImage"] img');
-      if (images.length === 1) return images[0];
-      if (images.length > 1) return null;
     }
     return null;
   }

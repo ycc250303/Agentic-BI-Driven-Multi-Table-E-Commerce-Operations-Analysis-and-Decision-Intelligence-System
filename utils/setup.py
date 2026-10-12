@@ -26,7 +26,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from db_env import pymysql_config
+from db_env import writer_pymysql_config
 
 DATA_DIR = ROOT_DIR / "data"
 SCHEMA_SQL = ROOT_DIR / "utils" / "schema.sql"
@@ -373,7 +373,7 @@ def load_single_table(connection, table_conf: dict) -> None:
 def cmd_load() -> None:
     print("连接数据库并执行原始表 DDL...")
     try:
-        db_cfg = pymysql_config(autocommit=False)
+        db_cfg = writer_pymysql_config(autocommit=False)
     except ValueError as e:
         raise SystemExit(f"[ERROR] {e}") from e
     connection = pymysql.connect(**db_cfg)
@@ -402,7 +402,7 @@ def cmd_load() -> None:
 
 def cmd_views() -> None:
     try:
-        db_cfg = pymysql_config(autocommit=False)
+        db_cfg = writer_pymysql_config(autocommit=False)
     except ValueError as e:
         raise SystemExit(f"[ERROR] {e}") from e
     statements = sql_statements(schema_section("views"))
@@ -427,7 +427,7 @@ def cmd_views() -> None:
 
 def cmd_nlp_tables() -> None:
     try:
-        db_cfg = pymysql_config(autocommit=False)
+        db_cfg = writer_pymysql_config(autocommit=False)
     except ValueError as e:
         raise SystemExit(f"[ERROR] {e}") from e
     print("[INFO] 重建 NLP 衍生表（会清空已有情感/主题数据）")
@@ -468,7 +468,7 @@ def _read_translation_rows() -> list[tuple[str, str]]:
 def cmd_translation() -> None:
     rows = _read_translation_rows()
     try:
-        db_cfg = pymysql_config(autocommit=False)
+        db_cfg = writer_pymysql_config(autocommit=False)
     except ValueError as e:
         raise SystemExit(f"[ERROR] {e}") from e
     print(f"连接 {db_cfg['host']}:{db_cfg['port']}/{db_cfg['database']}，只重建翻译表")

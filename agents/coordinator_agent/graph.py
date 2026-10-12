@@ -135,8 +135,9 @@ def run_coordinator(
         "question": user_query,
         "conversation_history": list(conversation_history or []),
     }
-    if seed_state:
+        if seed_state:
         for key, value in seed_state.items():
             if value is not None and key not in initial:
                 initial[key] = value
+    # 阻塞跑完整图；过程进度靠 trace 回调，不走官方 graph.stream
     return graph.invoke(initial)

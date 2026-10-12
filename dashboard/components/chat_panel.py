@@ -78,6 +78,7 @@ def _run_turn(
     viz_placeholder: DeltaGenerator | None,
     render_viz: Callable[[], None] | None,
 ) -> None:
+    """消费事件流：过程事件刷新进度占位，最终结果再画回答和图表。"""
     traces: list[dict[str, Any]] = []
     session_store.set_live_viz(conversation.id, None)
     user_query = query
@@ -85,6 +86,7 @@ def _run_turn(
     error_message: str | None = None
 
     def on_event(event: dict[str, Any]) -> None:
+        # 生成器每 yield 一条就进这里；不是浏览器 HTTP SSE
         nonlocal user_query, resolved_task, error_message
         event_type = str(event.get("type") or "")
 
@@ -96,6 +98,7 @@ def _run_turn(
             trace = dict((event.get("data") or {}).get("trace") or {})
             if trace:
                 traces.append(trace)
+                # 过程事件：只重绘进度占位，不整页刷新
                 with progress_slot.container():
                     render_trace_timeline(traces, live=True)
         elif event_type == "answer.final":
@@ -114,6 +117,7 @@ def _run_turn(
                     resolved_task=resolved_task,
                     trace_events=traces,
                 )
+            # 最终结果：进度收成折叠时间线，再展示正式回答
             with progress_slot.container():
                 render_trace_timeline(traces, live=False)
                 if final_answer:
@@ -124,6 +128,7 @@ def _run_turn(
                     )
                 else:
                     st.warning("分析已结束，但正式回答为空；请稍后刷新或重试。")
+            # 右侧图表占位同步刷新
             if viz_placeholder is not None and render_viz is not None:
                 with viz_placeholder.container():
                     render_viz()
@@ -174,9 +179,11 @@ def handle_chat_panel(
         if pending_query:
             with st.chat_message("user"):
                 st.markdown(pending_query)
+        # 本轮进度/回答的占位；后续事件只更新这块，不重跑整页
         progress_slot = st.empty()
 
     if pending_query:
+        # 拉起后台编排，并在当前 ScriptRun 里逐条消费事件、刷新占位
         _run_turn(
             conversation,
             pending_query,

@@ -9,6 +9,7 @@
 ```bash
 export DEEPSEEK_API_KEY=...   # 或 DASHSCOPE_API_KEY=... 且 AGENTIC_BI_LLM_PROVIDER=qwen
 export AGENTIC_BI_DB_HOST=... AGENTIC_BI_DB_PORT=3306
+export AGENTIC_BI_DB_READONLY_USER=... AGENTIC_BI_DB_READONLY_PASSWORD=...
 export AGENTIC_BI_DB_USER=... AGENTIC_BI_DB_PASSWORD=... AGENTIC_BI_DB_NAME=...
 
 python -m agents.sql_agent.run "2017年哪个州的销售额最高？"
@@ -87,7 +88,9 @@ flowchart TD
 |------|------|
 | `DEEPSEEK_API_KEY` / `DASHSCOPE_API_KEY` | 当前 LLM 提供商对应的 Key |
 | `AGENTIC_BI_LLM_PROVIDER` | 可选，`deepseek`（默认）或 `qwen` |
-| `AGENTIC_BI_DB_*` | MySQL 连接（execute 必填） |
+| `AGENTIC_BI_DB_HOST/PORT/NAME` | MySQL 服务与数据库（execute 必填） |
+| `AGENTIC_BI_DB_READONLY_USER/PASSWORD` | SQL Agent execute 强制使用的只读账号（必填） |
+| `AGENTIC_BI_DB_USER/PASSWORD` | 维护/灌库账号；SQL Agent 不会回退使用 |
 | `AGENTIC_BI_SQL_MAX_ROWS` | 行数上限，默认 5000 |
 | `AGENTIC_BI_SQL_CSV_DIR` | CSV 目录，默认 `query_results/` |
 

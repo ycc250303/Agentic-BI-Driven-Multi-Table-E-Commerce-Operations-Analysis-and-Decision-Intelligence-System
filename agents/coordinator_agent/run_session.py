@@ -136,6 +136,7 @@ def _run_one(
     )
     if args.sse:
         last_event: dict[str, Any] = {}
+        # CLI 走同一条生成器，把事件编码成 SSE 文本帧写 stdout（Dashboard 不走这条）
         for event in manager.stream_turn_events(
             query=query,
             session_id=session_id,

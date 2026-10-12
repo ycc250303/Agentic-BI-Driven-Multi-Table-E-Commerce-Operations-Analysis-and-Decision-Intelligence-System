@@ -39,6 +39,7 @@ def main() -> None:
         st.subheader("可视化")
         viz_scroll = st.container(height=PANEL_SCROLL_HEIGHT, border=True)
         with viz_scroll:
+            # 图表占位：answer.final 时由聊天侧回调重绘
             viz_placeholder = st.empty()
             with viz_placeholder.container():
                 render_viz_panel(conversation)

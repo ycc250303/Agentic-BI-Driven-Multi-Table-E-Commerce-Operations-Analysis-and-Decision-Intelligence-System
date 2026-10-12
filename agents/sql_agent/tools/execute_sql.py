@@ -21,7 +21,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from pymysql.cursors import DictCursor
 
-from db_env import json_safe_value, pymysql_config
+from db_env import json_safe_value, readonly_pymysql_config
 from agents.sql_agent.tools.generate_sql import GenerateSqlOutput
 from agents.sql_agent.tools.sql_format_rules import normalize_sql, read_only_select_ok
 
@@ -29,8 +29,8 @@ _sql_agent_dir = Path(__file__).resolve().parents[1]
 
 
 def _db_config_from_env() -> dict[str, Any]:
-    """仅从环境变量读取连接参数，不设代码内默认值。"""
-    cfg = pymysql_config(autocommit=False)
+    """仅从独立只读环境变量读取运行时连接参数，不设代码内默认值。"""
+    cfg = readonly_pymysql_config(autocommit=False)
     cfg["cursorclass"] = DictCursor
     return cfg
 
@@ -466,7 +466,7 @@ class ExecuteSqlRunner:
 
 
 def build_execute_sql_tool():
-    """装配 ``execute_sql_tool``。连接参数仅来自环境变量。"""
+    """装配 ``execute_sql_tool``。运行时连接强制使用只读环境变量。"""
     runner = ExecuteSqlRunner()
     return StructuredTool.from_function(
         func=runner.invoke,
@@ -475,22 +475,18 @@ def build_execute_sql_tool():
             "在配置好环境变量后连接 MySQL，依次执行 generate_sql JSON 中的 query_sqls。"
             "每条查询写入独立 CSV（UTF-8 无 BOM；单条时文件名为时间戳；多条时为 时间戳_sql1.csv、_sql2.csv…；失败条目仍占对应 sqlN 文件）。"
             "返回 results 列表与聚合摘要。可选环境变量 AGENTIC_BI_SQL_CSV_DIR。"
-            "执行前会再次做只读校验；编排上仍建议先调用 check_sql_tool。"
+            "执行前会再次做只读校验；数据库连接强制使用 AGENTIC_BI_DB_READONLY_*；"
+            "编排上仍建议先调用 check_sql_tool。"
         ),
     )
 
 
 if __name__ == "__main__":
-    for key in (
-        "AGENTIC_BI_DB_HOST",
-        "AGENTIC_BI_DB_PORT",
-        "AGENTIC_BI_DB_USER",
-        "AGENTIC_BI_DB_PASSWORD",
-        "AGENTIC_BI_DB_NAME",
-    ):
-        if key not in os.environ:
-            print(f"请设置环境变量 {key} 后再运行演示。", file=sys.stderr)
-            sys.exit(1)
+    try:
+        _db_config_from_env()
+    except ValueError as e:
+        print(f"{e}。演示入口与运行时相同，只检查只读连接配置。", file=sys.stderr)
+        sys.exit(1)
 
     demo = GenerateSqlOutput(
         analysis_grain="month",

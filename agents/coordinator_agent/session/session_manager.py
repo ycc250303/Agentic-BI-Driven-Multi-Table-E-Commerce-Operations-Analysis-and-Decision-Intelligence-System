@@ -167,6 +167,7 @@ class SessionManager:
         opts = options
         turn_id = len(session.get("turns") or []) + 1
         history = build_conversation_history(session)
+        # 本轮同步跑编排；on_event 由 stream_turn_events 注入，把过程事件推进前台队列
         trace = TraceCollector(
             session_id=str(session.get("session_id") or ""),
             turn_id=turn_id,
@@ -331,11 +332,10 @@ class SessionManager:
         har_out: Path | str | None = None,
         har_labels_only: bool = False,
     ) -> Iterator[dict[str, Any]]:
-        """Yield Web/SSE-friendly events while a turn is running.
+        """本轮编排放到后台线程；过程事件入队，前台生成器逐条取出。
 
-        This is a synchronous generator backed by a worker thread. The worker
-        runs the normal blocking Agent flow, while trace callbacks are pushed to
-        a queue and yielded immediately by this generator.
+        工作线程跑原来的阻塞 ``run_turn``；节点/工具回调把事件推进线程安全队列，
+        本生成器立刻 yield，供页面或 SSE 消费。不是 LangGraph 原生 ``.stream()``。
         """
         from agents.coordinator_agent.events.web_events import (
             make_answer_final_event,
@@ -346,12 +346,14 @@ class SessionManager:
             make_turn_started_event,
         )
 
+        # 后台线程写、前台生成器读；Queue 本身线程安全
         event_queue: queue.Queue[tuple[str, Any]] = queue.Queue()
 
         def on_trace(trace: dict[str, Any]) -> None:
             event_queue.put(("trace", trace))
 
         def worker() -> None:
+            # 后台：完整跑一轮编排；过程走 on_trace，整轮结果/异常再入队
             try:
                 result = self.run_turn(
                     query=query,
@@ -372,6 +374,7 @@ class SessionManager:
 
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
+        # 前台：阻塞取队列，把内部包转换成 turn.started / trace.event / answer.final 再 yield
 
         sequence = 1
         started = False
@@ -380,6 +383,7 @@ class SessionManager:
         pending_error: BaseException | None = None
 
         while True:
+            # 阻塞取一条：过程包立刻转成页面事件 yield；result 才带最终回答
             kind, payload = event_queue.get()
             if kind == "trace":
                 trace = dict(payload)

@@ -31,7 +31,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from db_env import mysql_connector_config
+from db_env import readonly_mysql_connector_config
 
 
 ORDER_STATUS_IN = "('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')"
@@ -343,7 +343,7 @@ def main() -> int:
     args = p.parse_args()
 
     try:
-        cfg = mysql_connector_config(autocommit=True)
+        cfg = readonly_mysql_connector_config(autocommit=True)
     except ValueError as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         return 1

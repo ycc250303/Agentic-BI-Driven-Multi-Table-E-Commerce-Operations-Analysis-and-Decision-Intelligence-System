@@ -5,7 +5,9 @@
 ## 前置条件
 
 1. 已安装项目依赖（`pip install -r requirements.txt`；离线 NLP 灌库另装 `requirements-nlp.txt`）
-2. 已配置 `AGENTIC_BI_DB_HOST` / `PORT` / `NAME` / `USER` / `PASSWORD`（根目录 `.env` 或 shell 导出）
+2. 已配置 `AGENTIC_BI_DB_HOST` / `PORT` / `NAME` / `USER` / `PASSWORD`（根目录 `.env` 或 shell 导出）；在线查数另需 `AGENTIC_BI_DB_READONLY_USER/PASSWORD`，首次创建账号见下方 `create_readonly_user.py`
+
+`utils/setup.py` 和 NLP 离线灌库使用 writer 账号；预聚合基准查询使用只读账号。连接配置统一由根目录 `db_env.py` 的角色化函数提供。
 3. 原始 CSV 在 `data/`（9 个文件对应 9 张原始表）
 
 本地 MySQL 也可通过 [`deploy/readme.md`](../deploy/readme.md) 用 Docker 启动。
@@ -20,6 +22,9 @@ python utils/setup.py
 python utils/setup.py init
 python utils/setup.py load
 python utils/setup.py views
+
+# 在线查数只读账号（SQL Agent / NLP 查询 / 预聚合基准）；host 换成应用实际来源
+python utils/create_readonly_user.py --host-pattern '<Agent 实际来源地址>'
 ```
 
 **可选（NLP Agent 离线灌库前需先建表）：**
@@ -71,6 +76,7 @@ utils/setup.py nlp-tables ──► schema.sql @section nlp
 |------|------|
 | `setup.py` | 唯一入口：`init` / `load` / `views` / `nlp-tables` / `translation` |
 | `schema.sql` | 全部 DDL，按 `-- @section origin \| nlp \| views` 分段 |
+| `create_readonly_user.py` | 创建在线查数只读账号（`SELECT` + `SHOW VIEW`） |
 | `benchmark_preagg_vs_raw.py` | 预聚合 vs 原始 JOIN 耗时对比 |
 | `readme.md` | 本说明 |
 
