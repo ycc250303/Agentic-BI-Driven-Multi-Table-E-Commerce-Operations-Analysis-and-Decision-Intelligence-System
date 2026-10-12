@@ -1,0 +1,2 @@
+error_stage,error_message
+db_execute,"执行失败：(1054, ""Unknown column 'total_orders' in 'field list'"")"

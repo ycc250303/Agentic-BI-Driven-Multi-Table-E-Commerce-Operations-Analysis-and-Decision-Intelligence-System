@@ -1,0 +1,309 @@
+{
+  "always": {
+    "stability": {
+      "question_ex_mean": 0.8021,
+      "question_ex_min": 0.7188,
+      "question_ex_max": 0.875,
+      "always_pass_rate": 0.6875,
+      "always_pass_n": 22,
+      "always_pass_denom": 32
+    },
+    "runs": [
+      {
+        "n": 32,
+        "n_infra_error": 0,
+        "n_oos": 0,
+        "n_ex": 32,
+        "question_ex": 0.875,
+        "intent_micro_ex": 0.9024,
+        "by_split": {
+          "complex": {
+            "n_ex": 8,
+            "question_ex": 0.875,
+            "intent_micro_ex": 0.9333
+          },
+          "extreme": {
+            "n_ex": 8,
+            "question_ex": 0.875,
+            "intent_micro_ex": 0.9
+          },
+          "general": {
+            "n_ex": 8,
+            "question_ex": 0.75,
+            "intent_micro_ex": 0.75
+          },
+          "smoke": {
+            "n_ex": 8,
+            "question_ex": 1.0,
+            "intent_micro_ex": 1.0
+          }
+        },
+        "validity": 1.0,
+        "routing_exact": 0.9688,
+        "filter_ok": 1.0,
+        "infra_errors": []
+      },
+      {
+        "n": 32,
+        "n_infra_error": 0,
+        "n_oos": 0,
+        "n_ex": 32,
+        "question_ex": 0.7188,
+        "intent_micro_ex": 0.7561,
+        "by_split": {
+          "complex": {
+            "n_ex": 8,
+            "question_ex": 0.625,
+            "intent_micro_ex": 0.8
+          },
+          "extreme": {
+            "n_ex": 8,
+            "question_ex": 0.5,
+            "intent_micro_ex": 0.5
+          },
+          "general": {
+            "n_ex": 8,
+            "question_ex": 0.75,
+            "intent_micro_ex": 0.75
+          },
+          "smoke": {
+            "n_ex": 8,
+            "question_ex": 1.0,
+            "intent_micro_ex": 1.0
+          }
+        },
+        "validity": 1.0,
+        "routing_exact": 0.9688,
+        "filter_ok": 1.0,
+        "infra_errors": []
+      },
+      {
+        "n": 32,
+        "n_infra_error": 0,
+        "n_oos": 0,
+        "n_ex": 32,
+        "question_ex": 0.8125,
+        "intent_micro_ex": 0.8537,
+        "by_split": {
+          "complex": {
+            "n_ex": 8,
+            "question_ex": 0.875,
+            "intent_micro_ex": 0.9333
+          },
+          "extreme": {
+            "n_ex": 8,
+            "question_ex": 0.75,
+            "intent_micro_ex": 0.8
+          },
+          "general": {
+            "n_ex": 8,
+            "question_ex": 0.625,
+            "intent_micro_ex": 0.625
+          },
+          "smoke": {
+            "n_ex": 8,
+            "question_ex": 1.0,
+            "intent_micro_ex": 1.0
+          }
+        },
+        "validity": 1.0,
+        "routing_exact": 0.9688,
+        "filter_ok": 1.0,
+        "infra_errors": []
+      }
+    ],
+    "n_case_rows": 96,
+    "generate_sql_attempts_mean": 1.0625,
+    "retry_rate": 0.0625,
+    "sql_with_backtick_rate": 1.0,
+    "backticks_per_sql_mean": 39.0388,
+    "pred_error_n": 0,
+    "year_month_error_n": 0,
+    "by_split_question_ex_mean": {
+      "complex": 0.7917,
+      "extreme": 0.7083,
+      "general": 0.7083,
+      "smoke": 1.0
+    }
+  },
+  "minimal": {
+    "stability": {
+      "question_ex_mean": 0.8334,
+      "question_ex_min": 0.8125,
+      "question_ex_max": 0.8438,
+      "always_pass_rate": 0.75,
+      "always_pass_n": 24,
+      "always_pass_denom": 32
+    },
+    "runs": [
+      {
+        "n": 32,
+        "n_infra_error": 0,
+        "n_oos": 0,
+        "n_ex": 32,
+        "question_ex": 0.8438,
+        "intent_micro_ex": 0.878,
+        "by_split": {
+          "complex": {
+            "n_ex": 8,
+            "question_ex": 0.75,
+            "intent_micro_ex": 0.8667
+          },
+          "extreme": {
+            "n_ex": 8,
+            "question_ex": 0.625,
+            "intent_micro_ex": 0.7
+          },
+          "general": {
+            "n_ex": 8,
+            "question_ex": 1.0,
+            "intent_micro_ex": 1.0
+          },
+          "smoke": {
+            "n_ex": 8,
+            "question_ex": 1.0,
+            "intent_micro_ex": 1.0
+          }
+        },
+        "validity": 1.0,
+        "routing_exact": 1.0,
+        "filter_ok": 1.0,
+        "infra_errors": []
+      },
+      {
+        "n": 32,
+        "n_infra_error": 0,
+        "n_oos": 0,
+        "n_ex": 32,
+        "question_ex": 0.8125,
+        "intent_micro_ex": 0.8293,
+        "by_split": {
+          "complex": {
+            "n_ex": 8,
+            "question_ex": 0.75,
+            "intent_micro_ex": 0.8667
+          },
+          "extreme": {
+            "n_ex": 8,
+            "question_ex": 0.75,
+            "intent_micro_ex": 0.7
+          },
+          "general": {
+            "n_ex": 8,
+            "question_ex": 0.75,
+            "intent_micro_ex": 0.75
+          },
+          "smoke": {
+            "n_ex": 8,
+            "question_ex": 1.0,
+            "intent_micro_ex": 1.0
+          }
+        },
+        "validity": 1.0,
+        "routing_exact": 0.9688,
+        "filter_ok": 1.0,
+        "infra_errors": []
+      },
+      {
+        "n": 32,
+        "n_infra_error": 0,
+        "n_oos": 0,
+        "n_ex": 32,
+        "question_ex": 0.8438,
+        "intent_micro_ex": 0.8537,
+        "by_split": {
+          "complex": {
+            "n_ex": 8,
+            "question_ex": 0.75,
+            "intent_micro_ex": 0.8667
+          },
+          "extreme": {
+            "n_ex": 8,
+            "question_ex": 0.75,
+            "intent_micro_ex": 0.7
+          },
+          "general": {
+            "n_ex": 8,
+            "question_ex": 0.875,
+            "intent_micro_ex": 0.875
+          },
+          "smoke": {
+            "n_ex": 8,
+            "question_ex": 1.0,
+            "intent_micro_ex": 1.0
+          }
+        },
+        "validity": 1.0,
+        "routing_exact": 0.9688,
+        "filter_ok": 1.0,
+        "infra_errors": []
+      }
+    ],
+    "n_case_rows": 96,
+    "generate_sql_attempts_mean": 1.0625,
+    "retry_rate": 0.0625,
+    "sql_with_backtick_rate": 0.4884,
+    "backticks_per_sql_mean": 1.907,
+    "pred_error_n": 0,
+    "year_month_error_n": 0,
+    "by_split_question_ex_mean": {
+      "complex": 0.75,
+      "extreme": 0.7083,
+      "general": 0.875,
+      "smoke": 1.0
+    }
+  },
+  "n_questions": 32,
+  "always_better_n": 4,
+  "minimal_better_n": 5,
+  "tied_n": 23,
+  "always_better": [
+    {
+      "id": "complex-07",
+      "always_pass_n": 2,
+      "minimal_pass_n": 0
+    },
+    {
+      "id": "extreme-02",
+      "always_pass_n": 1,
+      "minimal_pass_n": 0
+    },
+    {
+      "id": "extreme-06",
+      "always_pass_n": 2,
+      "minimal_pass_n": 1
+    },
+    {
+      "id": "extreme-08",
+      "always_pass_n": 3,
+      "minimal_pass_n": 2
+    }
+  ],
+  "minimal_better": [
+    {
+      "id": "complex-03",
+      "always_pass_n": 2,
+      "minimal_pass_n": 3
+    },
+    {
+      "id": "extreme-01",
+      "always_pass_n": 1,
+      "minimal_pass_n": 3
+    },
+    {
+      "id": "extreme-07",
+      "always_pass_n": 1,
+      "minimal_pass_n": 2
+    },
+    {
+      "id": "general-01",
+      "always_pass_n": 0,
+      "minimal_pass_n": 3
+    },
+    {
+      "id": "general-07",
+      "always_pass_n": 1,
+      "minimal_pass_n": 2
+    }
+  ]
+}

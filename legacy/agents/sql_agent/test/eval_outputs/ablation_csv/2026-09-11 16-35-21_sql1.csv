@@ -1,0 +1,5 @@
+﻿payment_type,total_transactions,transaction_share
+credit_card,75618.0,0.753
+boleto,19539.0,0.1946
+voucher,3745.0,0.0373
+debit_card,1515.0,0.0151

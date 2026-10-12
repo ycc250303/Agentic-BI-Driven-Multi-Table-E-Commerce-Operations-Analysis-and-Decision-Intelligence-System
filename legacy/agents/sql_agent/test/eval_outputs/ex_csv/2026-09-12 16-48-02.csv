@@ -1,0 +1,2 @@
+customer_state,payment_type,delivered_orders,on_time_orders,on_time_rate
+SP,credit_card,13064,12512.0,0.9577

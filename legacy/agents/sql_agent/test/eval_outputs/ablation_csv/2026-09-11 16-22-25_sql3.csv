@@ -1,0 +1,5 @@
+﻿weight_band,volume_band,item_count,avg_freight,avg_freight_ratio
+heavy,large,28312,29.05472,0.2349163084
+heavy,small,16706,20.833858,0.2493028448
+light,large,4736,16.40565,0.3344246932
+light,small,60417,15.715422,0.3797469613

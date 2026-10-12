@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "split": "extreme",
+  "cases": [
+    {
+      "id": "extreme-01",
+      "split": "extreme",
+      "question": "2017 年 GMV 最高的州，在 2018 年的 GMV 以及相对 2017 年的差额是多少？",
+      "bucket": "compound",
+      "expected_views": ["mv_state_sales"],
+      "required_literals": ["2017", "2018"],
+      "intents": [
+        {
+          "id": "top2017_state_yoy",
+          "compare": "scalar",
+          "key_columns": ["customer_state", "gmv_2017", "gmv_2018"],
+          "gold_sql": "WITH `top_state` AS (SELECT `customer_state` FROM `mv_state_sales` WHERE `sales_month` LIKE '2017-%' GROUP BY `customer_state` ORDER BY SUM(`total_gmv`) DESC LIMIT 1), `g` AS (SELECT `ts`.`customer_state`, SUM(CASE WHEN `s`.`sales_month` LIKE '2017-%' THEN `s`.`total_gmv` ELSE 0 END) AS `gmv_2017`, SUM(CASE WHEN `s`.`sales_month` LIKE '2018-%' THEN `s`.`total_gmv` ELSE 0 END) AS `gmv_2018` FROM `mv_state_sales` `s` INNER JOIN `top_state` `ts` ON `s`.`customer_state` = `ts`.`customer_state` GROUP BY `ts`.`customer_state`) SELECT `customer_state`, `gmv_2017`, `gmv_2018` FROM `g`"
+        }
+      ]
+    },
+    {
+      "id": "extreme-02",
+      "split": "extreme",
+      "question": "2017 年延迟送达的订单里，最常用的支付方式是哪种？这些延迟单的平均分期数是多少？",
+      "bucket": "raw",
+      "expected_views": [],
+      "required_literals": ["2017"],
+      "intents": [
+        {
+          "id": "delayed_top_payment",
+          "compare": "scalar",
+          "key_columns": ["payment_type"],
+          "gold_sql": "SELECT `p`.`payment_type` FROM `orders` `o` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_delivered_customer_date` > `o`.`order_estimated_delivery_date` AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `p`.`payment_type` ORDER BY COUNT(DISTINCT `o`.`order_id`) DESC LIMIT 1"
+        },
+        {
+          "id": "delayed_avg_installments",
+          "compare": "scalar",
+          "key_columns": ["avg_installments"],
+          "gold_sql": "SELECT AVG(`p`.`payment_installments`) AS `avg_installments` FROM `orders` `o` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_delivered_customer_date` > `o`.`order_estimated_delivery_date` AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01'"
+        }
+      ]
+    },
+    {
+      "id": "extreme-03",
+      "split": "extreme",
+      "question": "2018 年相对 2017 年 GMV 下降最多的 10 个品类是哪些？",
+      "bucket": "view",
+      "expected_views": ["mv_category_sales"],
+      "required_literals": ["2017", "2018"],
+      "intents": [
+        {
+          "id": "category_gmv_decline_top10",
+          "compare": "ordered_topk",
+          "k": 10,
+          "key_columns": ["product_category_english"],
+          "gold_sql": "SELECT `product_category_english` FROM (SELECT `product_category_english`, SUM(CASE WHEN `sales_month` LIKE '2017-%' THEN `total_gmv` ELSE 0 END) AS `gmv_2017`, SUM(CASE WHEN `sales_month` LIKE '2018-%' THEN `total_gmv` ELSE 0 END) AS `gmv_2018` FROM `mv_category_sales` GROUP BY `product_category_english` HAVING SUM(CASE WHEN `sales_month` LIKE '2017-%' THEN `total_gmv` ELSE 0 END) > 0) `y` ORDER BY (`y`.`gmv_2018` - `y`.`gmv_2017`) ASC, `y`.`gmv_2017` DESC LIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": "extreme-04",
+      "split": "extreme",
+      "question": "2017 年 SP 州、且使用信用卡支付的已送达订单，准时交付率是多少？",
+      "bucket": "raw",
+      "expected_views": [],
+      "required_literals": ["2017", "SP", "credit_card"],
+      "intents": [
+        {
+          "id": "sp_card_on_time_2017",
+          "compare": "scalar",
+          "key_columns": ["on_time_rate"],
+          "gold_sql": "SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `c`.`customer_state` = 'SP' AND `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND EXISTS (SELECT 1 FROM `payments` `p` WHERE `p`.`order_id` = `o`.`order_id` AND `p`.`payment_type` = 'credit_card')"
+        }
+      ]
+    },
+    {
+      "id": "extreme-05",
+      "split": "extreme",
+      "question": "2018 年各州运费占 GMV 的比例，比例最高的 10 个州是哪些？",
+      "bucket": "raw",
+      "expected_views": [],
+      "required_literals": ["2018"],
+      "intents": [
+        {
+          "id": "freight_share_states_top10",
+          "compare": "ordered_topk",
+          "k": 10,
+          "key_columns": ["customer_state"],
+          "gold_sql": "SELECT `c`.`customer_state` FROM `orders` `o` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01' GROUP BY `c`.`customer_state` HAVING COUNT(DISTINCT `o`.`order_id`) >= 20 ORDER BY SUM(`oi`.`freight_value`) / NULLIF(SUM(`oi`.`price` + `oi`.`freight_value`), 0) DESC LIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": "extreme-06",
+      "split": "extreme",
+      "question": "2017 年只下过一单的客户占比是多少？同年复购客户贡献了多少 GMV 比例？",
+      "bucket": "raw",
+      "expected_views": [],
+      "required_literals": ["2017"],
+      "intents": [
+        {
+          "id": "one_time_customer_share",
+          "compare": "scalar",
+          "key_columns": ["one_time_customer_share"],
+          "gold_sql": "WITH `cust` AS (SELECT `c`.`customer_unique_id`, COUNT(DISTINCT `o`.`order_id`) AS `n_orders` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_unique_id`) SELECT SUM(CASE WHEN `n_orders` = 1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `one_time_customer_share` FROM `cust`"
+        },
+        {
+          "id": "repeat_gmv_share",
+          "compare": "scalar",
+          "key_columns": ["repeat_gmv_share"],
+          "gold_sql": "WITH `cust` AS (SELECT `c`.`customer_unique_id`, COUNT(DISTINCT `o`.`order_id`) AS `n_orders`, SUM(`oi`.`price` + `oi`.`freight_value`) AS `gmv` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_unique_id`) SELECT SUM(CASE WHEN `n_orders` >= 2 THEN `gmv` ELSE 0 END) / NULLIF(SUM(`gmv`), 0) AS `repeat_gmv_share` FROM `cust`"
+        }
+      ]
+    },
+    {
+      "id": "extreme-07",
+      "split": "extreme",
+      "question": "2017 年 GMV 最高的州里，差评率最高的 10 个品类是哪些？",
+      "bucket": "compound",
+      "expected_views": ["mv_state_sales"],
+      "required_literals": ["2017"],
+      "intents": [
+        {
+          "id": "top_state_bad_review_categories",
+          "compare": "ordered_topk",
+          "k": 10,
+          "key_columns": ["product_category"],
+          "gold_sql": "WITH `top_state` AS (SELECT `customer_state` FROM `mv_state_sales` WHERE `sales_month` LIKE '2017-%' GROUP BY `customer_state` ORDER BY SUM(`total_gmv`) DESC LIMIT 1) SELECT COALESCE(`pct`.`product_category_name_english`, `p`.`product_category_name`) AS `product_category` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `top_state` `ts` ON `c`.`customer_state` = `ts`.`customer_state` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` LEFT JOIN `product_category_name_translation` `pct` ON `p`.`product_category_name` = `pct`.`product_category_name` INNER JOIN `order_reviews` `r` ON `o`.`order_id` = `r`.`order_id` WHERE `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `product_category` HAVING COUNT(DISTINCT CASE WHEN `r`.`review_score` IS NOT NULL THEN `o`.`order_id` END) >= 20 ORDER BY COUNT(DISTINCT CASE WHEN `r`.`review_score` <= 2 THEN `o`.`order_id` END) / NULLIF(COUNT(DISTINCT CASE WHEN `r`.`review_score` IS NOT NULL THEN `o`.`order_id` END), 0) DESC LIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": "extreme-08",
+      "split": "extreme",
+      "question": "准时签收和超时签收的订单，客单价分别是多少？",
+      "bucket": "raw",
+      "expected_views": [],
+      "intents": [
+        {
+          "id": "aov_by_delivery_status",
+          "compare": "bag",
+          "key_columns": ["delivery_status", "avg_basket"],
+          "gold_sql": "SELECT CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 'on_time' ELSE 'late' END AS `delivery_status`, SUM(`oi`.`price` + `oi`.`freight_value`) / COUNT(DISTINCT `o`.`order_id`) AS `avg_basket` FROM `orders` `o` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL GROUP BY `delivery_status`"
+        }
+      ]
+    }
+  ]
+}

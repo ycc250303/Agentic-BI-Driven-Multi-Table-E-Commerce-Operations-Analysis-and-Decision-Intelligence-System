@@ -1,0 +1,550 @@
+{
+  "summary": {
+    "n": 32,
+    "n_infra_error": 0,
+    "n_oos": 0,
+    "gold_ok": true,
+    "by_split": {
+      "complex": {
+        "n": 8,
+        "n_infra_error": 0
+      },
+      "extreme": {
+        "n": 8,
+        "n_infra_error": 0
+      },
+      "general": {
+        "n": 8,
+        "n_infra_error": 0
+      },
+      "smoke": {
+        "n": 8,
+        "n_infra_error": 0
+      }
+    },
+    "infra_errors": []
+  },
+  "cases": [
+    {
+      "id": "smoke-01",
+      "question": "2017 年全平台 GMV 是多少？",
+      "bucket": "view",
+      "split": "smoke",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "smoke-02",
+      "question": "已送达订单一共有多少笔？",
+      "bucket": "raw",
+      "split": "smoke",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "smoke-03",
+      "question": "2017 年各月的 GMV 分别是多少？",
+      "bucket": "view",
+      "split": "smoke",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        12
+      ]
+    },
+    {
+      "id": "smoke-04",
+      "question": "各支付方式累计交易笔数是多少？",
+      "bucket": "view",
+      "split": "smoke",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        4
+      ]
+    },
+    {
+      "id": "smoke-05",
+      "question": "全部评论的平均评分是多少？",
+      "bucket": "raw",
+      "split": "smoke",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "smoke-06",
+      "question": "2017 年 GMV 最高的州是哪一个？",
+      "bucket": "view",
+      "split": "smoke",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "smoke-07",
+      "question": "客户分布在多少个州？",
+      "bucket": "raw",
+      "split": "smoke",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "smoke-08",
+      "question": "2018 年 1 月的订单量是多少？",
+      "bucket": "view",
+      "split": "smoke",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "general-01",
+      "question": "2017 年 SP 州的销售额是多少？",
+      "bucket": "view",
+      "split": "general",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "general-02",
+      "question": "2018 年各州销售额排名 TOP10。",
+      "bucket": "view",
+      "split": "general",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        10
+      ]
+    },
+    {
+      "id": "general-03",
+      "question": "按月比较 GMV、订单量和客单价。",
+      "bucket": "view",
+      "split": "general",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        24
+      ]
+    },
+    {
+      "id": "general-04",
+      "question": "2017 年 credit_card 支付的交易笔数是多少？",
+      "bucket": "view",
+      "split": "general",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "general-05",
+      "question": "评分为 1 分的评论有多少条？",
+      "bucket": "raw",
+      "split": "general",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "general-06",
+      "question": "2018 年 GMV 最高的 10 个品类是哪些？",
+      "bucket": "view",
+      "split": "general",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        10
+      ]
+    },
+    {
+      "id": "general-07",
+      "question": "RJ 州已送达订单的平均配送天数是多少？",
+      "bucket": "raw",
+      "split": "general",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "general-08",
+      "question": "voucher 支付方式各月的交易笔数和交易额是多少？",
+      "bucket": "view",
+      "split": "general",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        22
+      ]
+    },
+    {
+      "id": "complex-01",
+      "question": "2018 年平台已送达订单的准时交付率是多少？延迟率最高的 10 个州是哪些？",
+      "bucket": "raw",
+      "split": "complex",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1,
+        10
+      ]
+    },
+    {
+      "id": "complex-02",
+      "question": "2017 年销售额最高的州是哪一个？该州当年准时交付率和最常用支付方式分别是什么？",
+      "bucket": "compound",
+      "split": "complex",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "complex-03",
+      "question": "哪些卖家的差评率最高？",
+      "bucket": "raw",
+      "split": "complex",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        20
+      ]
+    },
+    {
+      "id": "complex-04",
+      "question": "差评数量最多的 10 个品类是哪些？",
+      "bucket": "raw",
+      "split": "complex",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        10
+      ]
+    },
+    {
+      "id": "complex-05",
+      "question": "商品重量与运费的相关系数是多少？按重量分桶后平均运费怎么变化？",
+      "bucket": "raw",
+      "split": "complex",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1,
+        5
+      ]
+    },
+    {
+      "id": "complex-06",
+      "question": "2017 年各州的 GMV 和准时交付率分别是多少？",
+      "bucket": "compound",
+      "split": "complex",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        27,
+        27
+      ]
+    },
+    {
+      "id": "complex-07",
+      "question": "哪种支付方式交易笔数最多？按交易笔数加权的平均分期数是多少？",
+      "bucket": "view",
+      "split": "complex",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "complex-08",
+      "question": "2018 年销售额最高的品类是什么？该品类当年订单量和平均单价是多少？",
+      "bucket": "compound",
+      "split": "complex",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "extreme-01",
+      "question": "2017 年 GMV 最高的州，在 2018 年的 GMV 以及相对 2017 年的差额是多少？",
+      "bucket": "compound",
+      "split": "extreme",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "extreme-02",
+      "question": "2017 年延迟送达的订单里，最常用的支付方式是哪种？这些延迟单的平均分期数是多少？",
+      "bucket": "raw",
+      "split": "extreme",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "extreme-03",
+      "question": "2018 年相对 2017 年 GMV 下降最多的 10 个品类是哪些？",
+      "bucket": "view",
+      "split": "extreme",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        10
+      ]
+    },
+    {
+      "id": "extreme-04",
+      "question": "2017 年 SP 州、且使用信用卡支付的已送达订单，准时交付率是多少？",
+      "bucket": "raw",
+      "split": "extreme",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1
+      ]
+    },
+    {
+      "id": "extreme-05",
+      "question": "2018 年各州运费占 GMV 的比例，比例最高的 10 个州是哪些？",
+      "bucket": "raw",
+      "split": "extreme",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        10
+      ]
+    },
+    {
+      "id": "extreme-06",
+      "question": "2017 年只下过一单的客户占比是多少？同年复购客户贡献了多少 GMV 比例？",
+      "bucket": "raw",
+      "split": "extreme",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "extreme-07",
+      "question": "2017 年 GMV 最高的州里，差评率最高的 10 个品类是哪些？",
+      "bucket": "compound",
+      "split": "extreme",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        10
+      ]
+    },
+    {
+      "id": "extreme-08",
+      "question": "准时签收和超时签收的订单，客单价分别是多少？",
+      "bucket": "raw",
+      "split": "extreme",
+      "oos": false,
+      "infra_error": null,
+      "ex_eligible": false,
+      "question_pass": false,
+      "validity": false,
+      "elapsed_s": null,
+      "gold_ok": true,
+      "gold_row_counts": [
+        2
+      ]
+    }
+  ]
+}

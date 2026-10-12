@@ -1,0 +1,5 @@
+payment_type,delayed_orders,avg_installments
+credit_card,2155,4.0337
+boleto,644,1.0
+voucher,117,1.0
+debit_card,33,1.0

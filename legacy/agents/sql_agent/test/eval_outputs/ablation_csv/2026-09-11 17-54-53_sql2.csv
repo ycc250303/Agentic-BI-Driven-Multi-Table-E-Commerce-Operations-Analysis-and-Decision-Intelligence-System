@@ -1,0 +1,2 @@
+error_stage,error_message
+db_execute,"执行失败：(1055, ""Expression #1 of ORDER BY clause is not in GROUP BY clause and contains nonaggregated column 'agentic_bi.mv_payment_dist.total_transactions' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by"")"

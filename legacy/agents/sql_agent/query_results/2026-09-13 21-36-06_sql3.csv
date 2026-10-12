@@ -1,0 +1,11 @@
+product_category_english,bad_review_count,reviewed_orders,bad_review_rate
+furniture_living_room,1,1,1.0
+fashion_bags_accessories,5,5,1.0
+home_confort,2,2,1.0
+food,3,3,1.0
+stationery,4,5,0.8
+garden_tools,3,4,0.75
+,61,82,0.7439
+consoles_games,6,11,0.5455
+computers_accessories,55,103,0.534
+fashion_male_clothing,13,25,0.52

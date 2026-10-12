@@ -1,0 +1,3958 @@
+{
+  "repeat": 3,
+  "gold": [
+    "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System/agents/sql_agent/test/gold/smoke.json",
+    "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System/agents/sql_agent/test/gold/general.json",
+    "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System/agents/sql_agent/test/gold/complex.json",
+    "/Users/yinchengcheng/Documents/GitHub/ycc/Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Intelligence-System/agents/sql_agent/test/gold/extreme.json"
+  ],
+  "runs": [
+    {
+      "n": 32,
+      "n_infra_error": 0,
+      "n_oos": 0,
+      "n_ex": 32,
+      "question_ex": 0.8125,
+      "intent_micro_ex": 0.8537,
+      "by_split": {
+        "complex": {
+          "n_ex": 8,
+          "question_ex": 0.75,
+          "intent_micro_ex": 0.8667
+        },
+        "extreme": {
+          "n_ex": 8,
+          "question_ex": 0.625,
+          "intent_micro_ex": 0.7
+        },
+        "general": {
+          "n_ex": 8,
+          "question_ex": 1.0,
+          "intent_micro_ex": 1.0
+        },
+        "smoke": {
+          "n_ex": 8,
+          "question_ex": 0.875,
+          "intent_micro_ex": 0.875
+        }
+      },
+      "validity": 1.0,
+      "routing_exact": 0.9688,
+      "filter_ok": 1.0,
+      "infra_errors": []
+    },
+    {
+      "n": 32,
+      "n_infra_error": 0,
+      "n_oos": 0,
+      "n_ex": 32,
+      "question_ex": 0.9062,
+      "intent_micro_ex": 0.9268,
+      "by_split": {
+        "complex": {
+          "n_ex": 8,
+          "question_ex": 0.75,
+          "intent_micro_ex": 0.8667
+        },
+        "extreme": {
+          "n_ex": 8,
+          "question_ex": 0.875,
+          "intent_micro_ex": 0.9
+        },
+        "general": {
+          "n_ex": 8,
+          "question_ex": 1.0,
+          "intent_micro_ex": 1.0
+        },
+        "smoke": {
+          "n_ex": 8,
+          "question_ex": 1.0,
+          "intent_micro_ex": 1.0
+        }
+      },
+      "validity": 1.0,
+      "routing_exact": 1.0,
+      "filter_ok": 1.0,
+      "infra_errors": []
+    },
+    {
+      "n": 32,
+      "n_infra_error": 0,
+      "n_oos": 0,
+      "n_ex": 32,
+      "question_ex": 0.8125,
+      "intent_micro_ex": 0.8293,
+      "by_split": {
+        "complex": {
+          "n_ex": 8,
+          "question_ex": 0.75,
+          "intent_micro_ex": 0.8667
+        },
+        "extreme": {
+          "n_ex": 8,
+          "question_ex": 0.625,
+          "intent_micro_ex": 0.6
+        },
+        "general": {
+          "n_ex": 8,
+          "question_ex": 0.875,
+          "intent_micro_ex": 0.875
+        },
+        "smoke": {
+          "n_ex": 8,
+          "question_ex": 1.0,
+          "intent_micro_ex": 1.0
+        }
+      },
+      "validity": 0.9688,
+      "routing_exact": 0.9688,
+      "filter_ok": 0.9524,
+      "infra_errors": []
+    }
+  ],
+  "stability": {
+    "question_ex_mean": 0.8437,
+    "question_ex_min": 0.8125,
+    "question_ex_max": 0.9062,
+    "always_pass_rate": 0.7188,
+    "always_pass_n": 23,
+    "always_pass_denom": 32
+  },
+  "cases": [
+    {
+      "repeat_index": 1,
+      "cases": [
+        {
+          "id": "smoke-01",
+          "question": "2017 年全平台 GMV 是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.45,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT SUM(`total_gmv`) AS `total_gmv` FROM `mv_monthly_sales` WHERE `year_month` LIKE '2017%'"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "smoke-02",
+          "question": "已送达订单一共有多少笔？",
+          "bucket": "raw",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 3.45,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "delivered_orders",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT SUM(`total_orders`) AS `total_orders` FROM `mv_monthly_sales`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "extra",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-03",
+          "question": "2017 年各月的 GMV 分别是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.0,
+          "pipeline_row_count_returned": 12,
+          "rewrite_attempts": 2,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "monthly_gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_monthly_sales` WHERE `year_month` LIKE '2017%' GROUP BY `year_month` ORDER BY `year_month` ASC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "smoke-04",
+          "question": "各支付方式累计交易笔数是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.83,
+          "pipeline_row_count_returned": 4,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "payment_tx",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` GROUP BY `payment_type` ORDER BY `total_transactions` DESC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-05",
+          "question": "全部评论的平均评分是多少？",
+          "bucket": "raw",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.89,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "avg_review_score",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT AVG(`review_score`) AS `avg_review_score` FROM `order_reviews`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-06",
+          "question": "2017 年 GMV 最高的州是哪一个？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.99,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_state_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "smoke-07",
+          "question": "客户分布在多少个州？",
+          "bucket": "raw",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.92,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "n_states",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COUNT(DISTINCT `customer_state`) AS `customer_state_count` FROM `customers`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-08",
+          "question": "2018 年 1 月的订单量是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.67,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "orders_2018_01",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, SUM(`total_orders`) AS `total_orders` FROM `mv_monthly_sales` WHERE `year_month` = '2018-01' GROUP BY `year_month`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-01",
+          "question": "2017 年 SP 州的销售额是多少？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.97,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "sp_gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' AND `customer_state` = 'SP' GROUP BY `customer_state`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-02",
+          "question": "2018 年各州销售额排名 TOP10。",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.61,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "state_gmv_2018_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2018%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-03",
+          "question": "按月比较 GMV、订单量和客单价。",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.29,
+          "pipeline_row_count_returned": 24,
+          "rewrite_attempts": 2,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "monthly_kpis",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, SUM(`total_gmv`) AS `total_gmv`, SUM(`total_orders`) AS `total_orders`, SUM(`total_gmv`) / NULLIF(SUM(`total_orders`), 0) AS `avg_basket` FROM `mv_monthly_sales` GROUP BY `year_month` ORDER BY `year_month` ASC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "general-04",
+          "question": "2017 年 credit_card 支付的交易笔数是多少？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.17,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "credit_card_tx_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` WHERE `year_month` LIKE '2017%' AND `payment_type` = 'credit_card' GROUP BY `payment_type`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-05",
+          "question": "评分为 1 分的评论有多少条？",
+          "bucket": "raw",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.31,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "score_1_count",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COUNT(*) AS `bad_review_count` FROM `order_reviews` WHERE `review_score` = 1"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "general-06",
+          "question": "2018 年 GMV 最高的 10 个品类是哪些？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.62,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "category_gmv_2018_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `product_category_english`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY `total_gmv` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_category_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-07",
+          "question": "RJ 州已送达订单的平均配送天数是多少？",
+          "bucket": "raw",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.97,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "rj_avg_delivery_days",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `c`.`customer_state`, AVG(DATEDIFF(`o`.`order_delivered_customer_date`, `o`.`order_purchase_timestamp`)) AS `avg_delivery_days` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_purchase_timestamp` IS NOT NULL AND `c`.`customer_state` = 'RJ' GROUP BY `c`.`customer_state`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-08",
+          "question": "voucher 支付方式各月的交易笔数和交易额是多少？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.53,
+          "pipeline_row_count_returned": 22,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "voucher_monthly",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, `payment_type`, SUM(`total_transactions`) AS `total_transactions`, SUM(`total_value`) AS `total_value` FROM `mv_payment_dist` WHERE `payment_type` = 'voucher' GROUP BY `year_month`, `payment_type` ORDER BY `year_month` ASC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-01",
+          "question": "2018 年平台已送达订单的准时交付率是多少？延迟率最高的 10 个州是哪些？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 8.61,
+          "pipeline_row_count_returned": 11,
+          "rewrite_attempts": 2,
+          "generate_sql_attempts": 2,
+          "intents": [
+            {
+              "id": "on_time_2018",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "delay_states_2018_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01'",
+            "SELECT `c`.`customer_state`, SUM(CASE WHEN `o`.`order_delivered_customer_date` > `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `delay_rate`, COUNT(*) AS `delivered_orders` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01' GROUP BY `c`.`customer_state` HAVING COUNT(*) >= 20 ORDER BY `delay_rate` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-02",
+          "question": "2017 年销售额最高的州是哪一个？该州当年准时交付率和最常用支付方式分别是什么？",
+          "bucket": "compound",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 6.44,
+          "pipeline_row_count_returned": 3,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_state",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "top_state_on_time",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            },
+            {
+              "id": "top_state_payment",
+              "pass": true,
+              "reason": "",
+              "pred_index": 2
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1)",
+            "SELECT `p`.`payment_type`, COUNT(*) AS `total_transactions` FROM `payments` `p` INNER JOIN `orders` `o` ON `p`.`order_id` = `o`.`order_id` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1) GROUP BY `p`.`payment_type` ORDER BY `total_transactions` DESC LIMIT 1"
+          ],
+          "pred_exec_ok": [
+            true,
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-03",
+          "question": "哪些卖家的差评率最高？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.8,
+          "pipeline_row_count_returned": 20,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "seller_bad_review_rate",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `s`.`seller_id` AS `seller_id`, `s`.`seller_state` AS `seller_state`, COUNT(DISTINCT CASE WHEN `r`.`review_score` <= 2 THEN `r`.`order_id` END) / NULLIF(COUNT(DISTINCT `r`.`order_id`), 0) AS `bad_review_rate`, COUNT(DISTINCT CASE WHEN `r`.`review_score` <= 2 THEN `r`.`order_id` END) AS `bad_review_count`, COUNT(DISTINCT `r`.`order_id`) AS `total_orders` FROM `order_reviews` `r` INNER JOIN `order_items` `oi` ON `r`.`order_id` = `oi`.`order_id` INNER JOIN `sellers` `s` ON `oi`.`seller_id` = `s`.`seller_id` GROUP BY `s`.`seller_id`, `s`.`seller_state` HAVING COUNT(DISTINCT `r`.`order_id`) >= 20 ORDER BY `bad_review_rate` DESC LIMIT 20"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-04",
+          "question": "差评数量最多的 10 个品类是哪些？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 3.47,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "bad_review_categories",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) AS `product_category_english`, COUNT(DISTINCT `oi`.`order_id`) AS `bad_review_count` FROM `order_reviews` `r` INNER JOIN `order_items` `oi` ON `r`.`order_id` = `oi`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` LEFT JOIN `product_category_name_translation` `t` ON `p`.`product_category_name` = `t`.`product_category_name` WHERE `r`.`review_score` <= 2 GROUP BY `product_category_english` ORDER BY `bad_review_count` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-05",
+          "question": "商品重量与运费的相关系数是多少？按重量分桶后平均运费怎么变化？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.48,
+          "pipeline_row_count_returned": 6,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "corr_weight_freight",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "weight_bucket_freight",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT (COUNT(*) * SUM(`p`.`product_weight_g` * `oi`.`freight_value`) - SUM(`p`.`product_weight_g`) * SUM(`oi`.`freight_value`)) / NULLIF(SQRT((COUNT(*) * SUM(`p`.`product_weight_g` * `p`.`product_weight_g`) - SUM(`p`.`product_weight_g`) * SUM(`p`.`product_weight_g`)) * (COUNT(*) * SUM(`oi`.`freight_value` * `oi`.`freight_value`) - SUM(`oi`.`freight_value`) * SUM(`oi`.`freight_value`))), 0) AS `corr_weight_freight` FROM `order_items` `oi` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `p`.`product_weight_g` IS NOT NULL AND `oi`.`freight_value` IS NOT NULL",
+            "SELECT CASE WHEN `p`.`product_weight_g` < 500 THEN '0-499g' WHEN `p`.`product_weight_g` < 1000 THEN '500-999g' WHEN `p`.`product_weight_g` < 2000 THEN '1000-1999g' WHEN `p`.`product_weight_g` < 5000 THEN '2000-4999g' ELSE '5000g+' END AS `weight_bucket`, AVG(`oi`.`freight_value`) AS `avg_freight_value`, COUNT(*) AS `item_count` FROM `order_items` `oi` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `p`.`product_weight_g` IS NOT NULL GROUP BY `weight_bucket` ORDER BY MIN(`p`.`product_weight_g`) ASC"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-06",
+          "question": "2017 年各州的 GMV 和准时交付率分别是多少？",
+          "bucket": "compound",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.99,
+          "pipeline_row_count_returned": 54,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "state_gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "state_on_time_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv`, SUM(`total_orders`) AS `total_orders` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC",
+            "SELECT `c`.`customer_state` AS `customer_state`, SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_state` ORDER BY `on_time_rate` DESC"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-07",
+          "question": "哪种支付方式交易笔数最多？按交易笔数加权的平均分期数是多少？",
+          "bucket": "view",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.45,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_payment",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "avg_installments",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` GROUP BY `payment_type` ORDER BY `total_transactions` DESC LIMIT 1",
+            "SELECT SUM(`avg_installments` * `total_transactions`) / NULLIF(SUM(`total_transactions`), 0) AS `avg_installments` FROM `mv_payment_dist`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-08",
+          "question": "2018 年销售额最高的品类是什么？该品类当年订单量和平均单价是多少？",
+          "bucket": "compound",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 6.4,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 2,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_category_2018",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "top_category_orders_price",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `product_category_english`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT `product_category_english`, SUM(`total_orders`) AS `total_orders`, SUM(`total_gmv`) / NULLIF(SUM(`total_orders`), 0) AS `avg_price` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' AND `product_category_english` = (SELECT `product_category_english` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY SUM(`total_gmv`) DESC LIMIT 1) GROUP BY `product_category_english`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_category_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-01",
+          "question": "2017 年 GMV 最高的州，在 2018 年的 GMV 以及相对 2017 年的差额是多少？",
+          "bucket": "compound",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 5.59,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top2017_state_yoy",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT `customer_state`, SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) AS `total_gmv_2017`, SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) AS `total_gmv_2018`, SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) - SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) AS `gmv_diff` FROM `mv_state_sales` WHERE (`year_month` LIKE '2017%' OR `year_month` LIKE '2018%') AND `customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1) GROUP BY `customer_state`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-02",
+          "question": "2017 年延迟送达的订单里，最常用的支付方式是哪种？这些延迟单的平均分期数是多少？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 10.57,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 3,
+          "generate_sql_attempts": 2,
+          "intents": [
+            {
+              "id": "delayed_top_payment",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "delayed_avg_installments",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `p`.`payment_type`, COUNT(DISTINCT `o`.`order_id`) AS `total_transactions` FROM `orders` `o` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_delivered_customer_date` > `o`.`order_estimated_delivery_date` AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `p`.`payment_type` ORDER BY `total_transactions` DESC LIMIT 1",
+            "SELECT SUM(`p`.`payment_value` * `p`.`payment_installments`) / NULLIF(SUM(`p`.`payment_value`), 0) AS `avg_installments` FROM `orders` `o` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_delivered_customer_date` > `o`.`order_estimated_delivery_date` AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `p`.`payment_type` = (SELECT `p2`.`payment_type` FROM `orders` `o2` INNER JOIN `payments` `p2` ON `o2`.`order_id` = `p2`.`order_id` WHERE `o2`.`order_status` = 'delivered' AND `o2`.`order_delivered_customer_date` IS NOT NULL AND `o2`.`order_estimated_delivery_date` IS NOT NULL AND `o2`.`order_delivered_customer_date` > `o2`.`order_estimated_delivery_date` AND `o2`.`order_purchase_timestamp` >= '2017-01-01' AND `o2`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `p2`.`payment_type` ORDER BY COUNT(DISTINCT `o2`.`order_id`) DESC LIMIT 1)"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-03",
+          "question": "2018 年相对 2017 年 GMV 下降最多的 10 个品类是哪些？",
+          "bucket": "view",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.58,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "category_gmv_decline_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `product_category_english`, SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) AS `total_gmv_2018`, SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) AS `total_gmv_2017`, SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) - SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) AS `gmv_change` FROM `mv_category_sales` WHERE `year_month` LIKE '2017%' OR `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY `gmv_change` ASC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_category_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-04",
+          "question": "2017 年 SP 州、且使用信用卡支付的已送达订单，准时交付率是多少？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 3.55,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "sp_card_on_time_2017",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `c`.`customer_state`, SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(DISTINCT `o`.`order_id`), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = 'SP' AND `p`.`payment_type` = 'credit_card' GROUP BY `c`.`customer_state`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-05",
+          "question": "2018 年各州运费占 GMV 的比例，比例最高的 10 个州是哪些？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.6,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "freight_share_states_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `c`.`customer_state`, SUM(`oi`.`freight_value`) AS `total_freight`, SUM(`oi`.`price` + `oi`.`freight_value`) AS `total_gmv`, SUM(`oi`.`freight_value`) / NULLIF(SUM(`oi`.`price` + `oi`.`freight_value`), 0) AS `freight_gmv_ratio` FROM `order_items` `oi` INNER JOIN `orders` `o` ON `oi`.`order_id` = `o`.`order_id` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01' AND `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') GROUP BY `c`.`customer_state` ORDER BY `freight_gmv_ratio` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-06",
+          "question": "2017 年只下过一单的客户占比是多少？同年复购客户贡献了多少 GMV 比例？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.27,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "one_time_customer_share",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "repeat_gmv_share",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COUNT(DISTINCT CASE WHEN `t`.`order_cnt` = 1 THEN `t`.`customer_unique_id` END) / NULLIF(COUNT(DISTINCT `t`.`customer_unique_id`), 0) AS `one_order_customer_ratio` FROM (SELECT `c`.`customer_unique_id`, COUNT(DISTINCT `o`.`order_id`) AS `order_cnt` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_unique_id`) `t`",
+            "SELECT SUM(CASE WHEN `t`.`order_cnt` >= 2 THEN `t`.`cust_gmv` ELSE 0 END) / NULLIF(SUM(`t`.`cust_gmv`), 0) AS `repurchase_gmv_ratio` FROM (SELECT `c`.`customer_unique_id`, COUNT(DISTINCT `o`.`order_id`) AS `order_cnt`, SUM(`oi`.`price` + `oi`.`freight_value`) AS `cust_gmv` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_unique_id`) `t`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-07",
+          "question": "2017 年 GMV 最高的州里，差评率最高的 10 个品类是哪些？",
+          "bucket": "compound",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.43,
+          "pipeline_row_count_returned": 11,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_state_bad_review_categories",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) AS `product_category_english`, COUNT(DISTINCT CASE WHEN `r`.`review_score` <= 2 THEN `o`.`order_id` END) / NULLIF(COUNT(DISTINCT `o`.`order_id`), 0) AS `bad_review_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` LEFT JOIN `product_category_name_translation` `t` ON `p`.`product_category_name` = `t`.`product_category_name` INNER JOIN `order_reviews` `r` ON `o`.`order_id` = `r`.`order_id` WHERE `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1) GROUP BY COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) HAVING COUNT(DISTINCT `o`.`order_id`) >= 20 ORDER BY `bad_review_rate` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-08",
+          "question": "准时签收和超时签收的订单，客单价分别是多少？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.8,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "aov_by_delivery_status",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 'on_time' ELSE 'late' END AS `delivery_status`, SUM(`oi`.`price` + `oi`.`freight_value`) AS `total_gmv`, COUNT(DISTINCT `o`.`order_id`) AS `total_orders`, SUM(`oi`.`price` + `oi`.`freight_value`) / NULLIF(COUNT(DISTINCT `o`.`order_id`), 0) AS `avg_basket` FROM `orders` `o` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL GROUP BY `delivery_status` ORDER BY `delivery_status`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        }
+      ]
+    },
+    {
+      "repeat_index": 2,
+      "cases": [
+        {
+          "id": "smoke-01",
+          "question": "2017 年全平台 GMV 是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.65,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT SUM(`total_gmv`) AS `total_gmv` FROM `mv_monthly_sales` WHERE `year_month` LIKE '2017%'"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "smoke-02",
+          "question": "已送达订单一共有多少笔？",
+          "bucket": "raw",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.32,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "delivered_orders",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COUNT(DISTINCT `order_id`) AS `total_orders` FROM `orders` WHERE `order_status` = 'delivered'"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-03",
+          "question": "2017 年各月的 GMV 分别是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.24,
+          "pipeline_row_count_returned": 12,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "monthly_gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_monthly_sales` WHERE `year_month` LIKE '2017%' GROUP BY `year_month` ORDER BY `year_month` ASC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "smoke-04",
+          "question": "各支付方式累计交易笔数是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.05,
+          "pipeline_row_count_returned": 4,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "payment_tx",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` GROUP BY `payment_type` ORDER BY `total_transactions` DESC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-05",
+          "question": "全部评论的平均评分是多少？",
+          "bucket": "raw",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.41,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "avg_review_score",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT AVG(`review_score`) AS `avg_review_score` FROM `order_reviews`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-06",
+          "question": "2017 年 GMV 最高的州是哪一个？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.96,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_state_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "smoke-07",
+          "question": "客户分布在多少个州？",
+          "bucket": "raw",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.07,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "n_states",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COUNT(DISTINCT `customer_state`) AS `customer_state_count` FROM `customers`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-08",
+          "question": "2018 年 1 月的订单量是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.17,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "orders_2018_01",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, SUM(`total_orders`) AS `total_orders` FROM `mv_monthly_sales` WHERE `year_month` = '2018-01' GROUP BY `year_month`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-01",
+          "question": "2017 年 SP 州的销售额是多少？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.15,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "sp_gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' AND `customer_state` = 'SP' GROUP BY `customer_state`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-02",
+          "question": "2018 年各州销售额排名 TOP10。",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.56,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "state_gmv_2018_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2018%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-03",
+          "question": "按月比较 GMV、订单量和客单价。",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.87,
+          "pipeline_row_count_returned": 24,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "monthly_kpis",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, `total_gmv`, `total_orders`, `avg_basket` FROM `mv_monthly_sales` ORDER BY `year_month` ASC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "general-04",
+          "question": "2017 年 credit_card 支付的交易笔数是多少？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.54,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "credit_card_tx_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` WHERE `year_month` LIKE '2017%' AND `payment_type` = 'credit_card' GROUP BY `payment_type`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-05",
+          "question": "评分为 1 分的评论有多少条？",
+          "bucket": "raw",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.71,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "score_1_count",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COUNT(*) AS `bad_review_count` FROM `order_reviews` WHERE `review_score` = 1"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "general-06",
+          "question": "2018 年 GMV 最高的 10 个品类是哪些？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.17,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "category_gmv_2018_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `product_category_english`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY `total_gmv` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_category_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-07",
+          "question": "RJ 州已送达订单的平均配送天数是多少？",
+          "bucket": "raw",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.95,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "rj_avg_delivery_days",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT AVG(DATEDIFF(`o`.`order_delivered_customer_date`, `o`.`order_purchase_timestamp`)) AS `avg_delivery_days` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `c`.`customer_state` = 'RJ' AND `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_purchase_timestamp` IS NOT NULL"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-08",
+          "question": "voucher 支付方式各月的交易笔数和交易额是多少？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.51,
+          "pipeline_row_count_returned": 22,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "voucher_monthly",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, `payment_type`, `total_transactions`, `total_value` FROM `mv_payment_dist` WHERE `payment_type` = 'voucher' ORDER BY `year_month` ASC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-01",
+          "question": "2018 年平台已送达订单的准时交付率是多少？延迟率最高的 10 个州是哪些？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 7.55,
+          "pipeline_row_count_returned": 11,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 2,
+          "intents": [
+            {
+              "id": "on_time_2018",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "delay_states_2018_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01'",
+            "SELECT `c`.`customer_state` AS `customer_state`, COUNT(DISTINCT CASE WHEN `o`.`order_delivered_customer_date` > `o`.`order_estimated_delivery_date` THEN `o`.`order_id` END) AS `delayed_orders`, COUNT(DISTINCT `o`.`order_id`) AS `delivered_orders`, COUNT(DISTINCT CASE WHEN `o`.`order_delivered_customer_date` > `o`.`order_estimated_delivery_date` THEN `o`.`order_id` END) / NULLIF(COUNT(DISTINCT `o`.`order_id`), 0) AS `delay_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01' GROUP BY `c`.`customer_state` HAVING COUNT(DISTINCT `o`.`order_id`) >= 20 ORDER BY `delay_rate` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-02",
+          "question": "2017 年销售额最高的州是哪一个？该州当年准时交付率和最常用支付方式分别是什么？",
+          "bucket": "compound",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 6.44,
+          "pipeline_row_count_returned": 3,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_state",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "top_state_on_time",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            },
+            {
+              "id": "top_state_payment",
+              "pass": true,
+              "reason": "",
+              "pred_index": 2
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1)",
+            "SELECT `p`.`payment_type`, COUNT(DISTINCT `p`.`order_id`) AS `total_transactions` FROM `payments` `p` INNER JOIN `orders` `o` ON `p`.`order_id` = `o`.`order_id` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1) GROUP BY `p`.`payment_type` ORDER BY `total_transactions` DESC LIMIT 1"
+          ],
+          "pred_exec_ok": [
+            true,
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-03",
+          "question": "哪些卖家的差评率最高？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.58,
+          "pipeline_row_count_returned": 20,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "seller_bad_review_rate",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `oi`.`seller_id`, COUNT(DISTINCT CASE WHEN `r`.`review_score` <= 2 THEN `o`.`order_id` END) / NULLIF(COUNT(DISTINCT `o`.`order_id`), 0) AS `bad_review_rate`, COUNT(DISTINCT CASE WHEN `r`.`review_score` <= 2 THEN `o`.`order_id` END) AS `bad_review_count` FROM `order_items` `oi` INNER JOIN `orders` `o` ON `oi`.`order_id` = `o`.`order_id` INNER JOIN `order_reviews` `r` ON `o`.`order_id` = `r`.`order_id` WHERE `r`.`review_score` IS NOT NULL GROUP BY `oi`.`seller_id` HAVING COUNT(DISTINCT `o`.`order_id`) >= 20 ORDER BY `bad_review_rate` DESC LIMIT 20"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-04",
+          "question": "差评数量最多的 10 个品类是哪些？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 4.33,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "bad_review_categories",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) AS `product_category_english`, COUNT(DISTINCT `o`.`order_id`) AS `bad_review_count` FROM `order_reviews` `r` INNER JOIN `orders` `o` ON `r`.`order_id` = `o`.`order_id` INNER JOIN `order_items` `i` ON `o`.`order_id` = `i`.`order_id` INNER JOIN `products` `p` ON `i`.`product_id` = `p`.`product_id` LEFT JOIN `product_category_name_translation` `t` ON `p`.`product_category_name` = `t`.`product_category_name` WHERE `r`.`review_score` <= 2 GROUP BY COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) ORDER BY `bad_review_count` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-05",
+          "question": "商品重量与运费的相关系数是多少？按重量分桶后平均运费怎么变化？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.58,
+          "pipeline_row_count_returned": 6,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "corr_weight_freight",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "weight_bucket_freight",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT (COUNT(*) * SUM(`p`.`product_weight_g` * `oi`.`freight_value`) - SUM(`p`.`product_weight_g`) * SUM(`oi`.`freight_value`)) / NULLIF(SQRT((COUNT(*) * SUM(`p`.`product_weight_g` * `p`.`product_weight_g`) - SUM(`p`.`product_weight_g`) * SUM(`p`.`product_weight_g`)) * (COUNT(*) * SUM(`oi`.`freight_value` * `oi`.`freight_value`) - SUM(`oi`.`freight_value`) * SUM(`oi`.`freight_value`))), 0) AS `pearson_r` FROM `order_items` `oi` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `p`.`product_weight_g` IS NOT NULL AND `oi`.`freight_value` IS NOT NULL",
+            "SELECT CASE WHEN `p`.`product_weight_g` < 500 THEN '0-499g' WHEN `p`.`product_weight_g` < 1000 THEN '500-999g' WHEN `p`.`product_weight_g` < 2000 THEN '1000-1999g' WHEN `p`.`product_weight_g` < 5000 THEN '2000-4999g' ELSE '5000g+' END AS `weight_bucket`, AVG(`oi`.`freight_value`) AS `avg_freight_value` FROM `order_items` `oi` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `p`.`product_weight_g` IS NOT NULL AND `oi`.`freight_value` IS NOT NULL GROUP BY `weight_bucket` ORDER BY `weight_bucket`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-06",
+          "question": "2017 年各州的 GMV 和准时交付率分别是多少？",
+          "bucket": "compound",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.9,
+          "pipeline_row_count_returned": 54,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "state_gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "state_on_time_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC",
+            "SELECT `c`.`customer_state` AS `customer_state`, SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_state` ORDER BY `on_time_rate` DESC"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-07",
+          "question": "哪种支付方式交易笔数最多？按交易笔数加权的平均分期数是多少？",
+          "bucket": "view",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 5.08,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_payment",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "avg_installments",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` GROUP BY `payment_type` ORDER BY `total_transactions` DESC LIMIT 1",
+            "SELECT `payment_type`, SUM(`avg_installments` * `total_transactions`) / NULLIF(SUM(`total_transactions`), 0) AS `avg_installments` FROM `mv_payment_dist` WHERE `payment_type` = (SELECT `payment_type` FROM `mv_payment_dist` GROUP BY `payment_type` ORDER BY SUM(`total_transactions`) DESC LIMIT 1) GROUP BY `payment_type`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-08",
+          "question": "2018 年销售额最高的品类是什么？该品类当年订单量和平均单价是多少？",
+          "bucket": "compound",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.35,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_category_2018",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "top_category_orders_price",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `product_category_english`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT `product_category_english`, SUM(`total_orders`) AS `total_orders`, SUM(`avg_price` * `total_orders`) / NULLIF(SUM(`total_orders`), 0) AS `avg_price` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' AND `product_category_english` = (SELECT `t`.`product_category_english` FROM `mv_category_sales` `t` WHERE `t`.`year_month` LIKE '2018%' GROUP BY `t`.`product_category_english` ORDER BY SUM(`t`.`total_gmv`) DESC LIMIT 1) GROUP BY `product_category_english`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_category_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-01",
+          "question": "2017 年 GMV 最高的州，在 2018 年的 GMV 以及相对 2017 年的差额是多少？",
+          "bucket": "compound",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 6.05,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top2017_state_yoy",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT `customer_state`, SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) AS `total_gmv_2017`, SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) AS `total_gmv_2018` FROM `mv_state_sales` WHERE `customer_state` = (SELECT `customer_state` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY SUM(`total_gmv`) DESC LIMIT 1) GROUP BY `customer_state`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-02",
+          "question": "2017 年延迟送达的订单里，最常用的支付方式是哪种？这些延迟单的平均分期数是多少？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 7.62,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 2,
+          "intents": [
+            {
+              "id": "delayed_top_payment",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "delayed_avg_installments",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `p`.`payment_type`, COUNT(DISTINCT `o`.`order_id`) AS `total_transactions` FROM `orders` `o` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_delivered_customer_date` > `o`.`order_estimated_delivery_date` AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `p`.`payment_type` ORDER BY `total_transactions` DESC LIMIT 1",
+            "SELECT SUM(`p`.`payment_installments`) / NULLIF(COUNT(*), 0) AS `avg_installments` FROM `orders` `o` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_delivered_customer_date` > `o`.`order_estimated_delivery_date` AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `p`.`payment_type` = (SELECT `p2`.`payment_type` FROM `orders` `o2` INNER JOIN `payments` `p2` ON `o2`.`order_id` = `p2`.`order_id` WHERE `o2`.`order_status` = 'delivered' AND `o2`.`order_delivered_customer_date` IS NOT NULL AND `o2`.`order_estimated_delivery_date` IS NOT NULL AND `o2`.`order_delivered_customer_date` > `o2`.`order_estimated_delivery_date` AND `o2`.`order_purchase_timestamp` >= '2017-01-01' AND `o2`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `p2`.`payment_type` ORDER BY COUNT(DISTINCT `o2`.`order_id`) DESC LIMIT 1)"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-03",
+          "question": "2018 年相对 2017 年 GMV 下降最多的 10 个品类是哪些？",
+          "bucket": "view",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.46,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "category_gmv_decline_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `product_category_english`, SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) AS `gmv_2017`, SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) AS `gmv_2018`, SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) - SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) AS `gmv_diff` FROM `mv_category_sales` WHERE `year_month` LIKE '2017%' OR `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY `gmv_diff` ASC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_category_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-04",
+          "question": "2017 年 SP 州、且使用信用卡支付的已送达订单，准时交付率是多少？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.71,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "sp_card_on_time_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `c`.`customer_state`, SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = 'SP' AND `p`.`payment_type` = 'credit_card' GROUP BY `c`.`customer_state`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-05",
+          "question": "2018 年各州运费占 GMV 的比例，比例最高的 10 个州是哪些？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.59,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "freight_share_states_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `c`.`customer_state`, SUM(`oi`.`freight_value`) AS `total_freight`, SUM(`oi`.`price` + `oi`.`freight_value`) AS `total_gmv`, SUM(`oi`.`freight_value`) / NULLIF(SUM(`oi`.`price` + `oi`.`freight_value`), 0) AS `freight_ratio` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` WHERE `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01' GROUP BY `c`.`customer_state` ORDER BY `freight_ratio` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-06",
+          "question": "2017 年只下过一单的客户占比是多少？同年复购客户贡献了多少 GMV 比例？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.06,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "one_time_customer_share",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "repeat_gmv_share",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT SUM(CASE WHEN `t`.`order_cnt` = 1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `single_order_customer_ratio` FROM (SELECT `c`.`customer_unique_id`, COUNT(DISTINCT `o`.`order_id`) AS `order_cnt` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_unique_id`) `t`",
+            "SELECT SUM(CASE WHEN `t`.`order_cnt` >= 2 THEN `t`.`cust_gmv` ELSE 0 END) / NULLIF(SUM(`t`.`cust_gmv`), 0) AS `repeat_customer_gmv_ratio` FROM (SELECT `c`.`customer_unique_id`, COUNT(DISTINCT `o`.`order_id`) AS `order_cnt`, SUM(`oi`.`price` + `oi`.`freight_value`) AS `cust_gmv` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_unique_id`) `t`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-07",
+          "question": "2017 年 GMV 最高的州里，差评率最高的 10 个品类是哪些？",
+          "bucket": "compound",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 7.38,
+          "pipeline_row_count_returned": 11,
+          "rewrite_attempts": 2,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_state_bad_review_categories",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) AS `product_category_english`, COUNT(DISTINCT CASE WHEN `r`.`review_score` <= 2 THEN `o`.`order_id` END) / NULLIF(COUNT(DISTINCT `r`.`order_id`), 0) AS `bad_review_rate`, COUNT(DISTINCT `r`.`order_id`) AS `reviewed_orders` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `order_items` `i` ON `o`.`order_id` = `i`.`order_id` INNER JOIN `products` `p` ON `i`.`product_id` = `p`.`product_id` LEFT JOIN `product_category_name_translation` `t` ON `p`.`product_category_name` = `t`.`product_category_name` INNER JOIN `order_reviews` `r` ON `o`.`order_id` = `r`.`order_id` WHERE `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1) GROUP BY COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) HAVING COUNT(DISTINCT `r`.`order_id`) >= 20 ORDER BY `bad_review_rate` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-08",
+          "question": "准时签收和超时签收的订单，客单价分别是多少？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.27,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "aov_by_delivery_status",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT CASE WHEN `d`.`order_delivered_customer_date` <= `d`.`order_estimated_delivery_date` THEN 'on_time' ELSE 'late' END AS `delivery_status`, SUM(`d`.`order_gmv`) AS `total_gmv`, COUNT(DISTINCT `d`.`order_id`) AS `total_orders`, SUM(`d`.`order_gmv`) / NULLIF(COUNT(DISTINCT `d`.`order_id`), 0) AS `avg_basket` FROM (SELECT `o`.`order_id`, `o`.`order_delivered_customer_date`, `o`.`order_estimated_delivery_date`, SUM(`oi`.`price` + `oi`.`freight_value`) AS `order_gmv` FROM `orders` `o` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL GROUP BY `o`.`order_id`, `o`.`order_delivered_customer_date`, `o`.`order_estimated_delivery_date`) `d` GROUP BY `delivery_status` ORDER BY `delivery_status`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        }
+      ]
+    },
+    {
+      "repeat_index": 3,
+      "cases": [
+        {
+          "id": "smoke-01",
+          "question": "2017 年全平台 GMV 是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.03,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT SUM(`total_gmv`) AS `total_gmv` FROM `mv_monthly_sales` WHERE `year_month` LIKE '2017%'"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "smoke-02",
+          "question": "已送达订单一共有多少笔？",
+          "bucket": "raw",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.95,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "delivered_orders",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COUNT(DISTINCT `order_id`) AS `total_orders` FROM `orders` WHERE `order_status` = 'delivered'"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-03",
+          "question": "2017 年各月的 GMV 分别是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.94,
+          "pipeline_row_count_returned": 12,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "monthly_gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_monthly_sales` WHERE `year_month` LIKE '2017%' GROUP BY `year_month` ORDER BY `year_month` ASC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "smoke-04",
+          "question": "各支付方式累计交易笔数是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.18,
+          "pipeline_row_count_returned": 4,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "payment_tx",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` GROUP BY `payment_type` ORDER BY `total_transactions` DESC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-05",
+          "question": "全部评论的平均评分是多少？",
+          "bucket": "raw",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.35,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "avg_review_score",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT AVG(`review_score`) AS `avg_review_score` FROM `order_reviews`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-06",
+          "question": "2017 年 GMV 最高的州是哪一个？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.44,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_state_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "smoke-07",
+          "question": "客户分布在多少个州？",
+          "bucket": "raw",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.7,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "n_states",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COUNT(DISTINCT `customer_state`) AS `customer_state_count` FROM `customers`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "smoke-08",
+          "question": "2018 年 1 月的订单量是多少？",
+          "bucket": "view",
+          "split": "smoke",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.74,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 2,
+          "intents": [
+            {
+              "id": "orders_2018_01",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT SUM(`total_orders`) AS `total_orders` FROM `mv_monthly_sales` WHERE `year_month` = '2018-01'"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-01",
+          "question": "2017 年 SP 州的销售额是多少？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.66,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "sp_gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' AND `customer_state` = 'SP' GROUP BY `customer_state`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-02",
+          "question": "2018 年各州销售额排名 TOP10。",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.42,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "state_gmv_2018_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2018%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-03",
+          "question": "按月比较 GMV、订单量和客单价。",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.91,
+          "pipeline_row_count_returned": 24,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "monthly_kpis",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, `total_gmv`, `total_orders`, `avg_basket` FROM `mv_monthly_sales` ORDER BY `year_month` ASC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_monthly_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "general-04",
+          "question": "2017 年 credit_card 支付的交易笔数是多少？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.73,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "credit_card_tx_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` WHERE `year_month` LIKE '2017%' AND `payment_type` = 'credit_card' GROUP BY `payment_type`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-05",
+          "question": "评分为 1 分的评论有多少条？",
+          "bucket": "raw",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 2.72,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "score_1_count",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COUNT(*) AS `bad_review_count` FROM `order_reviews` WHERE `review_score` = 1"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "general-06",
+          "question": "2018 年 GMV 最高的 10 个品类是哪些？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.65,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "category_gmv_2018_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `product_category_english`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY `total_gmv` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_category_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-07",
+          "question": "RJ 州已送达订单的平均配送天数是多少？",
+          "bucket": "raw",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 3.91,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "rj_avg_delivery_days",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`avg_delivery_days` * `delayed_orders`) / NULLIF(SUM(`delayed_orders`), 0) AS `avg_delivery_days` FROM `mv_delivery_perf` WHERE `customer_state` = 'RJ' GROUP BY `customer_state`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_delivery_perf"
+          ],
+          "routing": "extra",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "general-08",
+          "question": "voucher 支付方式各月的交易笔数和交易额是多少？",
+          "bucket": "view",
+          "split": "general",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.39,
+          "pipeline_row_count_returned": 22,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "voucher_monthly",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `year_month`, `payment_type`, SUM(`total_transactions`) AS `total_transactions`, SUM(`total_value`) AS `total_value` FROM `mv_payment_dist` WHERE `payment_type` = 'voucher' GROUP BY `year_month`, `payment_type` ORDER BY `year_month` ASC"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-01",
+          "question": "2018 年平台已送达订单的准时交付率是多少？延迟率最高的 10 个州是哪些？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 6.74,
+          "pipeline_row_count_returned": 11,
+          "rewrite_attempts": 2,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "on_time_2018",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "delay_states_2018_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01'",
+            "SELECT `c`.`customer_state` AS `customer_state`, SUM(CASE WHEN `o`.`order_delivered_customer_date` > `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `delay_rate`, COUNT(*) AS `delivered_orders` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01' GROUP BY `c`.`customer_state` HAVING COUNT(*) >= 20 ORDER BY `delay_rate` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-02",
+          "question": "2017 年销售额最高的州是哪一个？该州当年准时交付率和最常用支付方式分别是什么？",
+          "bucket": "compound",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 6.47,
+          "pipeline_row_count_returned": 3,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_state",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "top_state_on_time",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            },
+            {
+              "id": "top_state_payment",
+              "pass": true,
+              "reason": "",
+              "pred_index": 2
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1)",
+            "SELECT `p`.`payment_type`, COUNT(DISTINCT `p`.`order_id`) AS `total_transactions` FROM `payments` `p` INNER JOIN `orders` `o` ON `p`.`order_id` = `o`.`order_id` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1) GROUP BY `p`.`payment_type` ORDER BY `total_transactions` DESC LIMIT 1"
+          ],
+          "pred_exec_ok": [
+            true,
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-03",
+          "question": "哪些卖家的差评率最高？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 5.85,
+          "pipeline_row_count_returned": 20,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "seller_bad_review_rate",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `oi`.`seller_id`, COUNT(DISTINCT CASE WHEN `r`.`review_score` <= 2 THEN `o`.`order_id` END) / NULLIF(COUNT(DISTINCT `o`.`order_id`), 0) AS `bad_review_rate`, COUNT(DISTINCT `o`.`order_id`) AS `reviewed_orders` FROM `order_items` `oi` INNER JOIN `orders` `o` ON `oi`.`order_id` = `o`.`order_id` INNER JOIN `order_reviews` `r` ON `o`.`order_id` = `r`.`order_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') GROUP BY `oi`.`seller_id` HAVING COUNT(DISTINCT `o`.`order_id`) >= 20 ORDER BY `bad_review_rate` DESC LIMIT 20"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-04",
+          "question": "差评数量最多的 10 个品类是哪些？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 3.33,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "bad_review_categories",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) AS `product_category_english`, COUNT(DISTINCT `o`.`order_id`) AS `bad_review_count` FROM `order_reviews` `r` INNER JOIN `orders` `o` ON `r`.`order_id` = `o`.`order_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` LEFT JOIN `product_category_name_translation` `t` ON `p`.`product_category_name` = `t`.`product_category_name` WHERE `r`.`review_score` <= 2 GROUP BY COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) ORDER BY `bad_review_count` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-05",
+          "question": "商品重量与运费的相关系数是多少？按重量分桶后平均运费怎么变化？",
+          "bucket": "raw",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.37,
+          "pipeline_row_count_returned": 6,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "corr_weight_freight",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "weight_bucket_freight",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT (COUNT(*) * SUM(`p`.`product_weight_g` * `oi`.`freight_value`) - SUM(`p`.`product_weight_g`) * SUM(`oi`.`freight_value`)) / NULLIF(SQRT((COUNT(*) * SUM(`p`.`product_weight_g` * `p`.`product_weight_g`) - SUM(`p`.`product_weight_g`) * SUM(`p`.`product_weight_g`)) * (COUNT(*) * SUM(`oi`.`freight_value` * `oi`.`freight_value`) - SUM(`oi`.`freight_value`) * SUM(`oi`.`freight_value`))), 0) AS `corr_weight_freight` FROM `order_items` `oi` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `p`.`product_weight_g` IS NOT NULL AND `oi`.`freight_value` IS NOT NULL",
+            "SELECT CASE WHEN `p`.`product_weight_g` < 500 THEN '0-499g' WHEN `p`.`product_weight_g` < 1000 THEN '500-999g' WHEN `p`.`product_weight_g` < 2000 THEN '1000-1999g' WHEN `p`.`product_weight_g` < 5000 THEN '2000-4999g' ELSE '5000g+' END AS `weight_bucket`, AVG(`oi`.`freight_value`) AS `avg_freight_value` FROM `order_items` `oi` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `p`.`product_weight_g` IS NOT NULL AND `oi`.`freight_value` IS NOT NULL GROUP BY `weight_bucket` ORDER BY MIN(`p`.`product_weight_g`) ASC"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-06",
+          "question": "2017 年各州的 GMV 和准时交付率分别是多少？",
+          "bucket": "compound",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.36,
+          "pipeline_row_count_returned": 54,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "state_gmv_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "state_on_time_2017",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC",
+            "SELECT `c`.`customer_state`, SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_state` ORDER BY `on_time_rate` DESC"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "complex-07",
+          "question": "哪种支付方式交易笔数最多？按交易笔数加权的平均分期数是多少？",
+          "bucket": "view",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 4.29,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_payment",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "avg_installments",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` GROUP BY `payment_type` ORDER BY `total_transactions` DESC LIMIT 1",
+            "SELECT SUM(`avg_installments` * `total_transactions`) / NULLIF(SUM(`total_transactions`), 0) AS `avg_installments` FROM `mv_payment_dist`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_payment_dist"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        },
+        {
+          "id": "complex-08",
+          "question": "2018 年销售额最高的品类是什么？该品类当年订单量和平均单价是多少？",
+          "bucket": "compound",
+          "split": "complex",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.4,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_category_2018",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "top_category_orders_price",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `product_category_english`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT `product_category_english`, SUM(`total_orders`) AS `total_orders`, SUM(`avg_price` * `total_orders`) / NULLIF(SUM(`total_orders`), 0) AS `avg_price` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' AND `product_category_english` = (SELECT `product_category_english` FROM `mv_category_sales` WHERE `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY SUM(`total_gmv`) DESC LIMIT 1) GROUP BY `product_category_english`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_category_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-01",
+          "question": "2017 年 GMV 最高的州，在 2018 年的 GMV 以及相对 2017 年的差额是多少？",
+          "bucket": "compound",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 7.65,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 2,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top2017_state_yoy",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT `customer_state`, SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) AS `total_gmv_2017`, SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) AS `total_gmv_2018`, SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) - SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) AS `gmv_diff` FROM `mv_state_sales` WHERE (`year_month` LIKE '2017%' OR `year_month` LIKE '2018%') AND `customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1) GROUP BY `customer_state`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-02",
+          "question": "2017 年延迟送达的订单里，最常用的支付方式是哪种？这些延迟单的平均分期数是多少？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": false,
+          "elapsed_s": 5.53,
+          "pipeline_row_count_returned": 0,
+          "rewrite_attempts": 3,
+          "generate_sql_attempts": 3,
+          "intents": [
+            {
+              "id": "delayed_top_payment",
+              "pass": false,
+              "reason": "no_pred_sql",
+              "pred_index": null
+            },
+            {
+              "id": "delayed_avg_installments",
+              "pass": false,
+              "reason": "no_pred_sql",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [],
+          "pred_exec_ok": [],
+          "pred_errors": [],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": false,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-03",
+          "question": "2018 年相对 2017 年 GMV 下降最多的 10 个品类是哪些？",
+          "bucket": "view",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.25,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "category_gmv_decline_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `product_category_english`, SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) AS `gmv_2017`, SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) AS `gmv_2018`, SUM(CASE WHEN `year_month` LIKE '2017%' THEN `total_gmv` ELSE 0 END) - SUM(CASE WHEN `year_month` LIKE '2018%' THEN `total_gmv` ELSE 0 END) AS `gmv_drop` FROM `mv_category_sales` WHERE `year_month` LIKE '2017%' OR `year_month` LIKE '2018%' GROUP BY `product_category_english` ORDER BY `gmv_drop` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [
+            "mv_category_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-04",
+          "question": "2017 年 SP 州、且使用信用卡支付的已送达订单，准时交付率是多少？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": false,
+          "validity": true,
+          "elapsed_s": 4.75,
+          "pipeline_row_count_returned": 1,
+          "rewrite_attempts": 2,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "sp_card_on_time_2017",
+              "pass": false,
+              "reason": "unmatched",
+              "pred_index": null
+            }
+          ],
+          "pred_sqls": [
+            "SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(DISTINCT `o`.`order_id`), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = 'SP' AND `p`.`payment_type` = 'credit_card'"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-05",
+          "question": "2018 年各州运费占 GMV 的比例，比例最高的 10 个州是哪些？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 3.77,
+          "pipeline_row_count_returned": 10,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "freight_share_states_top10",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `c`.`customer_state`, SUM(`oi`.`freight_value`) AS `total_freight`, SUM(`oi`.`price` + `oi`.`freight_value`) AS `total_gmv`, SUM(`oi`.`freight_value`) / NULLIF(SUM(`oi`.`price` + `oi`.`freight_value`), 0) AS `freight_ratio` FROM `orders` `o` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01' GROUP BY `c`.`customer_state` ORDER BY `freight_ratio` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-06",
+          "question": "2017 年只下过一单的客户占比是多少？同年复购客户贡献了多少 GMV 比例？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 5.51,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "one_time_customer_share",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            },
+            {
+              "id": "repeat_gmv_share",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT COUNT(DISTINCT CASE WHEN `t`.`order_cnt` = 1 THEN `t`.`customer_unique_id` END) / NULLIF(COUNT(DISTINCT `t`.`customer_unique_id`), 0) AS `single_order_customer_share` FROM (SELECT `c`.`customer_unique_id`, COUNT(DISTINCT `o`.`order_id`) AS `order_cnt` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_unique_id`) `t`",
+            "SELECT SUM(CASE WHEN `t`.`order_cnt` > 1 THEN `t`.`gmv` ELSE 0 END) / NULLIF(SUM(`t`.`gmv`), 0) AS `repeat_customer_gmv_share` FROM (SELECT `c`.`customer_unique_id`, COUNT(DISTINCT `o`.`order_id`) AS `order_cnt`, SUM(`oi`.`price` + `oi`.`freight_value`) AS `gmv` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` WHERE `o`.`order_status` IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_unique_id`) `t`"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-07",
+          "question": "2017 年 GMV 最高的州里，差评率最高的 10 个品类是哪些？",
+          "bucket": "compound",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 9.27,
+          "pipeline_row_count_returned": 11,
+          "rewrite_attempts": 3,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "top_state_bad_review_categories",
+              "pass": true,
+              "reason": "",
+              "pred_index": 1
+            }
+          ],
+          "pred_sqls": [
+            "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `year_month` LIKE '2017%' GROUP BY `customer_state` ORDER BY `total_gmv` DESC LIMIT 1",
+            "SELECT COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) AS `product_category_english`, COUNT(DISTINCT CASE WHEN `r`.`review_score` <= 2 THEN `o`.`order_id` END) / NULLIF(COUNT(DISTINCT `r`.`order_id`), 0) AS `bad_review_rate`, COUNT(DISTINCT `r`.`order_id`) AS `reviewed_orders` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` LEFT JOIN `product_category_name_translation` `t` ON `p`.`product_category_name` = `t`.`product_category_name` INNER JOIN `order_reviews` `r` ON `o`.`order_id` = `r`.`order_id` WHERE `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `c`.`customer_state` = (SELECT `s`.`customer_state` FROM `mv_state_sales` `s` WHERE `s`.`year_month` LIKE '2017%' GROUP BY `s`.`customer_state` ORDER BY SUM(`s`.`total_gmv`) DESC LIMIT 1) GROUP BY COALESCE(`t`.`product_category_name_english`, `p`.`product_category_name`) HAVING COUNT(DISTINCT `r`.`order_id`) >= 20 ORDER BY `bad_review_rate` DESC LIMIT 10"
+          ],
+          "pred_exec_ok": [
+            true,
+            true
+          ],
+          "pred_errors": [
+            null,
+            null
+          ],
+          "used_views": [
+            "mv_state_sales"
+          ],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": true
+        },
+        {
+          "id": "extreme-08",
+          "question": "准时签收和超时签收的订单，客单价分别是多少？",
+          "bucket": "raw",
+          "split": "extreme",
+          "oos": false,
+          "infra_error": null,
+          "ex_eligible": true,
+          "question_pass": true,
+          "validity": true,
+          "elapsed_s": 7.38,
+          "pipeline_row_count_returned": 2,
+          "rewrite_attempts": 1,
+          "generate_sql_attempts": 1,
+          "intents": [
+            {
+              "id": "aov_by_delivery_status",
+              "pass": true,
+              "reason": "",
+              "pred_index": 0
+            }
+          ],
+          "pred_sqls": [
+            "SELECT CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 'on_time' ELSE 'late' END AS `delivery_status`, SUM(`oi`.`price` + `oi`.`freight_value`) AS `total_gmv`, COUNT(DISTINCT `o`.`order_id`) AS `total_orders`, SUM(`oi`.`price` + `oi`.`freight_value`) / NULLIF(COUNT(DISTINCT `o`.`order_id`), 0) AS `avg_basket` FROM `orders` `o` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL GROUP BY `delivery_status` ORDER BY `delivery_status`"
+          ],
+          "pred_exec_ok": [
+            true
+          ],
+          "pred_errors": [
+            null
+          ],
+          "used_views": [],
+          "routing": "exact",
+          "filter_ok": true,
+          "has_required_literals": false
+        }
+      ]
+    }
+  ]
+}

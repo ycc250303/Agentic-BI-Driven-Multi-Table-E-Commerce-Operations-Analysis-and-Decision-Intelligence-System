@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "split": "smoke",
+  "cases": [
+    {
+      "id": "smoke-01",
+      "split": "smoke",
+      "question": "2017 年全平台 GMV 是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_monthly_sales"],
+      "required_literals": ["2017"],
+      "intents": [
+        {
+          "id": "gmv_2017",
+          "compare": "scalar",
+          "key_columns": ["total_gmv"],
+          "gold_sql": "SELECT SUM(`total_gmv`) AS `total_gmv` FROM `mv_monthly_sales` WHERE `sales_month` LIKE '2017-%'"
+        }
+      ]
+    },
+    {
+      "id": "smoke-02",
+      "split": "smoke",
+      "question": "已送达订单一共有多少笔？",
+      "bucket": "raw",
+      "expected_views": [],
+      "intents": [
+        {
+          "id": "delivered_orders",
+          "compare": "scalar",
+          "key_columns": ["delivered_orders"],
+          "gold_sql": "SELECT COUNT(*) AS `delivered_orders` FROM `orders` WHERE `order_status` = 'delivered'"
+        }
+      ]
+    },
+    {
+      "id": "smoke-03",
+      "split": "smoke",
+      "question": "2017 年各月的 GMV 分别是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_monthly_sales"],
+      "required_literals": ["2017"],
+      "intents": [
+        {
+          "id": "monthly_gmv_2017",
+          "compare": "bag",
+          "key_columns": ["sales_month", "total_gmv"],
+          "gold_sql": "SELECT `sales_month`, `total_gmv` FROM `mv_monthly_sales` WHERE `sales_month` LIKE '2017-%'"
+        }
+      ]
+    },
+    {
+      "id": "smoke-04",
+      "split": "smoke",
+      "question": "各支付方式累计交易笔数是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_payment_dist"],
+      "intents": [
+        {
+          "id": "payment_tx",
+          "compare": "bag",
+          "key_columns": ["payment_type", "total_transactions"],
+          "gold_sql": "SELECT `payment_type`, SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` GROUP BY `payment_type`"
+        }
+      ]
+    },
+    {
+      "id": "smoke-05",
+      "split": "smoke",
+      "question": "全部评论的平均评分是多少？",
+      "bucket": "raw",
+      "expected_views": [],
+      "intents": [
+        {
+          "id": "avg_review_score",
+          "compare": "scalar",
+          "key_columns": ["avg_review_score"],
+          "gold_sql": "SELECT AVG(`review_score`) AS `avg_review_score` FROM `order_reviews` WHERE `review_score` IS NOT NULL"
+        }
+      ]
+    },
+    {
+      "id": "smoke-06",
+      "split": "smoke",
+      "question": "2017 年 GMV 最高的州是哪一个？",
+      "bucket": "view",
+      "expected_views": ["mv_state_sales"],
+      "required_literals": ["2017"],
+      "intents": [
+        {
+          "id": "top_state_2017",
+          "compare": "scalar",
+          "key_columns": ["customer_state"],
+          "gold_sql": "SELECT `customer_state` FROM `mv_state_sales` WHERE `sales_month` LIKE '2017-%' GROUP BY `customer_state` ORDER BY SUM(`total_gmv`) DESC LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": "smoke-07",
+      "split": "smoke",
+      "question": "客户分布在多少个州？",
+      "bucket": "raw",
+      "expected_views": [],
+      "intents": [
+        {
+          "id": "n_states",
+          "compare": "scalar",
+          "key_columns": ["n_states"],
+          "gold_sql": "SELECT COUNT(DISTINCT `customer_state`) AS `n_states` FROM `customers`"
+        }
+      ]
+    },
+    {
+      "id": "smoke-08",
+      "split": "smoke",
+      "question": "2018 年 1 月的订单量是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_monthly_sales"],
+      "required_literals": ["2018-01"],
+      "intents": [
+        {
+          "id": "orders_2018_01",
+          "compare": "scalar",
+          "key_columns": ["total_orders"],
+          "gold_sql": "SELECT `total_orders` FROM `mv_monthly_sales` WHERE `sales_month` = '2018-01'"
+        }
+      ]
+    }
+  ]
+}

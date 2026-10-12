@@ -1,0 +1,11 @@
+customer_state,product_category_english,bad_review_rate
+SP,fashion_male_clothing,0.2432
+SP,home_confort,0.2243
+SP,,0.1988
+SP,audio,0.1905
+SP,home_construction,0.1892
+SP,air_conditioning,0.1837
+SP,office_furniture,0.1792
+SP,musical_instruments,0.1705
+SP,home_appliances_2,0.1667
+SP,construction_tools_construction,0.1667

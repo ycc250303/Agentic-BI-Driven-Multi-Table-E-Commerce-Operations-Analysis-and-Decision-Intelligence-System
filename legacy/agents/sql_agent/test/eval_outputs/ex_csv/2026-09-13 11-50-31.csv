@@ -1,0 +1,2 @@
+error_stage,error_message
+db_execute,"执行失败：(1064, ""You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '?) / NULLIF(SUM(?), 0) AS avg_delivery_days FROM mv_delivery_perf WHERE customer' at line 1"")"

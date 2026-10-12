@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "split": "phase2",
+  "cases": [
+    {
+      "id": "p2-lit-category",
+      "split": "phase2",
+      "question": "2018 年 casa_conforto 品类的 GMV 是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_category_sales"],
+      "required_literals": ["2018", "casa_conforto"],
+      "intents": [
+        {
+          "id": "casa_conforto_gmv_2018",
+          "compare": "scalar",
+          "key_columns": ["gmv_2018"],
+          "gold_sql": "SELECT SUM(`total_gmv`) AS `gmv_2018` FROM `mv_category_sales` WHERE `sales_month` LIKE '2018-%' AND LOWER(`product_category_english`) IN ('casa_conforto', 'home_comfort')"
+        }
+      ]
+    },
+    {
+      "id": "p2-lit-state",
+      "split": "phase2",
+      "question": "2017 年 SP 州销售额是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_state_sales"],
+      "required_literals": ["2017", "SP"],
+      "intents": [
+        {
+          "id": "sp_gmv_2017",
+          "compare": "scalar",
+          "key_columns": ["gmv_2017_sp"],
+          "gold_sql": "SELECT SUM(`total_gmv`) AS `gmv_2017_sp` FROM `mv_state_sales` WHERE `sales_month` LIKE '2017-%' AND `customer_state` = 'SP'"
+        }
+      ]
+    },
+    {
+      "id": "p2-lit-payment",
+      "split": "phase2",
+      "question": "2017 年 credit_card 支付的交易笔数是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_payment_dist"],
+      "required_literals": ["2017", "credit_card"],
+      "intents": [
+        {
+          "id": "credit_card_tx_2017",
+          "compare": "scalar",
+          "key_columns": ["tx_2017"],
+          "gold_sql": "SELECT SUM(`total_transactions`) AS `tx_2017` FROM `mv_payment_dist` WHERE `sales_month` LIKE '2017-%' AND `payment_type` = 'credit_card'"
+        }
+      ]
+    },
+    {
+      "id": "p2-raw-bad-reviews",
+      "split": "phase2",
+      "question": "差评（评分不超过 2）一共有多少条？",
+      "bucket": "raw",
+      "expected_views": [],
+      "intents": [
+        {
+          "id": "bad_review_count",
+          "compare": "scalar",
+          "key_columns": ["bad_review_count"],
+          "gold_sql": "SELECT COUNT(*) AS `bad_review_count` FROM `order_reviews` WHERE `review_score` <= 2"
+        }
+      ]
+    },
+    {
+      "id": "p2-raw-weight-corr",
+      "split": "phase2",
+      "question": "订单商品重量与运费的相关系数是多少？",
+      "bucket": "raw",
+      "expected_views": [],
+      "intents": [
+        {
+          "id": "corr_weight_freight",
+          "compare": "scalar",
+          "key_columns": ["corr_weight_freight"],
+          "gold_sql": "SELECT (COUNT(*) * SUM(`p`.`product_weight_g` * `oi`.`freight_value`) - SUM(`p`.`product_weight_g`) * SUM(`oi`.`freight_value`)) / NULLIF(SQRT((COUNT(*) * SUM(`p`.`product_weight_g` * `p`.`product_weight_g`) - POW(SUM(`p`.`product_weight_g`), 2)) * (COUNT(*) * SUM(`oi`.`freight_value` * `oi`.`freight_value`) - POW(SUM(`oi`.`freight_value`), 2))), 0) AS `corr_weight_freight` FROM `order_items` `oi` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `oi`.`freight_value` IS NOT NULL AND `p`.`product_weight_g` IS NOT NULL"
+        }
+      ]
+    },
+    {
+      "id": "p2-dual-state-delivery",
+      "split": "phase2",
+      "question": "按州和月份联合分析销售额与准时率。",
+      "bucket": "view",
+      "expected_views": ["mv_state_sales", "mv_delivery_perf"],
+      "intents": [
+        {
+          "id": "state_month_gmv",
+          "compare": "bag",
+          "key_columns": ["sales_month", "customer_state", "total_gmv"],
+          "gold_sql": "SELECT `sales_month`, `customer_state`, `total_gmv` FROM `mv_state_sales`"
+        },
+        {
+          "id": "state_month_on_time",
+          "compare": "bag",
+          "key_columns": ["sales_month", "customer_state", "on_time_rate"],
+          "gold_sql": "SELECT `sales_month`, `customer_state`, `on_time_rate` FROM `mv_delivery_perf`"
+        }
+      ]
+    },
+    {
+      "id": "p2-dual-category-payment",
+      "split": "phase2",
+      "question": "按月对比品类GMV与支付方式分布变化。",
+      "bucket": "view",
+      "expected_views": ["mv_category_sales", "mv_payment_dist"],
+      "intents": [
+        {
+          "id": "monthly_category_gmv",
+          "compare": "bag",
+          "key_columns": ["sales_month", "product_category_english", "total_gmv"],
+          "gold_sql": "SELECT `sales_month`, `product_category_english`, `total_gmv` FROM `mv_category_sales`"
+        },
+        {
+          "id": "monthly_payment_tx",
+          "compare": "bag",
+          "key_columns": ["sales_month", "payment_type", "total_transactions"],
+          "gold_sql": "SELECT `sales_month`, `payment_type`, `total_transactions` FROM `mv_payment_dist`"
+        }
+      ]
+    },
+    {
+      "id": "p2-compound-category",
+      "split": "phase2",
+      "question": "2018年销售额最高的品类是什么？该品类订单量是多少？",
+      "bucket": "compound",
+      "expected_views": ["mv_category_sales"],
+      "required_literals": ["2018"],
+      "intents": [
+        {
+          "id": "top_category_2018",
+          "compare": "scalar",
+          "key_columns": ["top_category"],
+          "gold_sql": "SELECT `product_category_english` AS `top_category` FROM `mv_category_sales` WHERE `sales_month` LIKE '2018-%' GROUP BY `product_category_english` ORDER BY SUM(`total_gmv`) DESC LIMIT 1"
+        },
+        {
+          "id": "top_category_orders",
+          "compare": "scalar",
+          "key_columns": ["total_orders"],
+          "gold_sql": "WITH `top_cat` AS (SELECT `product_category_english` FROM `mv_category_sales` WHERE `sales_month` LIKE '2018-%' GROUP BY `product_category_english` ORDER BY SUM(`total_gmv`) DESC LIMIT 1) SELECT SUM(`c`.`total_orders`) AS `total_orders` FROM `mv_category_sales` `c` INNER JOIN `top_cat` `t` ON `c`.`product_category_english` = `t`.`product_category_english` WHERE `c`.`sales_month` LIKE '2018-%'"
+        }
+      ]
+    },
+    {
+      "id": "p2-compound-state-pay",
+      "split": "phase2",
+      "question": "2018年销售额最高的州用得最多的支付方式是哪种？",
+      "bucket": "compound",
+      "expected_views": ["mv_state_sales"],
+      "required_literals": ["2018"],
+      "intents": [
+        {
+          "id": "top_state_2018_payment",
+          "compare": "scalar",
+          "key_columns": ["payment_type"],
+          "gold_sql": "WITH `top_state` AS (SELECT `customer_state` FROM `mv_state_sales` WHERE `sales_month` LIKE '2018-%' GROUP BY `customer_state` ORDER BY SUM(`total_gmv`) DESC LIMIT 1) SELECT `p`.`payment_type` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` INNER JOIN `top_state` `ts` ON `c`.`customer_state` = `ts`.`customer_state` WHERE `o`.`order_purchase_timestamp` >= '2018-01-01' AND `o`.`order_purchase_timestamp` < '2019-01-01' GROUP BY `p`.`payment_type` ORDER BY COUNT(DISTINCT `o`.`order_id`) DESC LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": "p2-oos-wordcloud",
+      "split": "phase2",
+      "question": "评论文本里差评高频词有哪些？并看对应品类。",
+      "bucket": "oos",
+      "expected_views": [],
+      "intents": []
+    },
+    {
+      "id": "p2-oos-forecast",
+      "split": "phase2",
+      "question": "给出未来6周销售额预测。",
+      "bucket": "oos",
+      "expected_views": [],
+      "intents": []
+    },
+    {
+      "id": "p2-oos-heatmap",
+      "split": "phase2",
+      "question": "州内城市级别配送热力图（经纬度）。",
+      "bucket": "oos",
+      "expected_views": [],
+      "intents": []
+    }
+  ]
+}

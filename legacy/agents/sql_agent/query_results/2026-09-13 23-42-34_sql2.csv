@@ -1,0 +1,5 @@
+payment_type,total_value,value_share
+credit_card,12350042.56,0.784671
+boleto,2826802.3,0.179603
+voucher,349874.4,0.02223
+debit_card,212417.75,0.013496

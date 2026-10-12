@@ -1,0 +1,175 @@
+{
+  "version": 1,
+  "split": "complex",
+  "cases": [
+    {
+      "id": "complex-01",
+      "split": "complex",
+      "question": "2018 年平台已送达订单的准时交付率是多少？延迟率最高的 10 个州是哪些？",
+      "bucket": "raw",
+      "expected_views": [],
+      "required_literals": ["2018"],
+      "intents": [
+        {
+          "id": "on_time_2018",
+          "compare": "scalar",
+          "key_columns": ["on_time_rate"],
+          "gold_sql": "SELECT SUM(CASE WHEN `order_delivered_customer_date` <= `order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` WHERE `order_status` = 'delivered' AND `order_delivered_customer_date` IS NOT NULL AND `order_estimated_delivery_date` IS NOT NULL AND `order_purchase_timestamp` >= '2018-01-01' AND `order_purchase_timestamp` < '2019-01-01'"
+        },
+        {
+          "id": "delay_states_2018_top10",
+          "compare": "ordered_topk",
+          "k": 10,
+          "key_columns": ["customer_state"],
+          "gold_sql": "SELECT s.`customer_state` FROM (SELECT c.`customer_state`, SUM(CASE WHEN o.`order_delivered_customer_date` > o.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `delay_rate`, SUM(CASE WHEN o.`order_delivered_customer_date` > o.`order_estimated_delivery_date` THEN 1 ELSE 0 END) AS `delayed_orders` FROM `orders` o INNER JOIN `customers` c ON o.`customer_id` = c.`customer_id` WHERE o.`order_status` = 'delivered' AND o.`order_delivered_customer_date` IS NOT NULL AND o.`order_estimated_delivery_date` IS NOT NULL AND o.`order_purchase_timestamp` >= '2018-01-01' AND o.`order_purchase_timestamp` < '2019-01-01' GROUP BY c.`customer_state` HAVING COUNT(*) >= 20) s ORDER BY s.`delay_rate` DESC, s.`delayed_orders` DESC LIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": "complex-02",
+      "split": "complex",
+      "question": "2017 年销售额最高的州是哪一个？该州当年准时交付率和最常用支付方式分别是什么？",
+      "bucket": "compound",
+      "expected_views": ["mv_state_sales"],
+      "required_literals": ["2017"],
+      "intents": [
+        {
+          "id": "top_state",
+          "compare": "scalar",
+          "key_columns": ["customer_state"],
+          "gold_sql": "SELECT `customer_state` FROM `mv_state_sales` WHERE `sales_month` LIKE '2017-%' GROUP BY `customer_state` ORDER BY SUM(`total_gmv`) DESC LIMIT 1"
+        },
+        {
+          "id": "top_state_on_time",
+          "compare": "scalar",
+          "key_columns": ["on_time_rate"],
+          "gold_sql": "WITH `top_state` AS (SELECT `customer_state` FROM `mv_state_sales` WHERE `sales_month` LIKE '2017-%' GROUP BY `customer_state` ORDER BY SUM(`total_gmv`) DESC LIMIT 1) SELECT SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `top_state` `ts` ON `c`.`customer_state` = `ts`.`customer_state` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL"
+        },
+        {
+          "id": "top_state_payment",
+          "compare": "scalar",
+          "key_columns": ["payment_type"],
+          "gold_sql": "WITH `top_state` AS (SELECT `customer_state` FROM `mv_state_sales` WHERE `sales_month` LIKE '2017-%' GROUP BY `customer_state` ORDER BY SUM(`total_gmv`) DESC LIMIT 1) SELECT `p`.`payment_type` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` INNER JOIN `payments` `p` ON `o`.`order_id` = `p`.`order_id` INNER JOIN `top_state` `ts` ON `c`.`customer_state` = `ts`.`customer_state` WHERE `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `p`.`payment_type` ORDER BY COUNT(DISTINCT `o`.`order_id`) DESC LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": "complex-03",
+      "split": "complex",
+      "question": "哪些卖家的差评率最高？",
+      "bucket": "raw",
+      "expected_views": [],
+      "intents": [
+        {
+          "id": "seller_bad_review_rate",
+          "compare": "ordered_topk",
+          "k": 20,
+          "key_columns": ["seller_id"],
+          "gold_sql": "SELECT `oi`.`seller_id` FROM `orders` `o` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` LEFT JOIN `order_reviews` `r` ON `o`.`order_id` = `r`.`order_id` GROUP BY `oi`.`seller_id` HAVING COUNT(DISTINCT CASE WHEN `r`.`review_score` IS NOT NULL THEN `o`.`order_id` END) >= 20 ORDER BY COUNT(DISTINCT CASE WHEN `r`.`review_score` <= 2 THEN `o`.`order_id` END) / NULLIF(COUNT(DISTINCT CASE WHEN `r`.`review_score` IS NOT NULL THEN `o`.`order_id` END), 0) DESC, COUNT(DISTINCT CASE WHEN `r`.`review_score` IS NOT NULL THEN `o`.`order_id` END) DESC LIMIT 20"
+        }
+      ]
+    },
+    {
+      "id": "complex-04",
+      "split": "complex",
+      "question": "差评数量最多的 10 个品类是哪些？",
+      "bucket": "raw",
+      "expected_views": [],
+      "intents": [
+        {
+          "id": "bad_review_categories",
+          "compare": "ordered_topk",
+          "k": 10,
+          "key_columns": ["product_category"],
+          "gold_sql": "SELECT COALESCE(`pct`.`product_category_name_english`, `p`.`product_category_name`) AS `product_category` FROM `order_reviews` `r` INNER JOIN `orders` `o` ON `r`.`order_id` = `o`.`order_id` INNER JOIN `order_items` `oi` ON `o`.`order_id` = `oi`.`order_id` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` LEFT JOIN `product_category_name_translation` `pct` ON `p`.`product_category_name` = `pct`.`product_category_name` WHERE `r`.`review_score` <= 2 GROUP BY `product_category` ORDER BY COUNT(*) DESC LIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": "complex-05",
+      "split": "complex",
+      "question": "商品重量与运费的相关系数是多少？按重量分桶后平均运费怎么变化？",
+      "bucket": "raw",
+      "expected_views": [],
+      "intents": [
+        {
+          "id": "corr_weight_freight",
+          "compare": "scalar",
+          "key_columns": ["corr_weight_freight"],
+          "gold_sql": "SELECT (COUNT(*) * SUM(`p`.`product_weight_g` * `oi`.`freight_value`) - SUM(`p`.`product_weight_g`) * SUM(`oi`.`freight_value`)) / NULLIF(SQRT((COUNT(*) * SUM(`p`.`product_weight_g` * `p`.`product_weight_g`) - POW(SUM(`p`.`product_weight_g`), 2)) * (COUNT(*) * SUM(`oi`.`freight_value` * `oi`.`freight_value`) - POW(SUM(`oi`.`freight_value`), 2))), 0) AS `corr_weight_freight` FROM `order_items` `oi` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` WHERE `oi`.`freight_value` IS NOT NULL AND `p`.`product_weight_g` IS NOT NULL"
+        },
+        {
+          "id": "weight_bucket_freight",
+          "compare": "bag",
+          "key_columns": ["weight_bucket", "avg_freight_value"],
+          "gold_sql": "SELECT CASE WHEN `p`.`product_weight_g` < 500 THEN '0-499g' WHEN `p`.`product_weight_g` < 1000 THEN '500-999g' WHEN `p`.`product_weight_g` < 2000 THEN '1000-1999g' WHEN `p`.`product_weight_g` < 5000 THEN '2000-4999g' ELSE '5000g+' END AS `weight_bucket`, AVG(`oi`.`freight_value`) AS `avg_freight_value` FROM `order_items` `oi` INNER JOIN `products` `p` ON `oi`.`product_id` = `p`.`product_id` GROUP BY `weight_bucket`"
+        }
+      ]
+    },
+    {
+      "id": "complex-06",
+      "split": "complex",
+      "question": "2017 年各州的 GMV 和准时交付率分别是多少？",
+      "bucket": "compound",
+      "expected_views": ["mv_state_sales"],
+      "required_literals": ["2017"],
+      "intents": [
+        {
+          "id": "state_gmv_2017",
+          "compare": "bag",
+          "key_columns": ["customer_state", "total_gmv"],
+          "gold_sql": "SELECT `customer_state`, SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `sales_month` LIKE '2017-%' GROUP BY `customer_state`"
+        },
+        {
+          "id": "state_on_time_2017",
+          "compare": "bag",
+          "key_columns": ["customer_state", "on_time_rate"],
+          "gold_sql": "SELECT `c`.`customer_state`, SUM(CASE WHEN `o`.`order_delivered_customer_date` <= `o`.`order_estimated_delivery_date` THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS `on_time_rate` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL AND `o`.`order_estimated_delivery_date` IS NOT NULL AND `o`.`order_purchase_timestamp` >= '2017-01-01' AND `o`.`order_purchase_timestamp` < '2018-01-01' GROUP BY `c`.`customer_state`"
+        }
+      ]
+    },
+    {
+      "id": "complex-07",
+      "split": "complex",
+      "question": "哪种支付方式交易笔数最多？按交易笔数加权的平均分期数是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_payment_dist"],
+      "intents": [
+        {
+          "id": "top_payment",
+          "compare": "scalar",
+          "key_columns": ["payment_type"],
+          "gold_sql": "SELECT `payment_type` FROM `mv_payment_dist` GROUP BY `payment_type` ORDER BY SUM(`total_transactions`) DESC LIMIT 1"
+        },
+        {
+          "id": "avg_installments",
+          "compare": "scalar",
+          "key_columns": ["avg_installments"],
+          "gold_sql": "SELECT SUM(`avg_installments` * `total_transactions`) / NULLIF(SUM(`total_transactions`), 0) AS `avg_installments` FROM `mv_payment_dist`"
+        }
+      ]
+    },
+    {
+      "id": "complex-08",
+      "split": "complex",
+      "question": "2018 年销售额最高的品类是什么？该品类当年订单量和平均单价是多少？",
+      "bucket": "compound",
+      "expected_views": ["mv_category_sales"],
+      "required_literals": ["2018"],
+      "intents": [
+        {
+          "id": "top_category_2018",
+          "compare": "scalar",
+          "key_columns": ["product_category_english"],
+          "gold_sql": "SELECT `product_category_english` FROM `mv_category_sales` WHERE `sales_month` LIKE '2018-%' GROUP BY `product_category_english` ORDER BY SUM(`total_gmv`) DESC LIMIT 1"
+        },
+        {
+          "id": "top_category_orders_price",
+          "compare": "scalar",
+          "key_columns": ["total_orders", "avg_price"],
+          "gold_sql": "WITH `top_cat` AS (SELECT `product_category_english` FROM `mv_category_sales` WHERE `sales_month` LIKE '2018-%' GROUP BY `product_category_english` ORDER BY SUM(`total_gmv`) DESC LIMIT 1) SELECT SUM(`c`.`total_orders`) AS `total_orders`, SUM(`c`.`avg_price` * `c`.`total_orders`) / NULLIF(SUM(`c`.`total_orders`), 0) AS `avg_price` FROM `mv_category_sales` `c` INNER JOIN `top_cat` `t` ON `c`.`product_category_english` = `t`.`product_category_english` WHERE `c`.`sales_month` LIKE '2018-%'"
+        }
+      ]
+    }
+  ]
+}

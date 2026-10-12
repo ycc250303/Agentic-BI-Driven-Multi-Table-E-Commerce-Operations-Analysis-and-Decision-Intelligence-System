@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "split": "general",
+  "cases": [
+    {
+      "id": "general-01",
+      "split": "general",
+      "question": "2017 年 SP 州的销售额是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_state_sales"],
+      "required_literals": ["2017", "SP"],
+      "intents": [
+        {
+          "id": "sp_gmv_2017",
+          "compare": "scalar",
+          "key_columns": ["total_gmv"],
+          "gold_sql": "SELECT SUM(`total_gmv`) AS `total_gmv` FROM `mv_state_sales` WHERE `sales_month` LIKE '2017-%' AND `customer_state` = 'SP'"
+        }
+      ]
+    },
+    {
+      "id": "general-02",
+      "split": "general",
+      "question": "2018 年各州销售额排名 TOP10。",
+      "bucket": "view",
+      "expected_views": ["mv_state_sales"],
+      "required_literals": ["2018"],
+      "intents": [
+        {
+          "id": "state_gmv_2018_top10",
+          "compare": "ordered_topk",
+          "k": 10,
+          "key_columns": ["customer_state"],
+          "gold_sql": "SELECT `customer_state` FROM `mv_state_sales` WHERE `sales_month` LIKE '2018-%' GROUP BY `customer_state` ORDER BY SUM(`total_gmv`) DESC LIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": "general-03",
+      "split": "general",
+      "question": "按月比较 GMV、订单量和客单价。",
+      "bucket": "view",
+      "expected_views": ["mv_monthly_sales"],
+      "intents": [
+        {
+          "id": "monthly_kpis",
+          "compare": "bag",
+          "key_columns": ["sales_month", "total_gmv", "total_orders", "avg_basket"],
+          "gold_sql": "SELECT `sales_month`, `total_gmv`, `total_orders`, `avg_basket` FROM `mv_monthly_sales`"
+        }
+      ]
+    },
+    {
+      "id": "general-04",
+      "split": "general",
+      "question": "2017 年 credit_card 支付的交易笔数是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_payment_dist"],
+      "required_literals": ["2017", "credit_card"],
+      "intents": [
+        {
+          "id": "credit_card_tx_2017",
+          "compare": "scalar",
+          "key_columns": ["total_transactions"],
+          "gold_sql": "SELECT SUM(`total_transactions`) AS `total_transactions` FROM `mv_payment_dist` WHERE `sales_month` LIKE '2017-%' AND `payment_type` = 'credit_card'"
+        }
+      ]
+    },
+    {
+      "id": "general-05",
+      "split": "general",
+      "question": "评分为 1 分的评论有多少条？",
+      "bucket": "raw",
+      "expected_views": [],
+      "intents": [
+        {
+          "id": "score_1_count",
+          "compare": "scalar",
+          "key_columns": ["score_1_count"],
+          "gold_sql": "SELECT COUNT(*) AS `score_1_count` FROM `order_reviews` WHERE `review_score` = 1"
+        }
+      ]
+    },
+    {
+      "id": "general-06",
+      "split": "general",
+      "question": "2018 年 GMV 最高的 10 个品类是哪些？",
+      "bucket": "view",
+      "expected_views": ["mv_category_sales"],
+      "required_literals": ["2018"],
+      "intents": [
+        {
+          "id": "category_gmv_2018_top10",
+          "compare": "ordered_topk",
+          "k": 10,
+          "key_columns": ["product_category_english"],
+          "gold_sql": "SELECT `product_category_english` FROM `mv_category_sales` WHERE `sales_month` LIKE '2018-%' GROUP BY `product_category_english` ORDER BY SUM(`total_gmv`) DESC LIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": "general-07",
+      "split": "general",
+      "question": "RJ 州已送达订单的平均配送天数是多少？",
+      "bucket": "raw",
+      "expected_views": [],
+      "required_literals": ["RJ"],
+      "intents": [
+        {
+          "id": "rj_avg_delivery_days",
+          "compare": "scalar",
+          "key_columns": ["avg_delivery_days"],
+          "gold_sql": "SELECT AVG(DATEDIFF(`o`.`order_delivered_customer_date`, `o`.`order_purchase_timestamp`)) AS `avg_delivery_days` FROM `orders` `o` INNER JOIN `customers` `c` ON `o`.`customer_id` = `c`.`customer_id` WHERE `c`.`customer_state` = 'RJ' AND `o`.`order_status` = 'delivered' AND `o`.`order_delivered_customer_date` IS NOT NULL"
+        }
+      ]
+    },
+    {
+      "id": "general-08",
+      "split": "general",
+      "question": "voucher 支付方式各月的交易笔数和交易额是多少？",
+      "bucket": "view",
+      "expected_views": ["mv_payment_dist"],
+      "required_literals": ["voucher"],
+      "intents": [
+        {
+          "id": "voucher_monthly",
+          "compare": "bag",
+          "key_columns": ["sales_month", "total_transactions", "total_value"],
+          "gold_sql": "SELECT `sales_month`, `total_transactions`, `total_value` FROM `mv_payment_dist` WHERE `payment_type` = 'voucher'"
+        }
+      ]
+    }
+  ]
+}

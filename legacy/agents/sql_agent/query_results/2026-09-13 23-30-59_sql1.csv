@@ -1,0 +1,7 @@
+delivery_days_bucket,total_orders
+0-0d,1
+1-3d,6951
+4-7d,23742
+8-14d,37979
+15-30d,23503
+30d+,4294

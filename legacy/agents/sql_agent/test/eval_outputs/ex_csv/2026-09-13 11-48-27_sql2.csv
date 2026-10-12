@@ -1,0 +1,5 @@
+payment_type,avg_installments,total_transactions
+credit_card,3.50574258,75618.0
+boleto,1.0,19539.0
+voucher,1.0,3745.0
+debit_card,1.0,1515.0
