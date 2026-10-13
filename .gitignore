@@ -4,8 +4,6 @@ __pycache__/
 agents/sql_agent/deepseek-response.json
 agents/sql_agent/query_results
 
-/.venv/
-/.env
 /misc/
 /.worktrees/
 /runtime/
@@ -15,10 +13,7 @@ agents/sql_agent/query_results
 CLAUDE.md
 .idea/
 agents/viz_agent/chart_output/
-agents/sql_agent/test/eval_outputs/
-/report
 /.cursor
-/docs/diagrams
 Agents.md
 简历.tex
 /agents/sql_agent/test
