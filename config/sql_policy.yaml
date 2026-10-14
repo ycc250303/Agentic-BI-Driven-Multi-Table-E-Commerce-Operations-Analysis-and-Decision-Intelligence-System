@@ -1,0 +1,59 @@
+# SQL 策略配置
+dialect: mysql
+
+# 最大 SQL 字符数
+maximum_sql_characters: 30000
+
+# 默认最大估计行数
+default_max_estimated_rows: 500000
+
+# 源表最大估计行数
+source_max_estimated_rows:
+  geolocation: 2000000
+  order_items: 800000
+  payments: 800000
+  order_reviews: 800000
+  mv_seller_perf: 200000
+
+# 允许的函数
+allowed_functions:
+  - abs
+  - avg
+  - cast
+  - coalesce
+  - concat
+  - count
+  - date
+  - date_format
+  - datediff
+  - day
+  - extract
+  - greatest
+  - least
+  - lower
+  - max
+  - min
+  - month
+  - nullif
+  - pow
+  - quarter
+  - round
+  - sqrt
+  - sum
+  - timestampdiff
+  - upper
+  - year
+
+# 禁止的函数
+denied_functions:
+  - benchmark
+  - get_lock
+  - is_free_lock
+  - is_used_lock
+  - load_file
+  - master_pos_wait
+  - name_const
+  - release_lock
+  - sleep
+  - sys_exec
+  - sys_eval

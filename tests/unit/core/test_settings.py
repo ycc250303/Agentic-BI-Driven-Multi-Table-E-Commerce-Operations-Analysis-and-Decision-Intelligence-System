@@ -27,6 +27,19 @@ def test_api_key_is_loaded_lazily() -> None:
         settings.api_key_for()
 
 
+def test_blank_optional_langsmith_values_are_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
+    monkeypatch.setenv("LANGSMITH_ENDPOINT", "")
+    monkeypatch.setenv("LANGSMITH_WORKSPACE_ID", "")
+    monkeypatch.setenv("LANGSMITH_API_KEY", "")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.langsmith_endpoint is None
+    assert settings.langsmith_workspace_id is None
+    assert settings.langsmith_api_key is None
+
+
 def test_langsmith_tracing_requires_api_key() -> None:
     with pytest.raises(ValidationError, match="LANGSMITH_API_KEY"):
         Settings(
@@ -43,3 +56,33 @@ def test_secrets_are_not_exposed_in_repr() -> None:
     )
 
     assert "never-print-me" not in repr(settings)
+
+
+def test_readonly_database_does_not_fallback_to_writer_account(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AGENTIC_BI_DB_READONLY_USER", raising=False)
+    monkeypatch.delenv("AGENTIC_BI_DB_READONLY_PASSWORD", raising=False)
+    monkeypatch.setenv("AGENTIC_BI_DB_USER", "writer")
+    monkeypatch.setenv("AGENTIC_BI_DB_PASSWORD", "writer-password")
+
+    settings = Settings(_env_file=None)
+
+    with pytest.raises(ValueError, match="READONLY_USER"):
+        settings.readonly_credentials()
+
+
+def test_readonly_credentials_are_available_when_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AGENTIC_BI_DB_READONLY_USER", "agent_reader")
+    monkeypatch.setenv(
+        "AGENTIC_BI_DB_READONLY_PASSWORD",
+        "readonly-password",
+    )
+
+    settings = Settings(_env_file=None)
+    user, password = settings.readonly_credentials()
+
+    assert user == "agent_reader"
+    assert password.get_secret_value() == "readonly-password"

@@ -60,6 +60,7 @@ def test_deepseek_and_qwen_use_one_gateway(monkeypatch) -> None:
     assert plain.content == "plain"
     assert structured == Answer(value="structured")
     assert calls[0]["model"] == "deepseek-v4-flash"
+    assert calls[0]["extra_body"] == {"thinking": {"type": "disabled"}}
     assert calls[1]["model"] == "qwen3.8-max"
     assert "base_url" in calls[1]
 
@@ -79,6 +80,8 @@ def test_structured_deepseek_disables_thinking(monkeypatch) -> None:
     )
     gateway = ModelGateway(settings)
 
+    gateway.invoke([HumanMessage(content="hello")])
     gateway.invoke_structured(Answer, [HumanMessage(content="hello")])
 
-    assert calls[0]["extra_body"] is None
+    assert calls[0]["extra_body"] == {"thinking": {"type": "enabled"}}
+    assert calls[1]["extra_body"] == {"thinking": {"type": "disabled"}}

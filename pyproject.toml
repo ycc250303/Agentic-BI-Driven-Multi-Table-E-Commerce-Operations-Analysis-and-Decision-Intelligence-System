@@ -20,11 +20,27 @@ dependencies = [
     "python-dotenv==1.2.2",
     "SQLAlchemy>=2.0,<3",
     "PyMySQL==1.2.0",
+    "mysql-connector-python==26.7.0",
     "sqlglot>=28,<30",
+    "pandas==3.0.5",
+    "matplotlib==3.11.1",
+    "seaborn==0.13.2",
+    "wordcloud==1.9.6",
+    "pillow==12.3.0",
     "PyYAML==6.0.3",
+    "streamlit==1.63.0",
 ]
 
+[project.scripts]
+agentic-bi-analysis = "agentic_bi.agents.analysis.run:main"
+
 [project.optional-dependencies]
+nlp = [
+    "pysentimiento",
+    "bertopic",
+    "sentence-transformers",
+    "hdbscan",
+]
 dev = [
     "pytest==9.1.1",
     "pytest-asyncio>=1.2,<2",
@@ -32,6 +48,7 @@ dev = [
     "ruff>=0.14,<1",
     "mypy>=1.18,<2",
 ]
+
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentic_bi"]
@@ -51,7 +68,7 @@ select = [
     "SIM",
     "RUF",
 ]
-allowed-confusables = ["，", "：", "；", "？"]
+allowed-confusables = ["，", "：", "；", "？", "（", "）"]
 
 [tool.ruff.format]
 quote-style = "double"

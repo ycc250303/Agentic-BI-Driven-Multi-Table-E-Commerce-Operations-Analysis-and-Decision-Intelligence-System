@@ -1,0 +1,545 @@
+version: "1.0"
+
+# 指标定义
+metrics:
+  total_gmv:
+    name: 成交额
+    description: 默认成交额口径，为商品成交价格与运费之和，只统计非已取消、非不可用的订单；用户只说销售额、成交额或 GMV 时使用本指标
+    unit: BRL
+    formula: SUM(order_items.price + order_items.freight_value)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - customer_city
+      - product_category_english
+      - seller_id
+      - seller_state
+    candidate_sources:
+      - mv_monthly_sales
+      - mv_state_sales
+      - mv_seller_perf
+      - orders
+      - order_items
+      - customers
+      - products
+      - sellers
+      - product_category_name_translation
+
+  total_orders:
+    name: 订单数
+    description: 按订单标识去重后的订单数量
+    unit: order
+    formula: COUNT(DISTINCT orders.order_id)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - customer_city
+      - product_category_english
+      - seller_id
+      - seller_state
+      - payment_type
+    candidate_sources:
+      - mv_monthly_sales
+      - mv_state_sales
+      - mv_category_sales
+      - mv_seller_perf
+      - orders
+      - order_items
+      - customers
+      - products
+      - sellers
+      - payments
+      - product_category_name_translation
+
+  unique_customers:
+    name: 独立客户数
+    description: 按 customer_unique_id 去重的客户数量，不是 customer_id 数量
+    unit: customer
+    formula: COUNT(DISTINCT customers.customer_unique_id)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - customer_city
+    candidate_sources:
+      - mv_state_sales
+      - orders
+      - customers
+
+  avg_basket:
+    name: 平均客单价
+    description: 成交额除以去重订单数，不是订单明细商品价格的简单平均
+    unit: BRL/order
+    formula: SUM(price + freight_value) / COUNT(DISTINCT order_id)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - customer_city
+      - product_category_english
+      - seller_id
+      - seller_state
+      - delivery_status
+    candidate_sources:
+      - mv_monthly_sales
+      - orders
+      - order_items
+      - customers
+      - products
+      - sellers
+      - product_category_name_translation
+
+  total_freight:
+    name: 总运费
+    description: 订单明细运费的合计金额
+    unit: BRL
+    formula: SUM(order_items.freight_value)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - product_category_english
+      - seller_id
+      - seller_state
+    candidate_sources:
+      - mv_monthly_sales
+      - orders
+      - order_items
+      - customers
+      - products
+      - sellers
+      - product_category_name_translation
+
+  item_revenue:
+    name: 商品成交金额
+    description: 仅商品价格合计，不包含运费；只在用户明确要求仅商品金额、不含运费或同等口径时使用
+    unit: BRL
+    formula: SUM(order_items.price)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - product_category_english
+      - seller_id
+      - seller_state
+    candidate_sources:
+      - mv_category_sales
+      - orders
+      - order_items
+      - customers
+      - products
+      - sellers
+      - product_category_name_translation
+
+  avg_price:
+    name: 平均商品价格
+    description: 订单明细商品价格的算术平均值
+    unit: BRL/item
+    formula: AVG(order_items.price)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - product_category_english
+      - seller_id
+      - seller_state
+    candidate_sources:
+      - mv_category_sales
+      - orders
+      - order_items
+      - products
+      - sellers
+      - product_category_name_translation
+
+  avg_delivery_days:
+    name: 平均配送天数
+    description: 从下单时间到客户签收时间的平均自然日数，只统计已送达订单
+    unit: day
+    formula: AVG(DATEDIFF(order_delivered_customer_date, order_purchase_timestamp))
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - customer_city
+    candidate_sources:
+      - mv_delivery_perf
+      - orders
+      - customers
+
+  on_time_rate:
+    name: 准时交付率
+    description: 实际签收时间不晚于预计送达时间的已送达订单数，除以具有完整送达时间的已送达订单数
+    unit: ratio
+    formula: on_time_delivered_orders / eligible_delivered_orders
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - customer_city
+    candidate_sources:
+      - orders
+      - customers
+
+  delay_rate:
+    name: 延迟交付率
+    description: 实际签收时间晚于预计送达时间的已送达订单数，除以具有完整送达时间的已送达订单数
+    unit: ratio
+    formula: delayed_delivered_orders / eligible_delivered_orders
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - customer_city
+    candidate_sources:
+      - orders
+      - customers
+
+  delayed_orders:
+    name: 延迟订单数
+    description: 实际签收时间晚于预计送达时间的已送达订单数量
+    unit: order
+    formula: SUM(order_delivered_customer_date > order_estimated_delivery_date)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - customer_city
+    candidate_sources:
+      - mv_delivery_perf
+      - orders
+      - customers
+
+  total_transactions:
+    name: 支付订单数
+    description: 按支付方式统计的去重支付订单数量，不是支付表的物理行数
+    unit: order
+    formula: COUNT(DISTINCT payments.order_id)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - payment_type
+      - customer_state
+    candidate_sources:
+      - mv_payment_dist
+      - orders
+      - payments
+      - customers
+
+  avg_installments:
+    name: 平均分期数
+    description: 支付记录的平均分期数；跨月汇总预聚合视图时必须按支付订单数加权
+    unit: installment
+    formula: AVG(payments.payment_installments)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - payment_type
+      - customer_state
+    candidate_sources:
+      - mv_payment_dist
+      - orders
+      - payments
+      - customers
+
+  total_payment_value:
+    name: 支付总额
+    description: 支付金额的总和，与含运费的成交额不是同一个指标
+    unit: BRL
+    formula: SUM(payments.payment_value)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - payment_type
+      - customer_state
+    candidate_sources:
+      - mv_payment_dist
+      - orders
+      - payments
+      - customers
+
+  avg_review_score:
+    name: 平均评分
+    description: 已有评分记录的评分算术平均值，评分范围为 1 到 5
+    unit: score
+    formula: AVG(order_reviews.review_score)
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - product_category_english
+      - seller_id
+      - seller_state
+    candidate_sources:
+      - orders
+      - order_items
+      - order_reviews
+      - customers
+      - products
+      - sellers
+      - product_category_name_translation
+
+  bad_review_rate:
+    name: 差评率
+    description: 评分小于等于 2 的去重已评订单数，除以全部去重已评订单数
+    unit: ratio
+    formula: bad_reviewed_orders / reviewed_orders
+    time_field: orders.order_purchase_timestamp
+    allowed_dimensions:
+      - sales_month
+      - customer_state
+      - product_category_english
+      - seller_id
+      - seller_state
+    candidate_sources:
+      - orders
+      - order_items
+      - order_reviews
+      - customers
+      - products
+      - sellers
+      - product_category_name_translation
+
+dimensions:
+  sales_month:
+    name: 销售月份
+    description: 按下单时间归属的自然月，格式为 YYYY-MM
+    sources:
+      - mv_monthly_sales
+      - mv_state_sales
+      - mv_category_sales
+      - mv_delivery_perf
+      - mv_seller_perf
+      - mv_payment_dist
+      - orders
+
+  customer_state:
+    name: 客户州
+    description: 客户收货地址所在的巴西州，两位州缩写，例如 SP、RJ
+    sources:
+      - mv_state_sales
+      - mv_delivery_perf
+      - customers
+
+  customer_city:
+    name: 客户城市
+    description: 客户收货地址城市
+    sources:
+      - customers
+
+  product_category_english:
+    name: 商品英文品类
+    description: 将葡萄牙语商品品类翻译成英文后的标准品类名
+    sources:
+      - mv_category_sales
+      - products
+      - product_category_name_translation
+
+  seller_id:
+    name: 卖家
+    description: 卖家的稳定业务标识
+    sources:
+      - mv_seller_perf
+      - order_items
+      - sellers
+
+  seller_state:
+    name: 卖家州
+    description: 卖家地址所在的巴西州，两位州缩写
+    sources:
+      - mv_seller_perf
+      - sellers
+
+  payment_type:
+    name: 支付方式
+    description: 支付方式，例如信用卡、银行票据、代金券、借记卡
+    sources:
+      - mv_payment_dist
+      - payments
+
+  delivery_status:
+    name: 配送状态分箱
+    description: 准时签收，或晚于预计时间签收
+    sources:
+      - orders
+
+  order_status:
+    name: 订单状态
+    description: 订单生命周期状态，例如已送达、已发货、已取消
+    sources:
+      - orders
+
+sources:
+  mv_monthly_sales:
+    kind: view
+    description: 月度销售虚拟视图，粒度为销售月份
+    grain: [sales_month]
+    columns:
+      sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
+      total_gmv: {type: decimal, description: "商品价格加运费总额", unit: BRL}
+      total_orders: {type: bigint, description: "去重订单数", unit: order}
+      avg_basket: {type: decimal, description: "成交额除以去重订单数", unit: "BRL/order"}
+      total_freight: {type: decimal, description: "运费合计", unit: BRL}
+
+  mv_state_sales:
+    kind: view
+    description: 月份与客户州粒度的销售虚拟视图
+    grain: [sales_month, customer_state]
+    columns:
+      sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
+      customer_state: {type: "varchar(2)", description: "客户州缩写"}
+      total_gmv: {type: decimal, description: "商品价格加运费总额", unit: BRL}
+      total_orders: {type: bigint, description: "去重订单数", unit: order}
+      unique_customers: {type: bigint, description: "按 customer_unique_id 去重的客户数", unit: customer}
+
+  mv_category_sales:
+    kind: view
+    description: 月份与英文品类粒度的商品销售视图；其中成交额列实际只包含商品价格，不含运费
+    grain: [sales_month, product_category_english]
+    columns:
+      sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
+      product_category_english: {type: varchar, description: "商品英文品类"}
+      total_gmv: {type: decimal, description: "仅商品价格合计，不含运费", unit: BRL}
+      total_orders: {type: bigint, description: "品类内去重订单数", unit: order}
+      avg_price: {type: decimal, description: "商品明细平均价格", unit: BRL}
+
+  mv_delivery_perf:
+    kind: view
+    description: 月份与客户州粒度的配送视图；跨月份或跨州时不能直接平均准时率
+    grain: [sales_month, customer_state]
+    columns:
+      sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
+      customer_state: {type: "varchar(2)", description: "客户州缩写"}
+      avg_delivery_days: {type: decimal, description: "下单到签收的平均天数", unit: day}
+      on_time_rate: {type: decimal, description: "当前月份与州单元内的准时率", unit: ratio}
+      delayed_orders: {type: bigint, description: "当前月份与州单元内延迟订单数", unit: order}
+
+  mv_seller_perf:
+    kind: view
+    description: 月份、卖家和卖家州粒度的销售与评分视图
+    grain: [sales_month, seller_id, seller_state]
+    columns:
+      sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
+      seller_id: {type: varchar, description: "卖家标识"}
+      seller_state: {type: "varchar(2)", description: "卖家州缩写"}
+      total_gmv: {type: decimal, description: "商品价格加运费总额", unit: BRL}
+      total_orders: {type: bigint, description: "卖家去重订单数", unit: order}
+      avg_review_score: {type: decimal, description: "当前粒度内平均评分", unit: score}
+
+  mv_payment_dist:
+    kind: view
+    description: 月份与支付方式粒度的支付分布视图
+    grain: [sales_month, payment_type]
+    columns:
+      sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
+      payment_type: {type: varchar, description: "支付方式"}
+      total_transactions: {type: bigint, description: "去重支付订单数", unit: order}
+      avg_installments: {type: decimal, description: "当前粒度内平均分期数", unit: installment}
+      total_value: {type: decimal, description: "支付金额合计", unit: BRL}
+
+  orders:
+    kind: table
+    description: 订单主表，一行代表一个订单
+    grain: [order_id]
+    joins:
+      - "orders.customer_id = customers.customer_id，多对一"
+      - "orders.order_id = order_items.order_id，一对多"
+      - "orders.order_id = payments.order_id，一对多"
+      - "orders.order_id = order_reviews.order_id，逻辑上一对多"
+    columns:
+      order_id: {type: varchar, description: "订单稳定标识"}
+      customer_id: {type: varchar, description: "订单对应客户记录标识"}
+      order_status: {type: varchar, description: "订单生命周期状态"}
+      order_purchase_timestamp: {type: datetime, description: "用户下单时间"}
+      order_delivered_customer_date: {type: datetime, description: "客户实际签收时间，可为空"}
+      order_estimated_delivery_date: {type: datetime, description: "系统预计送达时间，可为空"}
+
+  order_items:
+    kind: table
+    description: 订单商品明细表，一行代表订单中的一个商品明细
+    grain: [order_id, order_item_id]
+    joins:
+      - "order_items.order_id = orders.order_id，多对一"
+      - "order_items.product_id = products.product_id，多对一"
+      - "order_items.seller_id = sellers.seller_id，多对一"
+    columns:
+      order_id: {type: varchar, description: "所属订单标识"}
+      order_item_id: {type: integer, description: "订单内明细序号"}
+      product_id: {type: varchar, description: "商品标识"}
+      seller_id: {type: varchar, description: "卖家标识"}
+      price: {type: decimal, description: "商品成交价格，不含运费", unit: BRL}
+      freight_value: {type: decimal, description: "该明细运费", unit: BRL}
+
+  customers:
+    kind: table
+    description: 客户主数据；customer_id 对应一次订单客户记录，customer_unique_id 用于跨订单识别同一客户
+    grain: [customer_id]
+    joins:
+      - "customers.customer_id = orders.customer_id，一对多"
+    columns:
+      customer_id: {type: varchar, description: "订单级客户记录标识"}
+      customer_unique_id: {type: varchar, description: "跨订单去重客户标识"}
+      customer_city: {type: varchar, description: "客户城市"}
+      customer_state: {type: "varchar(2)", description: "客户州缩写"}
+
+  products:
+    kind: table
+    description: 商品属性表，一行代表一个商品
+    grain: [product_id]
+    joins:
+      - "products.product_id = order_items.product_id，一对多"
+      - "products.product_category_name = product_category_name_translation.product_category_name，多对一"
+    columns:
+      product_id: {type: varchar, description: "商品标识"}
+      product_category_name: {type: varchar, description: "葡萄牙语商品品类"}
+      product_weight_g: {type: integer, description: "商品重量", unit: gram}
+      product_length_cm: {type: integer, description: "商品长度", unit: cm}
+      product_height_cm: {type: integer, description: "商品高度", unit: cm}
+      product_width_cm: {type: integer, description: "商品宽度", unit: cm}
+
+  sellers:
+    kind: table
+    description: 卖家主数据，一行代表一个卖家
+    grain: [seller_id]
+    joins:
+      - "sellers.seller_id = order_items.seller_id，一对多"
+    columns:
+      seller_id: {type: varchar, description: "卖家标识"}
+      seller_city: {type: varchar, description: "卖家城市"}
+      seller_state: {type: "varchar(2)", description: "卖家州缩写"}
+
+  payments:
+    kind: table
+    description: 支付明细表；一个订单可以有多条支付记录
+    grain: [order_id, payment_sequential]
+    joins:
+      - "payments.order_id = orders.order_id，多对一"
+    columns:
+      order_id: {type: varchar, description: "所属订单标识"}
+      payment_sequential: {type: integer, description: "订单内支付记录序号"}
+      payment_type: {type: varchar, description: "支付方式"}
+      payment_installments: {type: integer, description: "分期数"}
+      payment_value: {type: decimal, description: "支付金额", unit: BRL}
+
+  order_reviews:
+    kind: table
+    description: 订单评论表，包含评分和评论文本
+    grain: [review_id]
+    joins:
+      - "order_reviews.order_id = orders.order_id，多对一"
+    columns:
+      review_id: {type: varchar, description: "评论标识"}
+      order_id: {type: varchar, description: "所属订单标识"}
+      review_score: {type: integer, description: "评分，合法范围 1 到 5"}
+      review_comment_title: {type: text, description: "评论标题，可为空"}
+      review_comment_message: {type: text, description: "评论正文，可为空"}
+
+  product_category_name_translation:
+    kind: table
+    description: 葡萄牙语商品品类到英文品类的映射表
+    grain: [product_category_name]
+    joins:
+      - "product_category_name_translation.product_category_name = products.product_category_name，一对多"
+    columns:
+      product_category_name: {type: varchar, description: "葡萄牙语商品品类"}
+      product_category_name_english: {type: varchar, description: "英文商品品类"}

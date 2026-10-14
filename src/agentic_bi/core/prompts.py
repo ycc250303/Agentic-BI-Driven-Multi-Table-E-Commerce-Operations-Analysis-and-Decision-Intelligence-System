@@ -14,9 +14,9 @@ from typing import Any
 class RenderedPrompt:
     """一次 Prompt 渲染结果。
 
-    - ``name``：相对 ``config/prompts`` 的模板名，不含 ``.md``
-    - ``content``：替换变量后的正文
-    - ``version``：模板原文 SHA-256 的前 12 位，不含填入的变量值
+    - name：相对 config/prompts 的模板名，不含 .md
+    - content：替换变量后的正文
+    - version：模板原文 SHA-256 的前 12 位，不含填入的变量值
     """
 
     name: str
@@ -33,12 +33,12 @@ def render_prompt(
     """读取并严格渲染一份 Prompt。
 
     输入：
-    - ``name``：相对 ``config/prompts``，不含 ``.md``，可含子目录
-    - ``variables``：键必须与模板占位符完全一致
-    - ``config_dir``：默认 ``config``
+    - name：相对 config/prompts，不含 .md，可含子目录
+    - variables：键必须与模板占位符完全一致
+    - config_dir：配置根目录，默认 config
 
     输出：
-    - ``RenderedPrompt``：缺少变量或出现未知变量时抛 ``ValueError``
+    - 渲染结果：缺少变量或出现未知变量时抛 ``ValueError``
     """
 
     template = load_prompt(name, config_dir=config_dir)
@@ -66,14 +66,16 @@ def load_prompt(name: str, *, config_dir: Path = Path("config")) -> str:
     """读取一份 Prompt 模板原文。
 
     输入：
-    - ``name``：相对 ``config_dir/prompts``，不含 ``.md``，可含子目录
-    - ``config_dir``：默认 ``config``
+    - name：相对 config_dir/prompts，不含 .md，可含子目录
+    - config_dir：配置根目录，默认 config
 
-    解析后的路径必须仍在 prompts 根目录内。结果按 ``name`` 与 ``config_dir`` 缓存。
+    约束：
+    - 解析后的路径必须仍在 prompts 根目录内
+    - 结果按 name 与 config_dir 缓存
 
     输出：
-    - ``str``：去掉首尾空白的模板字符串
-    - 越界：抛 ``ValueError``
+    - 模板原文：去掉首尾空白
+    - 路径越界：抛 ``ValueError``
     - 文件不存在：抛 ``FileNotFoundError``
     """
 
@@ -89,8 +91,11 @@ def load_prompt(name: str, *, config_dir: Path = Path("config")) -> str:
 def clear_prompt_cache() -> None:
     """清空 ``load_prompt`` 的读取缓存。
 
-    输入：无。
-    输出：无。测试改写模板文件后调用，避免继续命中旧正文。
+    输入：
+    - 无
+
+    输出：
+    - 无：测试改写模板后调用，避免继续命中旧正文
     """
 
     load_prompt.cache_clear()

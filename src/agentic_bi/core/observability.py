@@ -14,19 +14,21 @@ _SENSITIVE_PARTS = ("api_key", "authorization", "password", "secret", "token")
 
 
 def configure_langsmith(settings: Settings) -> None:
-    """把已验证配置写入 LangSmith 官方环境变量。SDK 只读进程环境，所以在这里集中写入。
+    """把已验证配置写入 LangSmith 官方环境变量。
 
     输入：
-    - ``langsmith_tracing``：是否启用追踪
-    - ``langsmith_project``：项目名
-    - ``langsmith_api_key``：API Key，可空
-    - ``langsmith_workspace_id``：workspace，可空
-    - ``langsmith_endpoint``：区域端点，可空
+    - langsmith_tracing：是否启用追踪
+    - langsmith_project：项目名
+    - langsmith_api_key：API Key，可空
+    - langsmith_workspace_id：workspace，可空
+    - langsmith_endpoint：区域端点，可空
+
+    约束：
+    - SDK 只读进程环境，所以在这里集中写入
+    - 未提供的可选项不写入
 
     输出：
-    - 无
-
-    副作用是设置当前进程的 ``LANGSMITH_*``。未提供的可选项不会写入。
+    - 无：副作用是设置当前进程的 LANGSMITH_* 变量
     """
 
     os.environ["LANGSMITH_TRACING"] = str(settings.langsmith_tracing).lower()
@@ -50,15 +52,16 @@ def build_run_config(
     """构造 LangGraph / LangChain 原生运行配置。
 
     输入：
-    - ``run_name``：本次运行名
-    - ``tags``：检索标签
-    - ``metadata``：可序列化上下文字典，先经过 ``redact_metadata``
-    - ``recursion_limit``：默认 30，必须大于 0
+    - run_name：本次运行名
+    - tags：检索标签
+    - metadata：可序列化上下文字典，先去掉敏感字段
+    - recursion_limit：图递归上限，默认 30，必须大于 0
+
+    约束：
+    - 不在这里改 LangSmith 环境变量
 
     输出：
-    - ``RunnableConfig``：含上述四项
-
-    不在这里改 LangSmith 环境变量。
+    - 运行配置：含运行名、标签、脱敏后的元数据和递归上限
     """
 
     if recursion_limit < 1:
@@ -76,17 +79,13 @@ def redact_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
     """去掉不宜进入 trace 的顶层字段，并限制单个字符串的长度。
 
     输入：
-    - ``metadata``：任意映射，只检查顶层键名，不递归处理嵌套字典
+    - metadata：任意映射，只检查顶层键名，不递归处理嵌套字典
 
-    丢弃键名包含以下片段的项：
-    - ``api_key``
-    - ``authorization``
-    - ``password``
-    - ``secret``
-    - ``token``
+    约束：
+    - 丢弃键名包含 api_key、authorization、password、secret、token 的项
 
     输出：
-    - ``dict``：超过 500 字符的字符串截断，其余值原样保留
+    - 脱敏映射：超过 500 字符的字符串截断，其余值原样保留
     """
 
     safe: dict[str, Any] = {}
