@@ -80,7 +80,7 @@ flowchart TD
 | Streamlit | 1.63 | 多轮会话界面 |
 | Pydantic | 2.13 | 路由、会话解析、决策契约 |
 
-离线评论灌库另装 `requirements-nlp.txt`（pysentimiento、BERTopic 等）；在线路径只读已灌好的表，不加载这些模型。
+离线评论灌库另装 `pip install -e '.[nlp]'`（pysentimiento、BERTopic 等）；在线路径只读已灌好的表，不加载这些模型。
 
 ### 选型说明
 
@@ -209,13 +209,13 @@ cd Agentic-BI-Driven-Multi-Table-E-Commerce-Operations-Analysis-and-Decision-Int
 
 conda create -n agentic_bi python=3.11 -y
 conda activate agentic_bi
-pip install -r requirements.txt
+pip install -e '.[dev]'
 ```
 
 仅在需要离线重训情感 / 主题模型时：
 
 ```bash
-pip install -r requirements-nlp.txt
+pip install -e '.[nlp]'
 ```
 
 ### 2. 配置环境变量

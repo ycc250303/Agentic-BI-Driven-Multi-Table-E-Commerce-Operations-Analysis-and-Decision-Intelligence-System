@@ -16,13 +16,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e '.[dev]'
       - name: Run unit tests
-        run: >
-          pytest
-          agents/common/tests
-          agents/coordinator_agent/tests
-          agents/decision_agent/tests
-          agents/viz_agent/tests
-          dashboard/tests
-          -q
+        run: pytest tests/unit -q

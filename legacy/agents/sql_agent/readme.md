@@ -178,4 +178,4 @@ config/sql_agent/
 
 ## 依赖
 
-见仓库根目录 `requirements.txt`（`langchain==1.4.0`、`langgraph==1.2.11`、`pydantic`、`PyMySQL` 等）。
+见仓库根目录 `pyproject.toml`（`langchain==1.4.0`、`langgraph==1.2.11`、`pydantic`、`PyMySQL` 等）。
