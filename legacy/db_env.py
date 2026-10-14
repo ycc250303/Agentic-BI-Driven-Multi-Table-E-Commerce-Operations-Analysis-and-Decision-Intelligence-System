@@ -1,7 +1,8 @@
-"""共享数据库配置入口。
+"""旧版数据库配置入口，仅供 legacy Agent 与 ``utils`` 脚本使用。
 
 运行时查询使用 ``readonly_*`` 配置，建库/灌库使用 ``writer_*`` 配置；
-调用方不再直接拼接 ``AGENTIC_BI_DB_*`` 环境变量。
+调用方不再直接拼接 ``AGENTIC_BI_DB_*`` 环境变量。新包的数据库配置在 data
+纵切落地时进入 ``Settings``，不从这里读取。
 """
 
 from __future__ import annotations
@@ -24,9 +25,18 @@ _READONLY_ENV_KEYS = (
 )
 
 
+def _repository_root() -> Path:
+    """向上查找同时包含 ``pyproject.toml`` 与 ``src/`` 的仓库根。"""
+    here = Path(__file__).resolve().parent
+    for parent in (here, *here.parents):
+        if (parent / "pyproject.toml").is_file() and (parent / "src").is_dir():
+            return parent
+    return here
+
+
 def load_dotenv() -> None:
     """加载仓库根目录 ``.env``，不覆盖调用进程已显式设置的变量。"""
-    env_path = Path(__file__).resolve().parent / ".env"
+    env_path = _repository_root() / ".env"
     if not env_path.exists():
         return
 

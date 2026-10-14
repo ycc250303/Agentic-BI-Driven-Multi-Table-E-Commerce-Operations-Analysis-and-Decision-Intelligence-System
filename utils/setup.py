@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
-"""数据库初始化入口：建库、原始表+CSV、预聚合视图、NLP 表、翻译表补导。
+"""数据库初始化入口：建库、原始表+CSV、预聚合视图，以及可选的 NLP 表。
 
 用法（仓库根目录）：
     python utils/setup.py              # init + load + views
-    python utils/setup.py init         # 仅 CREATE DATABASE
-    python utils/setup.py load         # DROP/CREATE 9 张原始表并导入 CSV（不动 NLP 表）
-    python utils/setup.py views        # 刷新 6 个 mv_* 视图
     python utils/setup.py nlp-tables   # DROP/CREATE 情感与主题表（会清空已灌 NLP 数据）
-    python utils/setup.py translation  # 只重建 product_category_name_translation（71 行）
 """
 from __future__ import annotations
 
@@ -23,8 +19,9 @@ from typing import Callable
 import pymysql
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+LEGACY_DIR = ROOT_DIR / "legacy"
+if str(LEGACY_DIR) not in sys.path:
+    sys.path.insert(0, str(LEGACY_DIR))
 
 from db_env import writer_pymysql_config
 
@@ -444,89 +441,18 @@ def cmd_nlp_tables() -> None:
         connection.close()
 
 
-def _read_translation_rows() -> list[tuple[str, str]]:
-    path = DATA_DIR / "product_category_name_translation.csv"
-    rows: list[tuple[str, str]] = []
-    with path.open("r", encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f)
-        fieldnames = list(reader.fieldnames or [])
-        if "product_category_name" not in fieldnames:
-            raise SystemExit(f"[ERROR] CSV 表头异常: {fieldnames!r}（应用 utf-8-sig 去掉 BOM）")
-        for i, row in enumerate(reader, start=2):
-            pt = (row.get("product_category_name") or "").strip()
-            en = (row.get("product_category_name_english") or "").strip()
-            if not pt or not en:
-                raise SystemExit(f"[ERROR] {path.name}:{i} 存在空字段")
-            rows.append((pt, en))
-    if len(rows) != TRANSLATION_EXPECTED:
-        raise SystemExit(f"[ERROR] CSV 记录数={len(rows)}，期望 {TRANSLATION_EXPECTED}")
-    if len({pt for pt, _ in rows}) != len(rows):
-        raise SystemExit("[ERROR] CSV 中 product_category_name 有重复")
-    return rows
-
-
-def cmd_translation() -> None:
-    rows = _read_translation_rows()
-    try:
-        db_cfg = writer_pymysql_config(autocommit=False)
-    except ValueError as e:
-        raise SystemExit(f"[ERROR] {e}") from e
-    print(f"连接 {db_cfg['host']}:{db_cfg['port']}/{db_cfg['database']}，只重建翻译表")
-    connection = pymysql.connect(**db_cfg)
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM product_category_name_translation")
-            print(f"[BEFORE] 行数 = {cursor.fetchone()[0]}")
-            cursor.execute("DELETE FROM product_category_name_translation")
-            cursor.executemany(
-                "INSERT INTO product_category_name_translation "
-                "(product_category_name, product_category_name_english) VALUES (%s, %s)",
-                rows,
-            )
-            cursor.execute("SELECT COUNT(*) FROM product_category_name_translation")
-            after = int(cursor.fetchone()[0])
-            cursor.execute(
-                "SELECT COUNT(*) FROM product_category_name_translation "
-                "WHERE product_category_name = '' OR product_category_name IS NULL"
-            )
-            empty_pk = int(cursor.fetchone()[0])
-            cursor.execute(
-                "SELECT product_category_name, product_category_name_english "
-                "FROM product_category_name_translation WHERE product_category_name = 'casa_conforto'"
-            )
-            casa = cursor.fetchone()
-            if after != TRANSLATION_EXPECTED or empty_pk != 0:
-                connection.rollback()
-                raise SystemExit(f"[ERROR] 校验失败已回滚 count={after} empty_pk={empty_pk}")
-            connection.commit()
-            print(f"[AFTER] 行数 = {after}，空主键 = {empty_pk}，casa_conforto = {casa}")
-    except Exception:
-        connection.rollback()
-        raise
-    finally:
-        connection.close()
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Agentic BI 数据库初始化")
     parser.add_argument(
         "command",
         nargs="?",
         default="all",
-        choices=("all", "init", "load", "views", "nlp-tables", "translation"),
-        help="all=init+load+views（默认）",
+        choices=("all", "nlp-tables"),
+        help="all=init+load+views（默认）；nlp-tables=重建情感与主题表",
     )
     args = parser.parse_args()
-    if args.command == "init":
-        cmd_init()
-    elif args.command == "load":
-        cmd_load()
-    elif args.command == "views":
-        cmd_views()
-    elif args.command == "nlp-tables":
+    if args.command == "nlp-tables":
         cmd_nlp_tables()
-    elif args.command == "translation":
-        cmd_translation()
     else:
         cmd_init()
         cmd_load()

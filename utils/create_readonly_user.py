@@ -25,8 +25,9 @@ from pathlib import Path
 import pymysql
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+LEGACY_DIR = ROOT_DIR / "legacy"
+if str(LEGACY_DIR) not in sys.path:
+    sys.path.insert(0, str(LEGACY_DIR))
 
 from db_env import load_dotenv
 
