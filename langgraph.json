@@ -1,0 +1,7 @@
+{
+    "dependencies": ["."],
+    "graphs": {
+      "analysis": "./src/agentic_bi/agents/analysis/graph.py:build_studio_graph"
+    },
+    "env": ".env"
+  }
