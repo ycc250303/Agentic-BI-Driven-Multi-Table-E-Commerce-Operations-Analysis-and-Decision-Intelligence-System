@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Generic, TypeVar
+from typing import Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
@@ -111,45 +111,48 @@ class ArtifactRef(StrictModel):
     created_at: datetime
 
 
+class EvidenceSource(StrictModel):
+    """证据实际访问的一个数据源。
+
+    - name：指标目录中的数据源名称
+    - kind：数据源类型，table 表示原始表，view 表示视图
+    """
+
+    name: str = Field(min_length=1, max_length=128)
+    kind: Literal["table", "view"]
+
+
 class EvidenceEnvelope(StrictModel):
     """下游 Agent 唯一允许引用的数据事实。来源、质量和业务范围保持扁平。
 
     - evidence_id：证据标识
     - metric_ids：指标标识，至少一个
-    - dimensions：分组维度
     - grain：结果粒度
     - scope：业务过滤范围
     - units：指标单位
     - columns：结果列名
     - preview：可放入图状态的小样本
-    - row_count：结果行数
-    - truncated：样本是否被截断
-    - source_tables：命中的原始表
-    - source_views：命中的视图
-    - sql_fingerprint：SQL 指纹，可空
+    - returned_row_count：系统预算内实际保留的结果行数
+    - truncated：查询结果是否被系统行数上限截断
+    - sources：实际访问的数据源及其类型
     - data_snapshot：数据快照版本
     - executed_at：执行时间
-    - execution_time_ms：执行耗时
     - artifacts：完整结果引用
     - warnings：质量提示
     """
 
     evidence_id: str = Field(min_length=1, max_length=128)
     metric_ids: tuple[str, ...] = Field(min_length=1)
-    dimensions: tuple[str, ...] = ()
     grain: tuple[str, ...] = ()
     scope: dict[str, JsonValue] = Field(default_factory=dict)
     units: dict[str, str] = Field(default_factory=dict)
     columns: tuple[str, ...] = ()
     preview: tuple[dict[str, JsonValue], ...] = ()
-    row_count: int = Field(ge=0)
+    returned_row_count: int = Field(ge=0)
     truncated: bool = False
-    source_tables: tuple[str, ...] = ()
-    source_views: tuple[str, ...] = ()
-    sql_fingerprint: str | None = Field(default=None, max_length=128)
+    sources: tuple[EvidenceSource, ...] = ()
     data_snapshot: str = Field(min_length=1, max_length=128)
     executed_at: datetime
-    execution_time_ms: float = Field(ge=0)
     artifacts: tuple[ArtifactRef, ...] = ()
     warnings: tuple[str, ...] = ()
 

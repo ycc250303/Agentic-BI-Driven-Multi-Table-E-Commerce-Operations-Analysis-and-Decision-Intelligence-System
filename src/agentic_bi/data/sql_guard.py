@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Set
 from dataclasses import dataclass
-from hashlib import sha256
 from pathlib import Path
 
 import sqlglot
@@ -40,12 +39,10 @@ class ValidatedSql:
     """通过静态校验后的 SQL。
 
     - sql：规范化后的单条查询
-    - fingerprint：规范化 SQL 的指纹
     - sources：实际访问的数据源
     """
 
     sql: str
-    fingerprint: str
     sources: tuple[str, ...]
 
 
@@ -123,11 +120,10 @@ class SqlGuard:
         - 空语句、超长或无法解析：允许修复
         - 必须是单条 SELECT 或 WITH
         - 写入、DDL、锁和 SELECT INTO 直接失败，不交给模型改写
-        - 规范化时去掉注释，指纹取规范化 SQL 的前 24 位
+        - 规范化时去掉注释
 
         输出：
         - sql：去掉注释后的单条查询
-        - fingerprint：规范化 SQL 的指纹
         - sources：实际访问的数据源，按名称排序
         - 违反策略：抛 ``SqlPolicyError``
         """
@@ -179,11 +175,8 @@ class SqlGuard:
             pretty=False,
             comments=False,
         )
-        fingerprint = sha256(normalized.encode("utf-8")).hexdigest()[:24]
-
         return ValidatedSql(
             sql=normalized,
-            fingerprint=fingerprint,
             sources=tuple(sorted(sources)),
         )
 

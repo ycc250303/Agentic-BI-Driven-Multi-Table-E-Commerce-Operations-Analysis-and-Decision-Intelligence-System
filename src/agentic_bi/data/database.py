@@ -29,9 +29,8 @@ class QueryExecution:
 
     columns: tuple[str, ...]
     rows: tuple[dict[str, JsonValue], ...]
-    row_count: int
+    returned_row_count: int
     truncated: bool
-    execution_time_ms: float
     data_snapshot: str
 
 
@@ -103,9 +102,6 @@ class ReadOnlyDatabase:
 
     def execute(self, sql: str) -> QueryExecution:
         """执行只读 SQL，并限制行数和序列化字节数。"""
-        from time import perf_counter
-
-        started = perf_counter()
         try:
             with self._engine.connect() as connection:
                 self._set_timeout(connection)
@@ -136,13 +132,11 @@ class ReadOnlyDatabase:
                 raise QueryBudgetError("查询结果超过最大字节预算")
             rows.append(normalized)
 
-        elapsed_ms = (perf_counter() - started) * 1000
         return QueryExecution(
             columns=columns,
             rows=tuple(rows),
-            row_count=len(rows),
+            returned_row_count=len(rows),
             truncated=truncated,
-            execution_time_ms=elapsed_ms,
             data_snapshot=self.snapshot_id(),
         )
 

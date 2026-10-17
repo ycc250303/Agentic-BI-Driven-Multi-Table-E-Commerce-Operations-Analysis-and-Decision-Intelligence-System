@@ -109,7 +109,7 @@ def main() -> None:
         locale=arguments.locale,
     )
     result = run_analysis(request)
-    print(result.model_dump_json(indent=2))
+    print(result.model_dump_json(indent=2, exclude_none=True, exclude_defaults=True))
 
 
 if __name__ == "__main__":

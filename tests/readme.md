@@ -1,6 +1,6 @@
 # 数据分析 Agent 测试复现
 
-以下命令均在仓库根目录执行。第 3–7 步需在 Analysis CLI、数据访问层和五节点图实现完成后运行。
+以下命令均在仓库根目录执行。第 3–7 步需在 Analysis CLI、数据访问层和四节点图实现完成后运行。
 
 ## 前置配置
 
@@ -67,8 +67,8 @@ python -m agentic_bi.agents.analysis.run \
 - 返回 `success`。
 - 识别 `total_gmv`、`customer_state`、2017 年和 Top 1 排名语义。
 - SQL 经过 AST、白名单、EXPLAIN 和只读执行校验。
-- 返回 Evidence、证据引用结论、CSV/SQL Artifact 和 SQL 指纹。
-- LangSmith 中可看到 `interpret_request → generate_sql → validate_and_execute → build_evidence → summarize`。
+- 返回单一 Evidence、证据引用结论和 CSV/SQL Artifact；SQL Artifact 的 `content_hash` 标识规范化 SQL 内容。
+- LangSmith 中可看到 `interpret_request → generate_sql → validate_and_execute → summarize`。
 
 ## 4. 验证同粒度多指标查询
 
@@ -110,7 +110,7 @@ pytest tests/unit/agents/analysis -q
 - 语法、未知列、结果形态和超预算等可修复错误最多重试两轮。
 - 数据库或认证不可用时返回 `failed`，且不泄漏 SQL、密码或异常栈。
 - 空结果返回 `success`，并明确说明没有数据。
-- 结果超限时设置 `truncated=true` 并返回警告。
+- 结果超限时通过 `truncated=true` 表达截断状态。
 - 查询成功但摘要失败时返回 `partial`，保留 Evidence 和 Artifact。
 - LangSmith Trace 不包含 API Key、数据库密码或完整大结果。
 

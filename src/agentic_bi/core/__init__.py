@@ -7,6 +7,7 @@ from agentic_bi.core.models import (
     ErrorCode,
     ErrorInfo,
     EvidenceEnvelope,
+    EvidenceSource,
 )
 from agentic_bi.core.settings import ModelProvider, Settings
 
@@ -17,6 +18,7 @@ __all__ = [
     "ErrorCode",
     "ErrorInfo",
     "EvidenceEnvelope",
+    "EvidenceSource",
     "ModelProvider",
     "Settings",
 ]

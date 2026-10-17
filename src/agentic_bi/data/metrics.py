@@ -9,7 +9,7 @@ from typing import Literal
 import yaml
 from pydantic import Field, model_validator
 
-from agentic_bi.core.models import StrictModel
+from agentic_bi.core.models import EvidenceSource, StrictModel
 
 
 class MetricSpec(StrictModel):
@@ -330,29 +330,25 @@ class MetricCatalog:
         )
         return {name: frozenset(self._document.sources[name].columns) for name in names}
 
-    def source_kinds(
+    def evidence_sources(
         self,
         source_names: Iterable[str],
-    ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-        """把数据源拆成原始表和视图。
+    ) -> tuple[EvidenceSource, ...]:
+        """把实际访问的数据源转换为证据来源。
 
         输入：
         - source_names：数据源名称
 
         输出：
-        - 原始表和视图：按 kind 分成两组，保持传入顺序
+        - 证据来源：每项包含数据源名称与类型，保持传入顺序
         """
-        tables: list[str] = []
-        views: list[str] = []
-
-        for source_name in source_names:
-            source = self._document.sources[source_name]
-            if source.kind == "view":
-                views.append(source_name)
-            else:
-                tables.append(source_name)
-
-        return tuple(tables), tuple(views)
+        return tuple(
+            EvidenceSource(
+                name=source_name,
+                kind=self._document.sources[source_name].kind,
+            )
+            for source_name in source_names
+        )
 
     def units_for(self, metric_ids: Iterable[str]) -> dict[str, str]:
         """返回指标与单位映射。

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any, Literal, TypedDict, TypeVar, cast
 from uuid import uuid4
@@ -21,7 +22,6 @@ from agentic_bi.agents.analysis.schemas import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisSemanticSpec,
-    QuerySnapshot,
     SqlDraft,
     SummaryDraft,
 )
@@ -86,7 +86,6 @@ class AnalysisState(TypedDict, total=False):
     - request：原始查数任务
     - semantic_spec：通过指标目录的业务语义
     - sql_draft：最近一次候选 SQL
-    - query_snapshot：执行后的小样本和产物引用
     - evidence：可供下游引用的数据事实
     - repair_attempts：已经用掉的 SQL 修复次数
     - repair_feedback：下一次生成可见的短反馈
@@ -96,7 +95,6 @@ class AnalysisState(TypedDict, total=False):
     request: AnalysisRequest
     semantic_spec: AnalysisSemanticSpec
     sql_draft: SqlDraft
-    query_snapshot: QuerySnapshot
     evidence: EvidenceEnvelope
     repair_attempts: int
     repair_feedback: str
@@ -109,7 +107,7 @@ def build_analysis_graph() -> CompiledStateGraph[
     AnalysisInput,
     AnalysisGraphOutput,
 ]:
-    """编译解释、生成、执行、证据和摘要五步。
+    """编译解释、生成、校验执行和摘要四个节点。
 
     输入：
     - 无
@@ -117,23 +115,107 @@ def build_analysis_graph() -> CompiledStateGraph[
     约束：
     - 澄清或失败写入 result 后直接结束
     - 校验失败且仍可修复时回到 SQL 生成
-    - 查询成功后才构建证据并摘要
+    - 校验执行节点完成产物写入和证据封装
+    - 查询成功后才进入摘要
 
     输出：
     - 已编译的图：输入为 request，输出为 result
     """
+    return _compile_analysis_graph()
+
+
+def build_studio_graph() -> CompiledStateGraph[
+    AnalysisState,
+    AnalysisContext,
+    AnalysisInput,
+    AnalysisGraphOutput,
+]:
+    """给 Agent Server 编译同一张分析图，并绑定进程内依赖。
+
+    输入：
+    - 无
+
+    约束：
+    - 依赖由 ``create_analysis_context`` 在进程内构造，不进入 checkpoint
+    - Studio 传入的 request 字典先校验成 ``AnalysisRequest``
+
+    输出：
+    - 已编译的图：输入为 request，输出为 result
+    """
+    from agentic_bi.agents.analysis.run import create_analysis_context
+
+    context = create_analysis_context(Settings())
+    return _compile_analysis_graph(bind=_bind_studio_node(context))
+
+
+def _bind_studio_node(context: AnalysisContext) -> Callable[[Any], Any]:
+    """返回把进程依赖写入 Runtime 的节点包装。
+
+    输入：
+    - context：进程内构造的节点依赖
+
+    约束：
+    - request 为字典时先校验成 ``AnalysisRequest``
+
+    输出：
+    - 包装函数：接收原节点，返回带依赖的节点
+    """
+
+    def bind(fn: Any) -> Any:
+        def node(state: AnalysisState, *, runtime: Runtime[AnalysisContext]) -> AnalysisState:
+            request: object = state.get("request")
+            if isinstance(request, dict):
+                state = cast(
+                    AnalysisState,
+                    {**state, "request": AnalysisRequest.model_validate(request)},
+                )
+            return cast(AnalysisState, fn(state, runtime=replace(runtime, context=context)))
+
+        return node
+
+    return bind
+
+
+def _compile_analysis_graph(
+    *,
+    bind: Callable[[Any], Any] | None = None,
+) -> CompiledStateGraph[
+    AnalysisState,
+    AnalysisContext,
+    AnalysisInput,
+    AnalysisGraphOutput,
+]:
+    """按固定节点和边编译分析图。
+
+    输入：
+    - bind：节点包装；为空时直接使用原节点
+
+    约束：
+    - 澄清或失败写入 result 后直接结束
+    - 校验失败且仍可修复时回到 SQL 生成
+    - 校验执行节点完成产物写入和证据封装
+    - 查询成功后才进入摘要
+    - ``compile`` 不接收 checkpointer
+
+    输出：
+    - 已编译的图：输入为 request，输出为 result
+    """
+
+    def use(fn: Any) -> Any:
+        if bind is None:
+            return fn
+        return bind(fn)
+
     builder = StateGraph(
         AnalysisState,
         context_schema=AnalysisContext,
         input_schema=AnalysisInput,
         output_schema=AnalysisGraphOutput,
     )
-    builder.add_node("interpret_request", _interpret_request)
-    builder.add_node("generate_sql", _generate_sql)
-    builder.add_node("validate_and_execute", _validate_and_execute)
-    builder.add_node("build_evidence", _build_evidence)
-    builder.add_node("summarize", _summarize)
-
+    builder.add_node("interpret_request", use(_interpret_request))
+    builder.add_node("generate_sql", use(_generate_sql))
+    builder.add_node("validate_and_execute", use(_validate_and_execute))
+    builder.add_node("summarize", use(_summarize))
     builder.add_edge(START, "interpret_request")
     builder.add_conditional_edges(
         "interpret_request",
@@ -150,11 +232,10 @@ def build_analysis_graph() -> CompiledStateGraph[
         _after_execute,
         {
             "generate_sql": "generate_sql",
-            "build_evidence": "build_evidence",
+            "summarize": "summarize",
             "end": END,
         },
     )
-    builder.add_edge("build_evidence", "summarize")
     builder.add_edge("summarize", END)
     return builder.compile()
 
@@ -215,7 +296,7 @@ def _interpret_request(
             retryable=True,
         )
 
-    if semantic_spec.ambiguities:
+    if semantic_spec.clarification_questions:
         return {
             "semantic_spec": semantic_spec,
             "result": AnalysisResult(
@@ -223,7 +304,6 @@ def _interpret_request(
                 value=AnalysisOutput(
                     task_id=request.task_id,
                     intent=semantic_spec,
-                    clarification_questions=_clarification_questions(semantic_spec.ambiguities),
                 ),
             ),
         }
@@ -283,7 +363,7 @@ def _validate_and_execute(
     *,
     runtime: Runtime[AnalysisContext],
 ) -> AnalysisState:
-    """完成 AST、EXPLAIN、只读执行、形态校验和产物写入。
+    """完成 AST、EXPLAIN、只读执行、结果校验、产物写入和证据封装。
 
     输入：
     - semantic_spec：用来限定数据源和核对结果列
@@ -295,7 +375,7 @@ def _validate_and_execute(
     - 数据库不可用、硬预算和产物写入失败不再改 SQL
 
     输出：
-    - query_snapshot：预览、指纹和产物引用
+    - evidence：业务范围、预览、来源和产物引用
     - repair_feedback：可修复时给下一轮生成
     - result：不可修复时的失败
     """
@@ -324,29 +404,37 @@ def _validate_and_execute(
             metric_ids=semantic_spec.metric_ids,
             dimensions=semantic_spec.dimensions,
         )
-        snapshot = QuerySnapshot(
+        artifacts = (
+            deps.store.write_csv(
+                task_id=request.task_id,
+                columns=execution.columns,
+                rows=execution.rows,
+            ),
+            deps.store.write_sql(task_id=request.task_id, sql=validated.sql),
+        )
+        time_range = semantic_spec.time_range
+        evidence = EvidenceEnvelope(
+            evidence_id=f"ev-{uuid4().hex}",
+            metric_ids=semantic_spec.metric_ids,
+            grain=semantic_spec.dimensions,
+            scope={
+                "filters": [item.model_dump(mode="json") for item in semantic_spec.filters],
+                "time_range": None if time_range is None else time_range.model_dump(mode="json"),
+                "operation": semantic_spec.operation.value,
+                "sort_by": semantic_spec.sort_by,
+                "sort_direction": semantic_spec.sort_direction,
+                "limit": semantic_spec.limit,
+            },
+            units=deps.metrics.units_for(semantic_spec.metric_ids),
             columns=execution.columns,
             preview=execution.rows[: deps.settings.evidence_preview_rows],
-            row_count=execution.row_count,
+            returned_row_count=execution.returned_row_count,
             truncated=execution.truncated,
-            source_names=validated.sources,
-            sql_fingerprint=validated.fingerprint,
+            sources=deps.metrics.evidence_sources(validated.sources),
             data_snapshot=execution.data_snapshot,
             executed_at=datetime.now(UTC),
-            execution_time_ms=execution.execution_time_ms,
-            artifacts=(
-                deps.store.write_csv(
-                    task_id=request.task_id,
-                    columns=execution.columns,
-                    rows=execution.rows,
-                ),
-                deps.store.write_sql(task_id=request.task_id, sql=validated.sql),
-            ),
-            warnings=_execution_warnings(
-                truncated=execution.truncated,
-                maximum_rows=deps.settings.sql_max_rows,
-                estimated_rows=plan.estimated_rows,
-            ),
+            artifacts=artifacts,
+            warnings=_execution_warnings(estimated_rows=plan.estimated_rows),
         )
     except SqlPolicyError as exc:
         code = (
@@ -401,59 +489,6 @@ def _validate_and_execute(
             retryable=True,
         )
 
-    return {"query_snapshot": snapshot}
-
-
-def _build_evidence(
-    state: AnalysisState,
-    *,
-    runtime: Runtime[AnalysisContext],
-) -> AnalysisState:
-    """把执行快照提升为可供下游引用的 Evidence。
-
-    输入：
-    - semantic_spec：指标、维度、过滤和排序
-    - query_snapshot：预览、来源和产物引用
-
-    约束：
-    - 结果粒度沿用分组维度
-    - 范围只保留过滤、时间和结果形态，不放 SQL 全文
-
-    输出：
-    - evidence：一条带稳定标识的数据事实
-    """
-    semantic_spec = state["semantic_spec"]
-    snapshot = state["query_snapshot"]
-    metrics = runtime.context.metrics
-    source_tables, source_views = metrics.source_kinds(snapshot.source_names)
-    time_range = semantic_spec.time_range
-    evidence = EvidenceEnvelope(
-        evidence_id=f"ev-{uuid4().hex}",
-        metric_ids=semantic_spec.metric_ids,
-        dimensions=semantic_spec.dimensions,
-        grain=semantic_spec.dimensions,
-        scope={
-            "filters": [item.model_dump(mode="json") for item in semantic_spec.filters],
-            "time_range": None if time_range is None else time_range.model_dump(mode="json"),
-            "operation": semantic_spec.operation.value,
-            "sort_by": semantic_spec.sort_by,
-            "sort_direction": semantic_spec.sort_direction,
-            "limit": semantic_spec.limit,
-        },
-        units=metrics.units_for(semantic_spec.metric_ids),
-        columns=snapshot.columns,
-        preview=snapshot.preview,
-        row_count=snapshot.row_count,
-        truncated=snapshot.truncated,
-        source_tables=source_tables,
-        source_views=source_views,
-        sql_fingerprint=snapshot.sql_fingerprint,
-        data_snapshot=snapshot.data_snapshot,
-        executed_at=snapshot.executed_at,
-        execution_time_ms=snapshot.execution_time_ms,
-        artifacts=snapshot.artifacts,
-        warnings=snapshot.warnings,
-    )
     return {"evidence": evidence}
 
 
@@ -476,19 +511,15 @@ def _summarize(
     - result：成功或带可用证据的部分成功
     """
     request = state["request"]
-    semantic_spec = state["semantic_spec"]
     evidence = state["evidence"]
-    if evidence.row_count == 0:
+    if evidence.returned_row_count == 0:
         return {
             "result": _completed(
                 _output(
                     request,
-                    semantic_spec,
                     evidence,
                     headline="在给定指标口径和过滤范围内未查询到数据。",
-                    limitations=evidence.warnings,
-                ),
-                warnings=evidence.warnings,
+                )
             )
         }
 
@@ -499,30 +530,24 @@ def _summarize(
             variables={
                 "locale": request.locale,
                 "question": request.question,
-                "evidence": evidence.model_dump_json(indent=2),
+                "evidence": _summary_evidence_json(evidence),
             },
             schema=SummaryDraft,
             run_name="analysis.summarize",
         )
         output = _output(
             request,
-            semantic_spec,
             evidence,
             headline=summary.headline,
-            claims=tuple(
-                AnalysisClaim(evidence_id=claim.evidence_id, text=claim.text)
-                for claim in summary.claims
-            ),
-            limitations=summary.limitations + evidence.warnings,
+            claims=summary.claims,
+            limitations=summary.limitations,
         )
-        return {"result": _completed(output, warnings=evidence.warnings)}
+        return {"result": _completed(output)}
     except Exception:
         output = _output(
             request,
-            semantic_spec,
             evidence,
             headline="数据查询与证据构建已完成，但自然语言总结生成失败。",
-            limitations=evidence.warnings,
         )
         return {
             "result": AnalysisResult(
@@ -534,7 +559,6 @@ def _summarize(
                     message="摘要模型暂时不可用，已返回可验证 Evidence",
                     retryable=True,
                 ),
-                warnings=evidence.warnings,
             )
         }
 
@@ -655,7 +679,6 @@ def _fail(
 
 def _output(
     request: AnalysisRequest,
-    semantic_spec: AnalysisSemanticSpec,
     evidence: EvidenceEnvelope,
     *,
     headline: str,
@@ -666,7 +689,6 @@ def _output(
 
     输入：
     - request：回传任务号
-    - semantic_spec：最终采用的语义
     - evidence：唯一可引用的数据事实
     - headline：一句话结论
     - claims：必须引用该证据的事实
@@ -677,67 +699,67 @@ def _output(
     """
     return AnalysisOutput(
         task_id=request.task_id,
-        intent=semantic_spec,
-        evidences=(evidence,),
+        evidence=evidence,
         headline=headline,
         claims=claims,
         limitations=limitations,
     )
 
 
-def _completed(
-    output: AnalysisOutput,
-    *,
-    warnings: tuple[str, ...],
-) -> AnalysisResult:
+def _completed(output: AnalysisOutput) -> AnalysisResult:
     """把已有证据的输出标成成功。
 
     输入：
     - output：公开业务结果
-    - warnings：不改变终态的提示
 
     输出：
     - 成功结果：不带 error
     """
-    return AnalysisResult(status=AgentStatus.SUCCESS, value=output, warnings=warnings)
+    return AnalysisResult(status=AgentStatus.SUCCESS, value=output)
+
+
+def _summary_evidence_json(evidence: EvidenceEnvelope) -> str:
+    """只向摘要模型提供回答问题所需的证据字段。
+
+    输入：
+    - evidence：完整业务证据
+
+    输出：
+    - JSON：不包含产物地址、来源审计、数据快照和执行时间
+    """
+    return evidence.model_dump_json(
+        include={
+            "evidence_id",
+            "metric_ids",
+            "grain",
+            "scope",
+            "units",
+            "columns",
+            "preview",
+            "returned_row_count",
+            "truncated",
+            "warnings",
+        },
+        indent=2,
+    )
 
 
 def _execution_warnings(
     *,
-    truncated: bool,
-    maximum_rows: int,
     estimated_rows: int | None,
 ) -> tuple[str, ...]:
     """收集不阻断成功的执行提示。
 
     输入：
-    - truncated：结果是否被行数上限截断
-    - maximum_rows：系统允许保留的最大行数
     - estimated_rows：EXPLAIN 估算扫描行数，可空
 
     输出：
-    - 提示：截断或缺少扫描估算时才有内容
+    - 提示：缺少扫描估算时才有内容
     """
     warnings: list[str] = []
-    if truncated:
-        warnings.append(f"结果超过 {maximum_rows} 行，Artifact 仅保留系统允许的最大行数。")
     if estimated_rows is None:
         warnings.append("EXPLAIN 未返回可识别的扫描行数估算。")
     return tuple(warnings)
-
-
-def _clarification_questions(ambiguities: tuple[str, ...]) -> tuple[str, ...]:
-    """把歧义整理成向调用方提出的问题。
-
-    输入：
-    - ambiguities：会改变答案、尚未澄清的点
-
-    输出：
-    - 问题：已有问号的原文保留，其余补上“请确认”
-    """
-    return tuple(
-        value if value.endswith(("？", "?")) else f"请确认：{value}" for value in ambiguities
-    )
 
 
 def _child_config(
@@ -806,24 +828,24 @@ def _after_generate(state: AnalysisState) -> Literal["validate_and_execute", "en
 
 def _after_execute(
     state: AnalysisState,
-) -> Literal["generate_sql", "build_evidence", "end"]:
-    """执行结束后决定修复、出证据或终止。
+) -> Literal["generate_sql", "summarize", "end"]:
+    """校验执行结束后决定修复、摘要或终止。
 
     输入：
     - state：校验执行节点写回后的图状态
 
     约束：
     - 已有终态则结束
-    - 已有查询快照则构建证据
+    - 已有证据则生成摘要
     - 两者都没有则回到 SQL 生成
 
     输出：
     - end：失败且不再修复
-    - build_evidence：查询已成功
+    - summarize：查询与证据构建已成功
     - generate_sql：本次失败但仍可修复
     """
     if "result" in state:
         return "end"
-    if "query_snapshot" in state:
-        return "build_evidence"
+    if "evidence" in state:
+        return "summarize"
     return "generate_sql"

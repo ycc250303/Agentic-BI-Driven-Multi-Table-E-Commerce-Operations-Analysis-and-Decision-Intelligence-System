@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from agentic_bi.core.models import EvidenceSource
 from agentic_bi.data.metrics import MetricCatalog
 
 CONFIG_PATH = Path("config/metrics.yaml")
@@ -60,6 +61,17 @@ def test_schema_context_only_contains_relevant_sources() -> None:
     assert "payments" in context
     assert "payment_type" in context
     assert "支付方式" in context
+
+
+def test_evidence_sources_keep_name_and_source_kind() -> None:
+    catalog = MetricCatalog.load(CONFIG_PATH)
+
+    sources = catalog.evidence_sources(("mv_state_sales", "order_items"))
+
+    assert sources == (
+        EvidenceSource(name="mv_state_sales", kind="view"),
+        EvidenceSource(name="order_items", kind="table"),
+    )
 
 
 def test_result_columns_must_use_standard_names() -> None:

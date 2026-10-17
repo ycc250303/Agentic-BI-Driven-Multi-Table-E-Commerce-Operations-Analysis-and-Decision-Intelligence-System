@@ -20,5 +20,6 @@ def test_interpret_prompt_uses_catalog_defaults_before_requesting_clarification(
     )
 
     assert "目录已给出默认口径时直接采用" in rendered.content
-    assert "不得仅因存在其他口径的指标就写入 ambiguities" in rendered.content
+    assert "不得仅因存在其他口径的指标就写入 clarification_questions" in rendered.content
+    assert "可直接展示给调用方的完整问题" in rendered.content
     assert "用户只说销售额、成交额或 GMV 时使用本指标" in rendered.content

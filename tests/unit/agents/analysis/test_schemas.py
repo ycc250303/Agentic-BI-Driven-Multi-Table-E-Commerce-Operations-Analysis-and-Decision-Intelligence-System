@@ -10,9 +10,10 @@ from agentic_bi.agents.analysis.schemas import (
     AnalysisSemanticSpec,
     FilterOperator,
     FilterSpec,
+    OutputMode,
     TimeRange,
 )
-from agentic_bi.core.models import EvidenceEnvelope
+from agentic_bi.core.models import EvidenceEnvelope, EvidenceSource
 
 
 def test_between_requires_two_values() -> None:
@@ -44,8 +45,16 @@ def test_sort_direction_requires_sort_field() -> None:
     with pytest.raises(ValidationError, match="必须设置 sort_by"):
         AnalysisSemanticSpec(
             metric_ids=("total_gmv",),
+            operation=OutputMode.RANKING,
             sort_direction="desc",
         )
+
+
+def test_operation_requires_a_concrete_output_mode() -> None:
+    with pytest.raises(ValidationError, match="operation"):
+        AnalysisSemanticSpec(metric_ids=("total_gmv",))
+
+    assert "auto" not in {mode.value for mode in OutputMode}
 
 
 def test_request_accepts_question_without_semantic_spec() -> None:
@@ -58,8 +67,10 @@ def test_request_accepts_question_without_semantic_spec() -> None:
     assert request.locale == "zh-CN"
 
 
-def test_ambiguity_schema_uses_a_genuine_missing_business_definition() -> None:
-    property_schema = AnalysisSemanticSpec.model_json_schema()["properties"]["ambiguities"]
+def test_clarification_schema_uses_a_genuine_missing_business_definition() -> None:
+    property_schema = AnalysisSemanticSpec.model_json_schema()["properties"][
+        "clarification_questions"
+    ]
     description = property_schema["description"]
 
     assert "哪个表现最好" in description
@@ -72,17 +83,16 @@ def test_claim_must_reference_existing_evidence() -> None:
         metric_ids=("total_gmv",),
         columns=("total_gmv",),
         preview=({"total_gmv": 10.5},),
-        row_count=1,
-        source_views=("mv_monthly_sales",),
+        returned_row_count=1,
+        sources=(EvidenceSource(name="mv_monthly_sales", kind="view"),),
         data_snapshot="orders:99441:2018-10-17T17:30:18",
         executed_at=datetime(2026, 10, 14, tzinfo=UTC),
-        execution_time_ms=10,
     )
 
     with pytest.raises(ValidationError, match="不存在的 evidence_id"):
         AnalysisOutput(
             task_id="task-1",
-            evidences=(evidence,),
+            evidence=evidence,
             claims=(
                 AnalysisClaim(
                     evidence_id="ev-missing",

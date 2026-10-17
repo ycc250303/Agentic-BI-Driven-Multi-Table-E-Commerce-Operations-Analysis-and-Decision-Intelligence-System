@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from enum import StrEnum
 from typing import Literal
 
@@ -10,7 +10,6 @@ from pydantic import Field, JsonValue, model_validator
 
 from agentic_bi.core.models import (
     AgentResult,
-    ArtifactRef,
     EvidenceEnvelope,
     StrictModel,
 )
@@ -19,7 +18,6 @@ from agentic_bi.core.models import (
 class OutputMode(StrEnum):
     """用户需要的数据结果形态。"""
 
-    AUTO = "auto"
     SCALAR = "scalar"
     TABLE = "table"
     RANKING = "ranking"
@@ -97,12 +95,6 @@ class TimeRange(StrictModel):
         default=None,
         description="不包含该日期；例如完整 2017 年结束为 2018-01-01。",
     )
-    timezone: str = Field(
-        default="UTC",
-        min_length=1,
-        max_length=64,
-        description="解释日期边界所使用的时区。",
-    )
 
     @model_validator(mode="after")
     def validate_range(self) -> TimeRange:
@@ -138,10 +130,9 @@ class AnalysisSemanticSpec(StrictModel):
         description="按指标默认业务时间字段应用的左闭右开日期范围。",
     )
     operation: OutputMode = Field(
-        default=OutputMode.AUTO,
         description=(
             "结果形态：scalar 是单值，table 是表格，ranking 是排序榜单，"
-            "trend 是时间趋势，distribution 是分布，auto 表示按问题判断。"
+            "trend 是时间趋势，distribution 是分布。"
         ),
     )
     sort_by: str | None = Field(
@@ -158,11 +149,11 @@ class AnalysisSemanticSpec(StrictModel):
         le=500,
         description="用户需要的业务结果条数，例如 TOP10 为 10。",
     )
-    ambiguities: tuple[str, ...] = Field(
+    clarification_questions: tuple[str, ...] = Field(
         default=(),
         description=(
-            "会实质改变答案，且无法从当前问题和指标目录口径确定的业务歧义；"
-            "例如“哪个表现最好”没有说明比较对象和评价指标。没有关键歧义时为空。"
+            "需要调用方补充、且会实质改变答案的完整问题；例如“哪个表现最好”"
+            "没有说明比较对象和评价指标时，应询问具体评价指标。没有关键歧义时为空。"
         ),
     )
 
@@ -175,33 +166,18 @@ class AnalysisSemanticSpec(StrictModel):
 
 
 class AnalysisRequest(StrictModel):
-    """Analysis Graph 的公开输入，一次只表示一个自包含查数任务。"""
+    """Analysis Graph 的公开输入，一次只表示一个自包含查数任务。
 
-    task_id: str = Field(
-        min_length=1,
-        max_length=128,
-        description="调用方生成的任务标识，用于 Trace、Artifact 和结果关联。",
-    )
-    question: str = Field(
-        min_length=1,
-        max_length=4000,
-        description=(
-            "已完成必要指代消解的自包含单任务自然语言问题；独立开发阶段可直接传自包含用户原文。"
-        ),
-    )
-    semantic_spec: AnalysisSemanticSpec | None = Field(
-        default=None,
-        description=(
-            "可选的已确认业务语义；主要供测试、金标重放和程序化调用使用。"
-            "即使提供，也必须经过指标目录校验。"
-        ),
-    )
-    locale: str = Field(
-        default="zh-CN",
-        min_length=2,
-        max_length=32,
-        description="自然语言结论的语言区域，不改变指标和 SQL 口径。",
-    )
+    - task_id：调用方生成的任务标识，用于 Trace、Artifact 和结果关联
+    - question：已完成必要指代消解的自包含单任务自然语言问题；独立开发阶段可直接传自包含用户原文
+    - semantic_spec：可选的已确认业务语义，仍须经过指标目录校验
+    - locale：自然语言结论的语言区域，不改变指标和 SQL 口径
+    """
+
+    task_id: str = Field(min_length=1, max_length=128)
+    question: str = Field(min_length=1, max_length=4000)
+    semantic_spec: AnalysisSemanticSpec | None = None
+    locale: str = Field(default="zh-CN", min_length=2, max_length=32)
 
 
 class SqlDraft(StrictModel):
@@ -215,31 +191,14 @@ class SqlDraft(StrictModel):
             " semantic_spec 中的标准标识作为别名。"
         ),
     )
-    design_notes: str = Field(
-        min_length=1,
-        max_length=1000,
-        description=("简短说明选择的数据源、粒度和指标聚合方式；不要求输出逐步推理过程。"),
-    )
 
 
-class QuerySnapshot(StrictModel):
-    """执行后留在图状态中的小型结果快照。"""
+class AnalysisClaim(StrictModel):
+    """一条带证据引用的事实陈述。摘要模型和公开输出使用同一结构。
 
-    columns: tuple[str, ...]
-    preview: tuple[dict[str, JsonValue], ...]
-    row_count: int = Field(ge=0)
-    truncated: bool
-    source_names: tuple[str, ...]
-    sql_fingerprint: str = Field(min_length=1, max_length=128)
-    data_snapshot: str = Field(min_length=1, max_length=128)
-    executed_at: datetime
-    execution_time_ms: float = Field(ge=0)
-    artifacts: tuple[ArtifactRef, ...]
-    warnings: tuple[str, ...] = ()
-
-
-class SummaryClaimDraft(StrictModel):
-    """摘要模型生成的一条有证据引用的事实陈述。"""
+    - evidence_id：支持该陈述的证据标识
+    - text：只陈述证据中可核对的内容
+    """
 
     evidence_id: str = Field(
         min_length=1,
@@ -261,7 +220,7 @@ class SummaryDraft(StrictModel):
         max_length=500,
         description="直接回答用户问题的一句话结论。",
     )
-    claims: tuple[SummaryClaimDraft, ...] = Field(
+    claims: tuple[AnalysisClaim, ...] = Field(
         default=(),
         description="有独立证据引用的事实列表。",
     )
@@ -271,31 +230,29 @@ class SummaryDraft(StrictModel):
     )
 
 
-class AnalysisClaim(StrictModel):
-    """公开输出中的证据引用事实。"""
-
-    evidence_id: str = Field(min_length=1, max_length=128)
-    text: str = Field(min_length=1, max_length=1000)
-
-
 class AnalysisOutput(StrictModel):
-    """Analysis Graph 的公开业务结果。"""
+    """Analysis Graph 的公开业务结果。
+
+    - task_id：回传输入中的任务标识
+    - intent：待澄清时已经识别出的业务语义；其他终态为空
+    - evidence：成功或部分成功时可供下游引用的数据事实
+    - headline：直接回答问题的一句话
+    - claims：带证据标识的事实陈述
+    - limitations：覆盖范围、口径、截断或不能做因果解释
+    """
 
     task_id: str = Field(min_length=1, max_length=128)
     intent: AnalysisSemanticSpec | None = None
-    evidences: tuple[EvidenceEnvelope, ...] = ()
+    evidence: EvidenceEnvelope | None = None
     headline: str | None = Field(default=None, max_length=500)
     claims: tuple[AnalysisClaim, ...] = ()
     limitations: tuple[str, ...] = ()
-    clarification_questions: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def validate_claim_references(self) -> AnalysisOutput:
         """拒绝引用不存在 Evidence 的事实陈述。"""
-        evidence_ids = {evidence.evidence_id for evidence in self.evidences}
-        unknown = {
-            claim.evidence_id for claim in self.claims if claim.evidence_id not in evidence_ids
-        }
+        evidence_ids = set() if self.evidence is None else {self.evidence.evidence_id}
+        unknown = {claim.evidence_id for claim in self.claims} - evidence_ids
         if unknown:
             values = ", ".join(sorted(unknown))
             raise ValueError(f"claim 引用了不存在的 evidence_id: {values}")

@@ -32,19 +32,18 @@
 | `status` | `success` 证据完整；`partial` 证据可用、摘要降级；`needs_input` 需要补充会改变答案的信息；`failed` 没有可用结果。 |
 | `value` | 业务结果。成功和待补充时必有；失败时为空。 |
 | `error` | `code`、`stage`、`message`、`retryable`、`context`。不含密钥、SQL 全文和异常栈。成功时为空。 |
-| `warnings` | 不改变终态的提示，例如结果被行数上限截断。 |
+| `warnings` | Agent 外壳级提示。Analysis 当前不复制 Evidence 的质量提示。 |
 
 ### `value`
 
 | 字段 | 含义 |
 | --- | --- |
 | `task_id` | 回传输入中的任务标识。 |
-| `intent` | 最终采用的业务语义。尚未形成语义时为空。 |
-| `evidences` | 可引用的数据事实。成功时一条。 |
+| `intent` | 待澄清时已经识别出的业务语义，其中包含可直接展示的澄清问题；其他终态为空。 |
+| `evidence` | 成功或部分成功时可供下游引用的唯一数据事实。 |
 | `headline` | 直接回答问题的一句话。 |
 | `claims` | 带 `evidence_id` 的事实。引用不存在的证据时校验失败。 |
 | `limitations` | 覆盖范围、口径、截断，以及不能据此做因果解释。 |
-| `clarification_questions` | 待补充时向调用方提出的问题。 |
 
 ## 3. 使用示例和使用注意事项
 
@@ -86,18 +85,16 @@ flowchart TD
     generate -->|生成成功| validate[校验并执行]
     generate -->|模型不可用| fail
     validate -->|仍可重写| generate
-    validate -->|查询成功| evidence[封装证据]
+    validate -->|查询成功并封装证据| summarize[写出结论]
     validate -->|无法重写、库不可用、结果过大或保存失败| fail
-    evidence --> summarize[写出结论]
     summarize -->|结论已写出，或范围内没有数据| ok([成功])
     summarize -->|证据仍在，摘要未生成| partial([部分成功])
 ```
 
 1. **理解问题**。抽出指标、维度、过滤、时间和排序，再对照指标目录。口径有歧义则待澄清。目录不认或模型不可用则失败。
 2. **生成 SQL**。只把当前指标和维度允许的数据源交给模型。重写时附上上一轮的短失败说明，要求给出完整语句。模型不可用则失败。
-3. **校验并执行**。检查语法和权限，看执行计划，用只读账号查询，核对结果列，再保存表格和 SQL。仍可重写时回到生成；无法重写、库不可用、结果过大或保存失败则失败。
-4. **封装证据**。把业务范围、预览、来源和产物引用合成一条事实。证据里不放 SQL 全文。
-5. **写出结论**。每条事实陈述都指向这条证据。结论写完，或范围内没有数据，为成功。证据已保留但摘要未生成，为部分成功。
+3. **校验并执行**。检查语法和权限，看执行计划，用只读账号查询，核对结果列，保存表格与 SQL，并把业务范围、预览、来源和产物引用封装成一条证据。仍可重写时回到生成；无法重写、库不可用、结果过大或保存失败则失败。
+4. **写出结论**。每条事实陈述都指向这条证据。结论写完，或范围内没有数据，为成功。证据已保留但摘要未生成，为部分成功。
 
 ## 5. 内部字段结构含义
 
@@ -108,8 +105,7 @@ flowchart TD
 | `request` | 输入 | 原始查数任务。 |
 | `semantic_spec` | 理解问题 | 通过指标目录、且没有未解歧义的业务语义。 |
 | `sql_draft` | 生成 SQL | 最近一次候选 SQL，尚未执行。 |
-| `query_snapshot` | 校验并执行 | 列、预览、行数、指纹和产物引用。 |
-| `evidence` | 封装证据 | 可供下游引用的一条数据事实。 |
+| `evidence` | 校验并执行 | 可供下游引用的一条数据事实。 |
 | `repair_attempts` | 理解成功时为 0，重写时加 1 | 已经用掉的 SQL 重写次数。 |
 | `repair_feedback` | 重写时写入，生成成功后清空 | 下一轮可见的短失败说明。 |
 | `result` | 澄清、失败或摘要 | 提前结束或最终返回的结果。 |
@@ -121,12 +117,12 @@ flowchart TD
 | `metric_ids` | 要计算的标准指标，例如 `total_gmv`。须来自指标目录，且共享同一粒度。 |
 | `dimensions` | 分组维度，例如 `customer_state`。为空表示整段汇总成一个数。 |
 | `filters` | 不含时间的业务过滤。每项为 `field`、`operator`、`value`。运算符有 `eq`、`ne`、`gt`、`gte`、`lt`、`lte`、`in`、`not_in`、`between`、`contains`、`is_null`、`is_not_null`。 |
-| `time_range` | `start` 含当天，`end` 不含当天，`timezone` 默认 `UTC`。 |
-| `operation` | `scalar` 单值，`table` 表格，`ranking` 榜单，`trend` 趋势，`distribution` 分布，`auto` 按问题判断。 |
+| `time_range` | `start` 含当天，`end` 不含当天。 |
+| `operation` | 必填的具体结果形态：`scalar` 单值、`table` 表格、`ranking` 榜单、`trend` 趋势或 `distribution` 分布。 |
 | `sort_by` | 排序用的当前指标或维度。不排序时为空。 |
 | `sort_direction` | `asc` 或 `desc`。只在有排序字段时使用，省略时按降序。 |
 | `limit` | 业务条数，1 到 500。「哪个最高」通常是 `ranking` 且为 1。 |
-| `ambiguities` | 会改变答案、又无法从问题确定的点。没有则为空。 |
+| `clarification_questions` | 需要调用方补充、且会改变答案的完整问题。没有则为空。 |
 
 「2017 年哪个客户州的 GMV 最高」对应：`metric_ids=total_gmv`，`dimensions=customer_state`，时间为 2017-01-01 至 2018-01-01，`operation=ranking`，按 `total_gmv` 降序，`limit=1`。
 
@@ -135,28 +131,25 @@ flowchart TD
 | 字段 | 含义 |
 | --- | --- |
 | `sql` | 一条尚未执行的查询。输出列使用语义中的标准标识做别名。 |
-| `design_notes` | 数据源、粒度和聚合方式的短说明。 |
 
-### 查询快照与证据
+### `evidence`
 
-快照留在图状态中。封装证据时与语义合并，下游只看证据。
+校验执行节点直接构造证据。下游通过证据引用数据事实。
 
 | 字段 | 含义 |
 | --- | --- |
 | `evidence_id` | 证据标识。`claims` 用它回指。 |
-| `metric_ids` / `dimensions` | 从语义原样带入。 |
-| `grain` | 一行代表什么。当前等于分组维度。 |
+| `metric_ids` | 本次查询计算的标准指标标识。 |
+| `grain` | 一行代表什么，当前取语义中的分组维度。 |
 | `scope` | `filters`、`time_range`、`operation`、`sort_by`、`sort_direction`、`limit`。 |
 | `units` | 指标单位。`total_gmv` 为 `BRL`。 |
 | `columns` | 结果列名，与 SQL 别名一致。 |
 | `preview` | 小样本，默认最多 20 行。 |
-| `row_count` | 实际保留的行数。 |
+| `returned_row_count` | 系统预算内实际保留的结果行数。 |
 | `truncated` | 是否被系统行数上限截断。业务只要 1 行时，这里仍可以为否。 |
-| `source_tables` / `source_views` | 命中的原始表和视图。 |
-| `sql_fingerprint` | 规范化 SQL 的指纹。完整 SQL 在产物文件中。 |
+| `sources` | 实际访问的数据源；每项包含 `name` 和 `kind`，其中 `kind` 为 `table` 或 `view`。 |
 | `data_snapshot` | `orders:<行数>:<最晚购买时间>`，标记订单主表版本。 |
 | `executed_at` | 执行完成时间，UTC。 |
-| `execution_time_ms` | 查询耗时，毫秒。 |
 | `artifacts` | 表格与 SQL 文件的引用。 |
 | `warnings` | 这条证据上的质量提示。 |
 
@@ -173,11 +166,11 @@ flowchart TD
 
 ### 摘要草稿
 
-摘要节点内部使用，公开输出收成 `headline`、`claims` 和 `limitations`。
+摘要节点内部使用 `SummaryDraft`。其中 `claims` 与公开输出共用 `AnalysisClaim`，`headline` 和 `limitations` 写入公开输出。
 
 | 字段 | 含义 |
 | --- | --- |
 | `headline` | 一句话结论。 |
 | `claims[].evidence_id` | 必须是当前证据的标识。 |
 | `claims[].text` | 只陈述证据中可核对的内容。 |
-| `limitations` | 覆盖、口径、截断或不能做因果推断。公开输出还会附上证据中的 `warnings`。 |
+| `limitations` | 数据覆盖、业务口径、系统截断或不能做因果推断。Evidence 的 `warnings` 保持独立，不复制到这里。 |

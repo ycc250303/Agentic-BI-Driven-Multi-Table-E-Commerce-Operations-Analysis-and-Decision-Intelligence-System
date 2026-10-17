@@ -6,7 +6,7 @@
 - dimensions：决定结果粒度的分组列名。
 - filters：业务过滤条件。
 - time_range：按指标默认时间字段应用的左闭右开区间。
-- operation：scalar、table、ranking、trend、distribution 或 auto。
+- operation：scalar、table、ranking、trend 或 distribution。
 - sort_by 与 sort_direction：排序字段和方向。
 - limit：业务结果条数。
 

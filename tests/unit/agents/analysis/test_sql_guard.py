@@ -38,7 +38,6 @@ def test_guard_accepts_read_only_aggregate() -> None:
     )
 
     assert validated.sources == ("mv_state_sales",)
-    assert validated.fingerprint
     assert "LIMIT 10" in validated.sql.upper()
 
 

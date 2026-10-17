@@ -9,6 +9,7 @@ from agentic_bi.core.models import (
     ErrorCode,
     ErrorInfo,
     EvidenceEnvelope,
+    EvidenceSource,
 )
 
 
@@ -38,11 +39,10 @@ def test_evidence_round_trip_is_json_safe() -> None:
         metric_ids=("revenue",),
         columns=("revenue",),
         preview=({"revenue": 10.5},),
-        row_count=1,
-        source_tables=("order_items",),
+        returned_row_count=1,
+        sources=(EvidenceSource(name="order_items", kind="table"),),
         data_snapshot="olist-local-v1",
         executed_at=datetime(2026, 10, 13, tzinfo=UTC),
-        execution_time_ms=12.5,
     )
 
     restored = EvidenceEnvelope.model_validate_json(evidence.model_dump_json())
