@@ -1,0 +1,47 @@
+{
+  "dataset_name": "agentic-bi-analysis",
+  "description": "数据分析 Agent 的查数与待澄清 MVP 样本；本地 JSON 是唯一维护来源。",
+  "examples": [
+    {
+      "inputs": {
+        "task_id": "2017-state-gmv",
+        "question": "2017 年哪个客户州的 GMV 最高？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": ["total_gmv"],
+          "dimensions": ["customer_state"],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT customer_state, SUM(total_gmv) AS total_gmv FROM mv_state_sales WHERE sales_month >= '2017-01' AND sales_month < '2018-01' GROUP BY customer_state ORDER BY total_gmv DESC LIMIT 1"
+      },
+      "metadata": {
+        "case_id": "analysis-ranking-001",
+        "question_family": "top_customer_state_by_gmv"
+      },
+      "split": "smoke"
+    },
+    {
+      "inputs": {
+        "task_id": "missing-context",
+        "question": "那 SP 州呢？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "needs_input",
+        "gold_sql": null
+      },
+      "metadata": {
+        "case_id": "analysis-clarification-001",
+        "question_family": "missing_conversation_context"
+      },
+      "split": "clarification"
+    }
+  ]
+}

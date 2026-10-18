@@ -245,7 +245,7 @@ def _interpret_request(
     *,
     runtime: Runtime[AnalysisContext],
 ) -> AnalysisState:
-    """生成并校验与 SQL 无关的业务语义。
+    """理解需求，生成并校验业务分析关注点。
 
     输入：
     - request：查数任务；已带 semantic_spec 时跳过模型
@@ -263,6 +263,7 @@ def _interpret_request(
     metrics = runtime.context.metrics
 
     try:
+        """加载提示词"""
         semantic_spec = request.semantic_spec or _invoke(
             runtime,
             prompt_name="analysis/interpret",
@@ -274,6 +275,7 @@ def _interpret_request(
             schema=AnalysisSemanticSpec,
             run_name="analysis.interpret",
         )
+        """校验语义"""
         metrics.validate_intent(
             metric_ids=semantic_spec.metric_ids,
             dimensions=semantic_spec.dimensions,
@@ -308,7 +310,11 @@ def _interpret_request(
             ),
         }
 
-    return {"semantic_spec": semantic_spec, "repair_attempts": 0, "repair_feedback": ""}
+    return {
+        "semantic_spec": semantic_spec,
+        "repair_attempts": 0,
+        "repair_feedback": "",
+    }
 
 
 def _generate_sql(
@@ -379,6 +385,8 @@ def _validate_and_execute(
     - repair_feedback：可修复时给下一轮生成
     - result：不可修复时的失败
     """
+
+    """校验执行"""
     request = state["request"]
     semantic_spec = state["semantic_spec"]
     deps = runtime.context
@@ -388,22 +396,28 @@ def _validate_and_execute(
     )
 
     try:
+        """校验 SQL"""
         validated = deps.sql_guard.validate(
             state["sql_draft"].sql,
             allowed_sources=allowed_sources,
             maximum_rows=deps.settings.sql_max_rows,
         )
+        """EXPLAIN"""
         plan = deps.database.explain(validated.sql)
+        """校验计划"""
         deps.sql_guard.validate_plan(
             estimated_rows=plan.estimated_rows,
             sources=validated.sources,
         )
+        """执行"""
         execution = deps.database.execute(validated.sql)
+        """校验结果列"""
         deps.metrics.validate_result_columns(
             columns=execution.columns,
             metric_ids=semantic_spec.metric_ids,
             dimensions=semantic_spec.dimensions,
         )
+        """写入产物"""
         artifacts = (
             deps.store.write_csv(
                 task_id=request.task_id,
@@ -412,6 +426,7 @@ def _validate_and_execute(
             ),
             deps.store.write_sql(task_id=request.task_id, sql=validated.sql),
         )
+        """构建证据"""
         time_range = semantic_spec.time_range
         evidence = EvidenceEnvelope(
             evidence_id=f"ev-{uuid4().hex}",
