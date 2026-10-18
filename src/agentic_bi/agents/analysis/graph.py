@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from functools import wraps
 from typing import Any, Literal, TypedDict, TypeVar, cast
 from uuid import uuid4
 
@@ -14,6 +15,7 @@ from langgraph.config import get_config
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.runtime import Runtime
+from langgraph.types import Command
 from pydantic import BaseModel, ValidationError
 
 from agentic_bi.agents.analysis.schemas import (
@@ -162,14 +164,15 @@ def _bind_studio_node(context: AnalysisContext) -> Callable[[Any], Any]:
     """
 
     def bind(fn: Any) -> Any:
-        def node(state: AnalysisState, *, runtime: Runtime[AnalysisContext]) -> AnalysisState:
+        @wraps(fn)
+        def node(state: AnalysisState, *, runtime: Runtime[AnalysisContext]) -> Any:
             request: object = state.get("request")
             if isinstance(request, dict):
                 state = cast(
                     AnalysisState,
                     {**state, "request": AnalysisRequest.model_validate(request)},
                 )
-            return cast(AnalysisState, fn(state, runtime=replace(runtime, context=context)))
+            return fn(state, runtime=replace(runtime, context=context))
 
         return node
 
@@ -217,25 +220,6 @@ def _compile_analysis_graph(
     builder.add_node("validate_and_execute", use(_validate_and_execute))
     builder.add_node("summarize", use(_summarize))
     builder.add_edge(START, "interpret_request")
-    builder.add_conditional_edges(
-        "interpret_request",
-        _after_interpret,
-        {"generate_sql": "generate_sql", "end": END},
-    )
-    builder.add_conditional_edges(
-        "generate_sql",
-        _after_generate,
-        {"validate_and_execute": "validate_and_execute", "end": END},
-    )
-    builder.add_conditional_edges(
-        "validate_and_execute",
-        _after_execute,
-        {
-            "generate_sql": "generate_sql",
-            "summarize": "summarize",
-            "end": END,
-        },
-    )
     builder.add_edge("summarize", END)
     return builder.compile()
 
@@ -244,7 +228,7 @@ def _interpret_request(
     state: AnalysisState,
     *,
     runtime: Runtime[AnalysisContext],
-) -> AnalysisState:
+) -> Command[Literal["generate_sql", "__end__"]]:
     """理解需求，生成并校验业务分析关注点。
 
     输入：
@@ -258,6 +242,7 @@ def _interpret_request(
     输出：
     - semantic_spec：通过校验且没有歧义
     - result：待澄清或失败
+    - goto：继续生成 SQL 或结束
     """
     request = state["request"]
     metrics = runtime.context.metrics
@@ -283,45 +268,57 @@ def _interpret_request(
             sort_by=semantic_spec.sort_by,
         )
     except (ValidationError, TypeError, ValueError) as exc:
-        return _fail(
-            request,
-            code=ErrorCode.STRUCTURED_OUTPUT_INVALID,
-            stage="interpret_request",
-            message=_safe_message(exc, "数据分析语义无法通过指标目录校验"),
+        return Command(
+            update=_fail(
+                request,
+                code=ErrorCode.STRUCTURED_OUTPUT_INVALID,
+                stage="interpret_request",
+                message=_safe_message(exc, "数据分析语义无法通过指标目录校验"),
+            ),
+            goto="__end__",
         )
     except Exception:
-        return _fail(
-            request,
-            code=ErrorCode.MODEL_UNAVAILABLE,
-            stage="interpret_request",
-            message="语义解析模型暂时不可用",
-            retryable=True,
+        return Command(
+            update=_fail(
+                request,
+                code=ErrorCode.MODEL_UNAVAILABLE,
+                stage="interpret_request",
+                message="语义解析模型暂时不可用",
+                retryable=True,
+            ),
+            goto="__end__",
         )
 
     if semantic_spec.clarification_questions:
-        return {
-            "semantic_spec": semantic_spec,
-            "result": AnalysisResult(
-                status=AgentStatus.NEEDS_INPUT,
-                value=AnalysisOutput(
-                    task_id=request.task_id,
-                    intent=semantic_spec,
+        return Command(
+            update={
+                "semantic_spec": semantic_spec,
+                "result": AnalysisResult(
+                    status=AgentStatus.NEEDS_INPUT,
+                    value=AnalysisOutput(
+                        task_id=request.task_id,
+                        intent=semantic_spec,
+                    ),
                 ),
-            ),
-        }
+            },
+            goto="__end__",
+        )
 
-    return {
-        "semantic_spec": semantic_spec,
-        "repair_attempts": 0,
-        "repair_feedback": "",
-    }
+    return Command(
+        update={
+            "semantic_spec": semantic_spec,
+            "repair_attempts": 0,
+            "repair_feedback": "",
+        },
+        goto="generate_sql",
+    )
 
 
 def _generate_sql(
     state: AnalysisState,
     *,
     runtime: Runtime[AnalysisContext],
-) -> AnalysisState:
+) -> Command[Literal["validate_and_execute", "__end__"]]:
     """依据确认语义和最小 Schema 上下文生成候选 SQL。
 
     输入：
@@ -332,6 +329,7 @@ def _generate_sql(
     输出：
     - sql_draft：一条尚未执行的候选查询
     - result：模型不可用时的失败
+    - goto：继续校验执行或结束
     """
     request = state["request"]
     semantic_spec = state["semantic_spec"]
@@ -353,22 +351,28 @@ def _generate_sql(
             run_name="analysis.generate_sql",
         )
     except Exception:
-        return _fail(
-            request,
-            code=ErrorCode.MODEL_UNAVAILABLE,
-            stage="generate_sql",
-            message="SQL 生成模型暂时不可用",
-            retryable=True,
+        return Command(
+            update=_fail(
+                request,
+                code=ErrorCode.MODEL_UNAVAILABLE,
+                stage="generate_sql",
+                message="SQL 生成模型暂时不可用",
+                retryable=True,
+            ),
+            goto="__end__",
         )
 
-    return {"sql_draft": draft, "repair_feedback": ""}
+    return Command(
+        update={"sql_draft": draft, "repair_feedback": ""},
+        goto="validate_and_execute",
+    )
 
 
 def _validate_and_execute(
     state: AnalysisState,
     *,
     runtime: Runtime[AnalysisContext],
-) -> AnalysisState:
+) -> Command[Literal["generate_sql", "summarize", "__end__"]]:
     """完成 AST、EXPLAIN、只读执行、结果校验、产物写入和证据封装。
 
     输入：
@@ -384,6 +388,7 @@ def _validate_and_execute(
     - evidence：业务范围、预览、来源和产物引用
     - repair_feedback：可修复时给下一轮生成
     - result：不可修复时的失败
+    - goto：重新生成 SQL、继续摘要或结束
     """
 
     """校验执行"""
@@ -481,30 +486,39 @@ def _validate_and_execute(
             retryable=True,
         )
     except QueryBudgetError as exc:
-        return _fail(
-            request,
-            code=ErrorCode.QUERY_BUDGET_EXCEEDED,
-            stage="validate_and_execute",
-            message=str(exc),
+        return Command(
+            update=_fail(
+                request,
+                code=ErrorCode.QUERY_BUDGET_EXCEEDED,
+                stage="validate_and_execute",
+                message=str(exc),
+            ),
+            goto="__end__",
         )
     except DatabaseUnavailableError:
-        return _fail(
-            request,
-            code=ErrorCode.DATABASE_UNAVAILABLE,
-            stage="validate_and_execute",
-            message="只读数据库暂时不可用",
-            retryable=True,
+        return Command(
+            update=_fail(
+                request,
+                code=ErrorCode.DATABASE_UNAVAILABLE,
+                stage="validate_and_execute",
+                message="只读数据库暂时不可用",
+                retryable=True,
+            ),
+            goto="__end__",
         )
     except OSError:
-        return _fail(
-            request,
-            code=ErrorCode.INTERNAL_ERROR,
-            stage="validate_and_execute",
-            message="查询成功，但结果 Artifact 写入失败",
-            retryable=True,
+        return Command(
+            update=_fail(
+                request,
+                code=ErrorCode.INTERNAL_ERROR,
+                stage="validate_and_execute",
+                message="查询成功，但结果 Artifact 写入失败",
+                retryable=True,
+            ),
+            goto="__end__",
         )
 
-    return {"evidence": evidence}
+    return Command(update={"evidence": evidence}, goto="summarize")
 
 
 def _summarize(
@@ -620,7 +634,7 @@ def _repair_or_fail(
     code: ErrorCode,
     message: str,
     retryable: bool,
-) -> AnalysisState:
+) -> Command[Literal["generate_sql", "summarize", "__end__"]]:
     """在修复次数内回到 SQL 生成，否则终止。
 
     输入：
@@ -636,23 +650,30 @@ def _repair_or_fail(
     输出：
     - repair_feedback：下一轮生成可见的失败说明
     - result：终止时的失败结果
+    - goto：重新生成 SQL 或结束
     """
     attempts = state.get("repair_attempts", 0)
     maximum = runtime.context.settings.sql_max_repair_attempts
     if retryable and attempts < maximum:
-        return {
-            "repair_attempts": attempts + 1,
-            "repair_feedback": (
-                f"第 {attempts + 1} 次校验失败：{message}。请重新生成完整 SQL，不要只返回补丁。"
-            ),
-        }
+        return Command(
+            update={
+                "repair_attempts": attempts + 1,
+                "repair_feedback": (
+                    f"第 {attempts + 1} 次校验失败：{message}。请重新生成完整 SQL，不要只返回补丁。"
+                ),
+            },
+            goto="generate_sql",
+        )
 
-    return _fail(
-        state["request"],
-        code=code,
-        stage="validate_and_execute",
-        message=message,
-        context={"repair_attempts": attempts, "maximum_repair_attempts": maximum},
+    return Command(
+        update=_fail(
+            state["request"],
+            code=code,
+            stage="validate_and_execute",
+            message=message,
+            context={"repair_attempts": attempts, "maximum_repair_attempts": maximum},
+        ),
+        goto="__end__",
     )
 
 
@@ -813,54 +834,3 @@ def _safe_message(exc: Exception, fallback: str) -> str:
     """
     message = str(exc).strip()
     return message[:500] if message else fallback
-
-
-def _after_interpret(state: AnalysisState) -> Literal["generate_sql", "end"]:
-    """语义已落成终态时结束，否则生成 SQL。
-
-    输入：
-    - state：解释节点写回后的图状态
-
-    输出：
-    - end：已有澄清或失败结果
-    - generate_sql：语义通过且没有歧义
-    """
-    return "end" if "result" in state else "generate_sql"
-
-
-def _after_generate(state: AnalysisState) -> Literal["validate_and_execute", "end"]:
-    """SQL 已落成终态时结束，否则进入校验执行。
-
-    输入：
-    - state：生成节点写回后的图状态
-
-    输出：
-    - end：模型不可用
-    - validate_and_execute：已有候选 SQL
-    """
-    return "end" if "result" in state else "validate_and_execute"
-
-
-def _after_execute(
-    state: AnalysisState,
-) -> Literal["generate_sql", "summarize", "end"]:
-    """校验执行结束后决定修复、摘要或终止。
-
-    输入：
-    - state：校验执行节点写回后的图状态
-
-    约束：
-    - 已有终态则结束
-    - 已有证据则生成摘要
-    - 两者都没有则回到 SQL 生成
-
-    输出：
-    - end：失败且不再修复
-    - summarize：查询与证据构建已成功
-    - generate_sql：本次失败但仍可修复
-    """
-    if "result" in state:
-        return "end"
-    if "evidence" in state:
-        return "summarize"
-    return "generate_sql"

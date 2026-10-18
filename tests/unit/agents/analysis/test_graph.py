@@ -181,6 +181,51 @@ def test_clarification_question_stays_in_intent(tmp_path: Path) -> None:
     assert result.value.headline is None
 
 
+def test_retry_command_returns_to_sql_generation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repair_feedback: list[str] = []
+
+    def invoke_stub(
+        _runtime: Any,
+        *,
+        prompt_name: str,
+        variables: dict[str, Any],
+        schema: type[Any],
+        run_name: str,
+    ) -> Any:
+        assert run_name.startswith("analysis.")
+        if prompt_name == "analysis/generate_sql":
+            assert schema is SqlDraft
+            repair_feedback.append(cast(str, variables["repair_feedback"]))
+            if len(repair_feedback) == 1:
+                return SqlDraft(sql="SELECT 1 AS total_gmv")
+            return SqlDraft(
+                sql=("SELECT customer_state, total_gmv FROM mv_state_sales ORDER BY total_gmv DESC")
+            )
+
+        assert prompt_name == "analysis/summarize"
+        assert schema is SummaryDraft
+        return SummaryDraft(headline="SP 州的 GMV 最高，为 123.45 BRL。")
+
+    monkeypatch.setattr(analysis_graph, "_invoke", invoke_stub)
+    request = AnalysisRequest(
+        task_id="task-repair",
+        question="哪个客户州的 GMV 最高？",
+        semantic_spec=_semantic_spec(),
+    )
+
+    output = build_analysis_graph().invoke(
+        AnalysisInput(request=request),
+        context=_context(tmp_path),
+    )
+
+    assert output["result"].status == AgentStatus.SUCCESS
+    assert repair_feedback[0] == "首次生成，无反馈。"
+    assert "第 1 次校验失败" in repair_feedback[1]
+
+
 def test_studio_graph_uses_the_same_edges(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

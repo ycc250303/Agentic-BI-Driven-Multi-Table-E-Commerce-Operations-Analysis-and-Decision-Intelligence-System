@@ -83,7 +83,9 @@ class ReadOnlyDatabase:
         try:
             with self._engine.connect() as connection:
                 self._set_timeout(connection)
-                result = connection.exec_driver_sql(f"EXPLAIN FORMAT=JSON {sql}")
+                result = connection.exec_driver_sql(
+                    _escape_dbapi_percent(f"EXPLAIN FORMAT=JSON {sql}")
+                )
                 raw: Any = result.scalar_one()
         except DBAPIError as exc:
             raise self._translate_db_error(exc) from exc
@@ -105,7 +107,7 @@ class ReadOnlyDatabase:
         try:
             with self._engine.connect() as connection:
                 self._set_timeout(connection)
-                result = connection.exec_driver_sql(sql)
+                result = connection.exec_driver_sql(_escape_dbapi_percent(sql))
                 column_names = result.keys()
                 columns = tuple(str(name) for name in column_names)
                 raw_rows = result.fetchmany(self._settings.sql_max_rows + 1)
@@ -197,6 +199,23 @@ class ReadOnlyDatabase:
         )
         retryable = code in {1054, 1064, 1111, 1241, 1242, 3024}
         return QueryExecutionError(message, retryable=retryable)
+
+
+def _escape_dbapi_percent(sql: str) -> str:
+    """把 SQL 里的百分号转成 PyMySQL 可以传递的字面量。
+
+    输入：
+    - sql：完整 SQL，不带绑定参数
+
+    约束：
+    - PyMySQL 把 ``%`` 当作参数占位符
+    - ``DATE_FORMAT`` 的 ``%Y``、``%m`` 必须原样到达 MySQL
+
+    输出：
+    - 百分号已加倍的 SQL
+    """
+
+    return sql.replace("%", "%%")
 
 
 def _normalize_value(value: Any) -> JsonValue:
