@@ -6,9 +6,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from functools import wraps
+from hashlib import sha256
 from typing import Any, Literal, TypedDict, TypeVar, cast
 from uuid import uuid4
 
+import sqlglot
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.config import get_config
@@ -20,11 +22,14 @@ from pydantic import BaseModel, ValidationError
 
 from agentic_bi.agents.analysis.schemas import (
     AnalysisClaim,
+    AnalysisClarification,
+    AnalysisInterpretation,
     AnalysisOutput,
     AnalysisRequest,
     AnalysisResult,
     AnalysisSemanticSpec,
     SqlDraft,
+    SqlRepairState,
     SummaryDraft,
 )
 from agentic_bi.core.llm import ModelGateway
@@ -38,7 +43,11 @@ from agentic_bi.data.database import (
     ReadOnlyDatabase,
 )
 from agentic_bi.data.metrics import MetricCatalog
-from agentic_bi.data.sql_guard import SqlGuard, SqlPolicyError
+from agentic_bi.data.sql_guard import (
+    SqlGuard,
+    SqlPolicyError,
+    SqlPolicyViolation,
+)
 from agentic_bi.data.store import Store
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
@@ -89,8 +98,7 @@ class AnalysisState(TypedDict, total=False):
     - semantic_spec：通过指标目录的业务语义
     - sql_draft：最近一次候选 SQL
     - evidence：可供下游引用的数据事实
-    - repair_attempts：已经用掉的 SQL 修复次数
-    - repair_feedback：下一次生成可见的短反馈
+    - repair：SQL 修复次数、反馈和上一条失败 SQL 的指纹
     - result：提前结束或最终返回的结果
     """
 
@@ -98,8 +106,7 @@ class AnalysisState(TypedDict, total=False):
     semantic_spec: AnalysisSemanticSpec
     sql_draft: SqlDraft
     evidence: EvidenceEnvelope
-    repair_attempts: int
-    repair_feedback: str
+    repair: SqlRepairState
     result: AnalysisResult
 
 
@@ -236,8 +243,8 @@ def _interpret_request(
     - metrics：校验指标、维度、过滤字段和排序字段
 
     约束：
-    - 会改变答案的歧义不生成 SQL，改为向调用方提问
-    - 指标目录拒绝的语义不可修复
+    - clarify 分支直接返回待补充，不进入指标目录校验
+    - execute 分支必须通过指标目录校验
 
     输出：
     - semantic_spec：通过校验且没有歧义
@@ -248,25 +255,22 @@ def _interpret_request(
     metrics = runtime.context.metrics
 
     try:
-        """加载提示词"""
-        semantic_spec = request.semantic_spec or _invoke(
-            runtime,
-            prompt_name="analysis/interpret",
-            variables={
-                "locale": request.locale,
-                "metric_context": metrics.render_metric_context(),
-                "question": request.question,
-            },
-            schema=AnalysisSemanticSpec,
-            run_name="analysis.interpret",
-        )
-        """校验语义"""
-        metrics.validate_intent(
-            metric_ids=semantic_spec.metric_ids,
-            dimensions=semantic_spec.dimensions,
-            filter_fields=(item.field for item in semantic_spec.filters),
-            sort_by=semantic_spec.sort_by,
-        )
+        interpretation: AnalysisSemanticSpec | AnalysisClarification
+        if request.semantic_spec is not None:
+            interpretation = request.semantic_spec
+        else:
+            interpreted = _invoke(
+                runtime,
+                prompt_name="analysis/interpret",
+                variables={
+                    "locale": request.locale,
+                    "metric_context": metrics.render_metric_context(),
+                    "question": request.question,
+                },
+                schema=AnalysisInterpretation,
+                run_name="analysis.interpret",
+            )
+            interpretation = interpreted.interpretation
     except (ValidationError, TypeError, ValueError) as exc:
         return Command(
             update=_fail(
@@ -289,26 +293,44 @@ def _interpret_request(
             goto="__end__",
         )
 
-    if semantic_spec.clarification_questions:
+    if isinstance(interpretation, AnalysisClarification):
         return Command(
             update={
-                "semantic_spec": semantic_spec,
                 "result": AnalysisResult(
                     status=AgentStatus.NEEDS_INPUT,
                     value=AnalysisOutput(
                         task_id=request.task_id,
-                        intent=semantic_spec,
+                        clarification=interpretation,
                     ),
                 ),
             },
             goto="__end__",
         )
 
+    semantic_spec = interpretation
+
+    try:
+        metrics.validate_intent(
+            metric_ids=semantic_spec.metric_ids,
+            dimensions=semantic_spec.dimensions,
+            filter_fields=(item.field for item in semantic_spec.filters),
+            sort_by=semantic_spec.sort_by,
+        )
+    except (TypeError, ValueError) as exc:
+        return Command(
+            update=_fail(
+                request,
+                code=ErrorCode.STRUCTURED_OUTPUT_INVALID,
+                stage="interpret_request",
+                message=_safe_message(exc, "数据分析语义无法通过指标目录校验"),
+            ),
+            goto="__end__",
+        )
+
     return Command(
         update={
             "semantic_spec": semantic_spec,
-            "repair_attempts": 0,
-            "repair_feedback": "",
+            "repair": SqlRepairState(),
         },
         goto="generate_sql",
     )
@@ -324,7 +346,7 @@ def _generate_sql(
     输入：
     - request：原始问题
     - semantic_spec：已确认的业务语义
-    - repair_feedback：上一轮校验失败的短说明；首次为空
+    - repair：上一轮失败信息；首次使用空状态
 
     输出：
     - sql_draft：一条尚未执行的候选查询
@@ -333,6 +355,7 @@ def _generate_sql(
     """
     request = state["request"]
     semantic_spec = state["semantic_spec"]
+    repair = state.get("repair", SqlRepairState())
 
     try:
         draft = _invoke(
@@ -345,7 +368,7 @@ def _generate_sql(
                     metric_ids=semantic_spec.metric_ids,
                     dimensions=semantic_spec.dimensions,
                 ),
-                "repair_feedback": state.get("repair_feedback") or "首次生成，无反馈。",
+                "repair_feedback": repair.feedback or "首次生成，无反馈。",
             },
             schema=SqlDraft,
             run_name="analysis.generate_sql",
@@ -362,8 +385,29 @@ def _generate_sql(
             goto="__end__",
         )
 
+    draft_hash = _sql_hash(draft.sql)
+    if repair.failed_sql_hash == draft_hash:
+        error_code = ErrorCode(repair.error_code or ErrorCode.INTERNAL_ERROR.value)
+        return Command(
+            update=_fail(
+                request,
+                code=error_code,
+                stage="generate_sql",
+                message=repair.error_message or "SQL 修复没有产生新查询",
+                context={
+                    "repair_attempts": repair.attempts,
+                    "maximum_repair_attempts": runtime.context.settings.sql_max_repair_attempts,
+                    "reason": "repeated_sql",
+                },
+            ),
+            goto="__end__",
+        )
+
     return Command(
-        update={"sql_draft": draft, "repair_feedback": ""},
+        update={
+            "sql_draft": draft,
+            "repair": repair.model_copy(update={"feedback": ""}),
+        },
         goto="validate_and_execute",
     )
 
@@ -386,7 +430,7 @@ def _validate_and_execute(
 
     输出：
     - evidence：业务范围、预览、来源和产物引用
-    - repair_feedback：可修复时给下一轮生成
+    - repair：可修复时保存下一轮生成所需的失败信息
     - result：不可修复时的失败
     - goto：重新生成 SQL、继续摘要或结束
     """
@@ -459,7 +503,7 @@ def _validate_and_execute(
     except SqlPolicyError as exc:
         code = (
             ErrorCode.QUERY_BUDGET_EXCEEDED
-            if "超过预算" in str(exc)
+            if exc.violation == SqlPolicyViolation.QUERY_BUDGET_EXCEEDED
             else ErrorCode.SQL_POLICY_BLOCKED
         )
         return _repair_or_fail(
@@ -468,6 +512,7 @@ def _validate_and_execute(
             code=code,
             message=str(exc),
             retryable=exc.retryable,
+            repair_feedback=exc.repair_feedback(),
         )
     except QueryExecutionError as exc:
         return _repair_or_fail(
@@ -634,32 +679,40 @@ def _repair_or_fail(
     code: ErrorCode,
     message: str,
     retryable: bool,
+    repair_feedback: str | None = None,
 ) -> Command[Literal["generate_sql", "summarize", "__end__"]]:
     """在修复次数内回到 SQL 生成，否则终止。
 
     输入：
-    - repair_attempts：已经用掉的次数
+    - repair.attempts：已经用掉的次数
     - code：本次失败的稳定错误码
     - message：给修复节点或调用方的短说明
     - retryable：本次错误是否允许再生成
+    - repair_feedback：包含稳定错误字段的修复说明；为空时使用 message
 
     约束：
     - 次数达到 sql_max_repair_attempts 后不再修复
     - 不可修复的错误立即终止
 
     输出：
-    - repair_feedback：下一轮生成可见的失败说明
+    - repair：下一轮生成可见的失败说明和失败 SQL 指纹
     - result：终止时的失败结果
     - goto：重新生成 SQL 或结束
     """
-    attempts = state.get("repair_attempts", 0)
+    repair = state.get("repair", SqlRepairState())
+    attempts = repair.attempts
     maximum = runtime.context.settings.sql_max_repair_attempts
     if retryable and attempts < maximum:
+        details = repair_feedback or message
+        feedback = f"第 {attempts + 1} 次校验失败：{details}。请重新生成完整 SQL，不要只返回补丁。"
         return Command(
             update={
-                "repair_attempts": attempts + 1,
-                "repair_feedback": (
-                    f"第 {attempts + 1} 次校验失败：{message}。请重新生成完整 SQL，不要只返回补丁。"
+                "repair": SqlRepairState(
+                    attempts=attempts + 1,
+                    feedback=feedback,
+                    failed_sql_hash=_sql_hash(state["sql_draft"].sql),
+                    error_code=code.value,
+                    error_message=message,
                 ),
             },
             goto="generate_sql",
@@ -675,6 +728,28 @@ def _repair_or_fail(
         ),
         goto="__end__",
     )
+
+
+def _sql_hash(sql: str) -> str:
+    """生成忽略格式、注释和标识符大小写的 SQL 指纹。
+
+    输入：
+    - sql：模型生成的候选 SQL
+
+    输出：
+    - SHA-256：SQL 无法解析时按压缩空白后的原文计算
+    """
+    try:
+        expression = sqlglot.parse_one(sql, read="mysql")
+        normalized = expression.sql(
+            dialect="mysql",
+            pretty=False,
+            comments=False,
+            normalize=True,
+        )
+    except sqlglot.errors.ParseError:
+        normalized = " ".join(sql.split())
+    return sha256(normalized.encode("utf-8")).hexdigest()
 
 
 def _fail(

@@ -5,9 +5,12 @@ from pydantic import ValidationError
 
 from agentic_bi.agents.analysis.schemas import (
     AnalysisClaim,
+    AnalysisClarification,
+    AnalysisInterpretation,
     AnalysisOutput,
     AnalysisRequest,
     AnalysisSemanticSpec,
+    ClarificationCode,
     FilterOperator,
     FilterSpec,
     OutputMode,
@@ -54,7 +57,13 @@ def test_operation_requires_a_concrete_output_mode() -> None:
     with pytest.raises(ValidationError, match="operation"):
         AnalysisSemanticSpec(metric_ids=("total_gmv",))
 
-    assert "auto" not in {mode.value for mode in OutputMode}
+    assert {mode.value for mode in OutputMode} == {
+        "scalar",
+        "table",
+        "ranking",
+        "trend",
+        "distribution",
+    }
 
 
 def test_request_accepts_question_without_semantic_spec() -> None:
@@ -67,14 +76,32 @@ def test_request_accepts_question_without_semantic_spec() -> None:
     assert request.locale == "zh-CN"
 
 
-def test_clarification_schema_uses_a_genuine_missing_business_definition() -> None:
-    property_schema = AnalysisSemanticSpec.model_json_schema()["properties"][
-        "clarification_questions"
-    ]
-    description = property_schema["description"]
+def test_clarification_does_not_require_an_executable_metric() -> None:
+    result = AnalysisInterpretation.model_validate(
+        {
+            "interpretation": {
+                "kind": "clarify",
+                "code": "missing_metric",
+                "questions": ["请说明用哪个指标衡量表现。"],
+            }
+        }
+    )
 
-    assert "哪个表现最好" in description
-    assert "销售额”究竟是否包含运费" not in description
+    assert isinstance(result.interpretation, AnalysisClarification)
+    assert result.interpretation.code == ClarificationCode.MISSING_METRIC
+
+
+def test_executable_intent_still_requires_a_metric() -> None:
+    with pytest.raises(ValidationError, match="metric_ids"):
+        AnalysisInterpretation.model_validate(
+            {
+                "interpretation": {
+                    "kind": "execute",
+                    "metric_ids": [],
+                    "operation": "ranking",
+                }
+            }
+        )
 
 
 def test_claim_must_reference_existing_evidence() -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, JsonValue, model_validator
 
@@ -23,6 +23,18 @@ class OutputMode(StrEnum):
     RANKING = "ranking"
     TREND = "trend"
     DISTRIBUTION = "distribution"
+
+
+class ClarificationCode(StrEnum):
+    """数据分析请求需要补充信息的稳定原因。"""
+
+    MISSING_CONTEXT = "missing_context"
+    AMBIGUOUS_TIME = "ambiguous_time"
+    MISSING_METRIC = "missing_metric"
+    UNNAMED_GROUPING = "unnamed_grouping"
+    UNDERSPECIFIED_RANKING = "underspecified_ranking"
+    DEPENDENT_STEPS = "dependent_steps"
+    INCOMPATIBLE_DIMENSIONS = "incompatible_dimensions"
 
 
 class FilterOperator(StrEnum):
@@ -105,7 +117,12 @@ class TimeRange(StrictModel):
 
 
 class AnalysisSemanticSpec(StrictModel):
-    """数据分析 Agent 对单一查数任务的业务理解。"""
+    """可以直接生成查询的数据分析业务语义。"""
+
+    kind: Literal["execute"] = Field(
+        default="execute",
+        description="判别字段；execute 表示业务语义完整，可以继续生成查询。",
+    )
 
     metric_ids: tuple[str, ...] = Field(
         min_length=1,
@@ -149,13 +166,6 @@ class AnalysisSemanticSpec(StrictModel):
         le=500,
         description="用户需要的业务结果条数，例如 TOP10 为 10。",
     )
-    clarification_questions: tuple[str, ...] = Field(
-        default=(),
-        description=(
-            "需要调用方补充、且会实质改变答案的完整问题；例如“哪个表现最好”"
-            "没有说明比较对象和评价指标时，应询问具体评价指标。没有关键歧义时为空。"
-        ),
-    )
 
     @model_validator(mode="after")
     def validate_sort(self) -> AnalysisSemanticSpec:
@@ -165,12 +175,59 @@ class AnalysisSemanticSpec(StrictModel):
         return self
 
 
+class AnalysisClarification(StrictModel):
+    """尚不能生成查询的数据分析澄清结果。"""
+
+    kind: Literal["clarify"] = Field(
+        default="clarify",
+        description="判别字段；clarify 表示缺少会改变答案的业务信息。",
+    )
+    code: ClarificationCode = Field(
+        description=(
+            "稳定澄清原因：missing_context 缺少上文，ambiguous_time 时间范围不明确，"
+            "missing_metric 缺少指标，unnamed_grouping 缺少分组对象，"
+            "underspecified_ranking 缺少多指标排序规则，dependent_steps 包含前后依赖步骤，"
+            "incompatible_dimensions 表示指标与维度不能共同查询。"
+        ),
+    )
+    questions: tuple[str, ...] = Field(
+        min_length=1,
+        description="需要调用方回答的完整问题；每一项都必须可以直接展示。",
+    )
+
+
+class AnalysisInterpretation(StrictModel):
+    """语义解析模型在可执行语义和澄清结果之间选择一个结果。"""
+
+    interpretation: Annotated[
+        AnalysisSemanticSpec | AnalysisClarification,
+        Field(discriminator="kind"),
+    ] = Field(description="互斥的语义解析结果；只能是 execute 或 clarify 分支。")
+
+
+class SqlRepairState(StrictModel):
+    """SQL 修复循环的最小状态。
+
+    - attempts：已经使用的重新生成次数
+    - feedback：下一次 SQL 生成可见的结构化失败说明
+    - failed_sql_hash：上一条失败 SQL 的规范化哈希
+    - error_code：上一条失败 SQL 对应的公开错误码
+    - error_message：上一条失败 SQL 对应的安全错误说明
+    """
+
+    attempts: int = Field(default=0, ge=0)
+    feedback: str = ""
+    failed_sql_hash: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+
+
 class AnalysisRequest(StrictModel):
     """Analysis Graph 的公开输入，一次只表示一个自包含查数任务。
 
     - task_id：调用方生成的任务标识，用于 Trace、Artifact 和结果关联
     - question：已完成必要指代消解的自包含单任务自然语言问题；独立开发阶段可直接传自包含用户原文
-    - semantic_spec：可选的已确认业务语义，仍须经过指标目录校验
+    - semantic_spec：可选的已确认可执行语义，仍须经过指标目录校验
     - locale：自然语言结论的语言区域，不改变指标和 SQL 口径
     """
 
@@ -234,7 +291,7 @@ class AnalysisOutput(StrictModel):
     """Analysis Graph 的公开业务结果。
 
     - task_id：回传输入中的任务标识
-    - intent：待澄清时已经识别出的业务语义；其他终态为空
+    - clarification：待澄清时的稳定原因和问题；其他终态为空
     - evidence：成功或部分成功时可供下游引用的数据事实
     - headline：直接回答问题的一句话
     - claims：带证据标识的事实陈述
@@ -242,7 +299,7 @@ class AnalysisOutput(StrictModel):
     """
 
     task_id: str = Field(min_length=1, max_length=128)
-    intent: AnalysisSemanticSpec | None = None
+    clarification: AnalysisClarification | None = None
     evidence: EvidenceEnvelope | None = None
     headline: str | None = Field(default=None, max_length=500)
     claims: tuple[AnalysisClaim, ...] = ()
