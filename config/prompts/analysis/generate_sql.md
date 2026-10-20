@@ -24,7 +24,9 @@
 10. 差评率的分子和分母都按去重订单计算。
 11. 比率排名默认要求每组有效样本数至少 20，并在结果中保留必要的辅助样本量时才可输出。
 12. 优先使用口径完全匹配的视图；口径、粒度或维度不匹配时回退原始表。
-13. 最终 SQL 仍会经过 AST、表列函数白名单、EXPLAIN、超时和只读账户校验。
+13. 查询原始表时，销售、订单量、客户、运费、商品金额、支付和评分只统计非已取消、非不可用的订单，条件写为 order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')。这些视图已经按该口径过滤，不要在视图上再写 order_status。
+14. 查询原始表时，配送天数、准时率、延迟率和延迟订单数只统计已送达且客户签收时间不为空的订单，条件写为 order_status = 'delivered' AND order_delivered_customer_date IS NOT NULL。mv_delivery_perf 已经按该口径过滤。
+15. 最终 SQL 仍会经过 AST、表列函数白名单、EXPLAIN、超时和只读账户校验。
 
 用户问题：
 {question}

@@ -22,6 +22,7 @@ class MetricSpec(StrictModel):
     - time_field：默认时间字段
     - allowed_dimensions：允许的分组维度
     - candidate_sources：候选数据源，至少一个
+    - mentions：问题里点名该指标时会出现的说法，不含名称本身
     """
 
     name: str = Field(min_length=1)
@@ -31,6 +32,7 @@ class MetricSpec(StrictModel):
     time_field: str = Field(min_length=1)
     allowed_dimensions: tuple[str, ...] = ()
     candidate_sources: tuple[str, ...] = Field(min_length=1)
+    mentions: tuple[str, ...] = ()
 
 
 class DimensionSpec(StrictModel):
@@ -39,11 +41,13 @@ class DimensionSpec(StrictModel):
     - name：维度名称
     - description：业务含义
     - sources：该维度出现在哪些数据源
+    - mentions：问题里点名该维度时会出现的说法，不含名称本身
     """
 
     name: str = Field(min_length=1)
     description: str = Field(min_length=1)
     sources: tuple[str, ...] = Field(min_length=1)
+    mentions: tuple[str, ...] = ()
 
 
 class ColumnSpec(StrictModel):
@@ -76,6 +80,25 @@ class SourceSpec(StrictModel):
     joins: tuple[str, ...] = ()
 
 
+class ClarificationCue(StrictModel):
+    """一条与具体题目无关的待补充规则。
+
+    - cue_id：规则标识
+    - phrases：问题中出现即触发的说法
+    - pattern：正则；与 phrases 至少有一个
+    - resolves_with：问题里已经点名这些指标或维度时，本规则不触发
+    - resolve_pattern：问题匹配该正则时，本规则不触发
+    - question：返回给调用方的完整问题
+    """
+
+    cue_id: str = Field(min_length=1)
+    phrases: tuple[str, ...] = ()
+    pattern: str | None = None
+    resolves_with: tuple[str, ...] = ()
+    resolve_pattern: str | None = None
+    question: str = Field(min_length=1)
+
+
 class MetricDocument(StrictModel):
     """metrics.yaml 的完整结构。
 
@@ -83,12 +106,14 @@ class MetricDocument(StrictModel):
     - metrics：指标标识到定义
     - dimensions：维度标识到定义
     - sources：数据源名称到定义
+    - clarification_cues：待补充规则
     """
 
     version: str = Field(min_length=1)
     metrics: dict[str, MetricSpec] = Field(min_length=1)
     dimensions: dict[str, DimensionSpec] = Field(min_length=1)
     sources: dict[str, SourceSpec] = Field(min_length=1)
+    clarification_cues: tuple[ClarificationCue, ...] = ()
 
     @model_validator(mode="after")
     def validate_references(self) -> MetricDocument:
@@ -120,6 +145,15 @@ class MetricDocument(StrictModel):
             if unknown_sources:
                 values = ", ".join(sorted(unknown_sources))
                 raise ValueError(f"维度 {dimension_id} 引用了未知数据源: {values}")
+
+        known_targets = set(self.metrics) | set(self.dimensions)
+        for cue in self.clarification_cues:
+            if not cue.phrases and not cue.pattern:
+                raise ValueError(f"澄清规则 {cue.cue_id} 必须提供 phrases 或 pattern")
+            unknown_targets = set(cue.resolves_with) - known_targets
+            if unknown_targets:
+                values = ", ".join(sorted(unknown_targets))
+                raise ValueError(f"澄清规则 {cue.cue_id} 引用了未知对象: {values}")
 
         return self
 

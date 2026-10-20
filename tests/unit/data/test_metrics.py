@@ -23,6 +23,8 @@ def test_metric_context_declares_default_and_explicit_revenue_scopes() -> None:
     assert "默认成交额口径" in context
     assert "用户只说销售额、成交额或 GMV 时使用本指标" in context
     assert "只在用户明确要求仅商品金额、不含运费或同等口径时使用" in context
+    assert context.count("只统计非已取消、非不可用的订单") == 24
+    assert context.count("只统计已送达且客户签收时间不为空的订单") == 8
 
 
 def test_catalog_rejects_unknown_metric() -> None:
@@ -61,6 +63,7 @@ def test_schema_context_only_contains_relevant_sources() -> None:
     assert "payments" in context
     assert "payment_type" in context
     assert "支付方式" in context
+    assert "只统计非已取消、非不可用的订单" in context
 
 
 def test_evidence_sources_keep_name_and_source_kind() -> None:

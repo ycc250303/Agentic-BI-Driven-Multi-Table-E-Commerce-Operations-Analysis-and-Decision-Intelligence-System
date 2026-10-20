@@ -290,6 +290,7 @@ SELECT
     SUM(oi.freight_value) AS total_freight
 FROM orders o
 INNER JOIN order_items oi ON o.order_id = oi.order_id
+-- 口径：只统计非已取消、非不可用的订单
 WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')
 GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m');
 
@@ -310,6 +311,7 @@ SELECT
 FROM orders o
 INNER JOIN order_items oi ON o.order_id = oi.order_id
 INNER JOIN customers c ON o.customer_id = c.customer_id
+-- 口径：只统计非已取消、非不可用的订单
 WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')
 GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m'), c.customer_state;
 
@@ -331,6 +333,7 @@ FROM orders o
 INNER JOIN order_items oi ON o.order_id = oi.order_id
 INNER JOIN products p ON oi.product_id = p.product_id
 LEFT JOIN product_category_name_translation pct ON p.product_category_name = pct.product_category_name
+-- 口径：只统计非已取消、非不可用的订单。成交额列是仅商品价格合计，不包含运费
 WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')
 GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m'), COALESCE(pct.product_category_name_english, p.product_category_name);
 
@@ -350,6 +353,7 @@ SELECT
     SUM(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 ELSE 0 END) AS delayed_orders
 FROM orders o
 INNER JOIN customers c ON o.customer_id = c.customer_id
+-- 口径：只统计已送达且客户签收时间不为空的订单
 WHERE o.order_status = 'delivered'
   AND o.order_delivered_customer_date IS NOT NULL
 GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m'), c.customer_state;
@@ -373,6 +377,7 @@ FROM orders o
 INNER JOIN order_items oi ON o.order_id = oi.order_id
 INNER JOIN sellers s ON oi.seller_id = s.seller_id
 LEFT JOIN order_reviews r ON o.order_id = r.order_id
+-- 口径：只统计非已取消、非不可用的订单
 WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')
 GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m'), s.seller_id, s.seller_state;
 
@@ -392,6 +397,7 @@ SELECT
     SUM(p.payment_value) AS total_value
 FROM orders o
 INNER JOIN payments p ON o.order_id = p.order_id
+-- 口径：只统计非已取消、非不可用的订单
 WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')
 GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m'), p.payment_type;
 

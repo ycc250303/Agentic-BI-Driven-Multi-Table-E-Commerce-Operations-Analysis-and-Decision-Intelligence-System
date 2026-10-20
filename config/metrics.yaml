@@ -6,7 +6,7 @@ metrics:
     name: 成交额
     description: 默认成交额口径，为商品成交价格与运费之和，只统计非已取消、非不可用的订单；用户只说销售额、成交额或 GMV 时使用本指标
     unit: BRL
-    formula: SUM(order_items.price + order_items.freight_value)
+    formula: SUM(order_items.price + order_items.freight_value)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -28,9 +28,9 @@ metrics:
 
   total_orders:
     name: 订单数
-    description: 按订单标识去重后的订单数量
+    description: 按订单标识去重后的订单数量，只统计非已取消、非不可用的订单
     unit: order
-    formula: COUNT(DISTINCT orders.order_id)
+    formula: COUNT(DISTINCT orders.order_id)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -55,9 +55,9 @@ metrics:
 
   unique_customers:
     name: 独立客户数
-    description: 按 customer_unique_id 去重的客户数量，不是 customer_id 数量
+    description: 按 customer_unique_id 去重的客户数量，不是 customer_id 数量；只统计非已取消、非不可用的订单
     unit: customer
-    formula: COUNT(DISTINCT customers.customer_unique_id)
+    formula: COUNT(DISTINCT customers.customer_unique_id)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -70,9 +70,9 @@ metrics:
 
   avg_basket:
     name: 平均客单价
-    description: 成交额除以去重订单数，不是订单明细商品价格的简单平均
+    description: 成交额除以去重订单数，不是订单明细商品价格的简单平均；只统计非已取消、非不可用的订单
     unit: BRL/order
-    formula: SUM(price + freight_value) / COUNT(DISTINCT order_id)
+    formula: SUM(price + freight_value) / COUNT(DISTINCT order_id)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -93,9 +93,9 @@ metrics:
 
   total_freight:
     name: 总运费
-    description: 订单明细运费的合计金额
+    description: 订单明细运费的合计金额，只统计非已取消、非不可用的订单
     unit: BRL
-    formula: SUM(order_items.freight_value)
+    formula: SUM(order_items.freight_value)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -114,9 +114,9 @@ metrics:
 
   item_revenue:
     name: 商品成交金额
-    description: 仅商品价格合计，不包含运费；只在用户明确要求仅商品金额、不含运费或同等口径时使用
+    description: 仅商品价格合计，不包含运费；只在用户明确要求仅商品金额、不含运费或同等口径时使用；只统计非已取消、非不可用的订单
     unit: BRL
-    formula: SUM(order_items.price)
+    formula: SUM(order_items.price)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -135,9 +135,9 @@ metrics:
 
   avg_price:
     name: 平均商品价格
-    description: 订单明细商品价格的算术平均值
+    description: 订单明细商品价格的算术平均值，只统计非已取消、非不可用的订单
     unit: BRL/item
-    formula: AVG(order_items.price)
+    formula: AVG(order_items.price)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -154,9 +154,9 @@ metrics:
 
   avg_delivery_days:
     name: 平均配送天数
-    description: 从下单时间到客户签收时间的平均自然日数，只统计已送达订单
+    description: 从下单时间到客户签收时间的平均自然日数，只统计已送达且客户签收时间不为空的订单。允许维度只有销售月份、客户州、客户城市，不能按卖家或卖家州分组
     unit: day
-    formula: AVG(DATEDIFF(order_delivered_customer_date, order_purchase_timestamp))
+    formula: AVG(DATEDIFF(order_delivered_customer_date, order_purchase_timestamp))；只统计已送达且客户签收时间不为空的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -169,9 +169,9 @@ metrics:
 
   on_time_rate:
     name: 准时交付率
-    description: 实际签收时间不晚于预计送达时间的已送达订单数，除以具有完整送达时间的已送达订单数
+    description: 实际签收时间不晚于预计送达时间的订单数，除以同一范围内的订单数；只统计已送达且客户签收时间不为空的订单。允许维度只有销售月份、客户州、客户城市，不能按卖家或卖家州分组
     unit: ratio
-    formula: on_time_delivered_orders / eligible_delivered_orders
+    formula: on_time_delivered_orders / eligible_delivered_orders；只统计已送达且客户签收时间不为空的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -183,9 +183,9 @@ metrics:
 
   delay_rate:
     name: 延迟交付率
-    description: 实际签收时间晚于预计送达时间的已送达订单数，除以具有完整送达时间的已送达订单数
+    description: 实际签收时间晚于预计送达时间的订单数，除以同一范围内的订单数；只统计已送达且客户签收时间不为空的订单。允许维度只有销售月份、客户州、客户城市，不能按卖家或卖家州分组
     unit: ratio
-    formula: delayed_delivered_orders / eligible_delivered_orders
+    formula: delayed_delivered_orders / eligible_delivered_orders；只统计已送达且客户签收时间不为空的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -197,9 +197,9 @@ metrics:
 
   delayed_orders:
     name: 延迟订单数
-    description: 实际签收时间晚于预计送达时间的已送达订单数量
+    description: 实际签收时间晚于预计送达时间的订单数量，只统计已送达且客户签收时间不为空的订单。允许维度只有销售月份、客户州、客户城市，不能按卖家或卖家州分组
     unit: order
-    formula: SUM(order_delivered_customer_date > order_estimated_delivery_date)
+    formula: SUM(order_delivered_customer_date > order_estimated_delivery_date)；只统计已送达且客户签收时间不为空的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -212,9 +212,9 @@ metrics:
 
   total_transactions:
     name: 支付订单数
-    description: 按支付方式统计的去重支付订单数量，不是支付表的物理行数
+    description: 按支付方式统计的去重支付订单数量，不是支付表的物理行数；只统计非已取消、非不可用的订单
     unit: order
-    formula: COUNT(DISTINCT payments.order_id)
+    formula: COUNT(DISTINCT payments.order_id)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -228,9 +228,9 @@ metrics:
 
   avg_installments:
     name: 平均分期数
-    description: 支付记录的平均分期数；跨月汇总预聚合视图时必须按支付订单数加权
+    description: 支付记录的平均分期数；跨月汇总预聚合视图时必须按支付订单数加权；只统计非已取消、非不可用的订单
     unit: installment
-    formula: AVG(payments.payment_installments)
+    formula: AVG(payments.payment_installments)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -244,9 +244,9 @@ metrics:
 
   total_payment_value:
     name: 支付总额
-    description: 支付金额的总和，与含运费的成交额不是同一个指标
+    description: 支付金额的总和，与含运费的成交额不是同一个指标；只统计非已取消、非不可用的订单
     unit: BRL
-    formula: SUM(payments.payment_value)
+    formula: SUM(payments.payment_value)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -260,9 +260,9 @@ metrics:
 
   avg_review_score:
     name: 平均评分
-    description: 已有评分记录的评分算术平均值，评分范围为 1 到 5
+    description: 已有评分记录的评分算术平均值，评分范围为 1 到 5；只统计非已取消、非不可用的订单
     unit: score
-    formula: AVG(order_reviews.review_score)
+    formula: AVG(order_reviews.review_score)；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -281,9 +281,9 @@ metrics:
 
   bad_review_rate:
     name: 差评率
-    description: 评分小于等于 2 的去重已评订单数，除以全部去重已评订单数
+    description: 评分小于等于 2 的去重已评订单数，除以全部去重已评订单数；只统计非已取消、非不可用的订单
     unit: ratio
-    formula: bad_reviewed_orders / reviewed_orders
+    formula: bad_reviewed_orders / reviewed_orders；只统计非已取消、非不可用的订单
     time_field: orders.order_purchase_timestamp
     allowed_dimensions:
       - sales_month
@@ -315,7 +315,7 @@ dimensions:
 
   customer_state:
     name: 客户州
-    description: 客户收货地址所在的巴西州，两位州缩写，例如 SP、RJ
+    description: 客户收货地址所在的巴西州，两位州缩写，例如 SP、RJ。问题原文包含目录名称「客户州」时使用本维度
     sources:
       - mv_state_sales
       - mv_delivery_perf
@@ -323,7 +323,7 @@ dimensions:
 
   customer_city:
     name: 客户城市
-    description: 客户收货地址城市
+    description: 客户收货地址城市。问题原文包含目录名称「客户城市」时使用本维度
     sources:
       - customers
 
@@ -337,7 +337,7 @@ dimensions:
 
   seller_id:
     name: 卖家
-    description: 卖家的稳定业务标识
+    description: 卖家的稳定业务标识。配送天数、准时率、延迟率和延迟订单数不能使用本维度
     sources:
       - mv_seller_perf
       - order_items
@@ -345,7 +345,7 @@ dimensions:
 
   seller_state:
     name: 卖家州
-    description: 卖家地址所在的巴西州，两位州缩写
+    description: 卖家地址所在的巴西州，两位州缩写。问题原文包含目录名称「卖家州」时使用本维度。配送天数、准时率、延迟率和延迟订单数不能使用本维度
     sources:
       - mv_seller_perf
       - sellers
@@ -365,14 +365,14 @@ dimensions:
 
   order_status:
     name: 订单状态
-    description: 订单生命周期状态，例如已送达、已发货、已取消
+    description: 订单生命周期状态。已取消为 canceled，不可用为 unavailable；其余状态为 delivered、shipped、created、approved、processing、invoiced。已送达为 delivered
     sources:
       - orders
 
 sources:
   mv_monthly_sales:
     kind: view
-    description: 月度销售虚拟视图，粒度为销售月份
+    description: 月度销售虚拟视图，粒度为销售月份；只统计非已取消、非不可用的订单
     grain: [sales_month]
     columns:
       sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
@@ -383,7 +383,7 @@ sources:
 
   mv_state_sales:
     kind: view
-    description: 月份与客户州粒度的销售虚拟视图
+    description: 月份与客户州粒度的销售虚拟视图；只统计非已取消、非不可用的订单
     grain: [sales_month, customer_state]
     columns:
       sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
@@ -394,18 +394,18 @@ sources:
 
   mv_category_sales:
     kind: view
-    description: 月份与英文品类粒度的商品销售视图；其中成交额列实际只包含商品价格，不含运费
+    description: 月份与英文品类粒度的商品销售视图；其中成交额列是仅商品价格合计，不包含运费；只统计非已取消、非不可用的订单
     grain: [sales_month, product_category_english]
     columns:
       sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
       product_category_english: {type: varchar, description: "商品英文品类"}
-      total_gmv: {type: decimal, description: "仅商品价格合计，不含运费", unit: BRL}
+      total_gmv: {type: decimal, description: "仅商品价格合计，不包含运费", unit: BRL}
       total_orders: {type: bigint, description: "品类内去重订单数", unit: order}
       avg_price: {type: decimal, description: "商品明细平均价格", unit: BRL}
 
   mv_delivery_perf:
     kind: view
-    description: 月份与客户州粒度的配送视图；跨月份或跨州时不能直接平均准时率
+    description: 月份与客户州粒度的配送视图；跨月份或跨州时不能直接平均准时率；只统计已送达且客户签收时间不为空的订单
     grain: [sales_month, customer_state]
     columns:
       sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
@@ -416,7 +416,7 @@ sources:
 
   mv_seller_perf:
     kind: view
-    description: 月份、卖家和卖家州粒度的销售与评分视图
+    description: 月份、卖家和卖家州粒度的销售与评分视图；只统计非已取消、非不可用的订单
     grain: [sales_month, seller_id, seller_state]
     columns:
       sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
@@ -428,7 +428,7 @@ sources:
 
   mv_payment_dist:
     kind: view
-    description: 月份与支付方式粒度的支付分布视图
+    description: 月份与支付方式粒度的支付分布视图；只统计非已取消、非不可用的订单
     grain: [sales_month, payment_type]
     columns:
       sales_month: {type: "varchar(7)", description: "下单月份，YYYY-MM"}
@@ -449,7 +449,7 @@ sources:
     columns:
       order_id: {type: varchar, description: "订单稳定标识"}
       customer_id: {type: varchar, description: "订单对应客户记录标识"}
-      order_status: {type: varchar, description: "订单生命周期状态"}
+      order_status: {type: varchar, description: "订单生命周期状态。已取消为 canceled，不可用为 unavailable；其余状态为 delivered、shipped、created、approved、processing、invoiced。已送达为 delivered"}
       order_purchase_timestamp: {type: datetime, description: "用户下单时间"}
       order_delivered_customer_date: {type: datetime, description: "客户实际签收时间，可为空"}
       order_estimated_delivery_date: {type: datetime, description: "系统预计送达时间，可为空"}
@@ -543,3 +543,33 @@ sources:
     columns:
       product_category_name: {type: varchar, description: "葡萄牙语商品品类"}
       product_category_name_english: {type: varchar, description: "英文商品品类"}
+
+clarification_cues:
+  - cue_id: missing_context
+    phrases: ["呢？"]
+    question: 这句话依赖上文，请说明要查询的指标、对象和时间范围。
+  - cue_id: ambiguous_time
+    phrases: ["最近"]
+    question: 「最近」没有具体日期区间，请给出开始日期和结束日期。
+  - cue_id: missing_metric
+    phrases: ["表现最好", "表现最差"]
+    question: 请说明用哪个指标衡量表现，例如成交额、订单数、准时交付率或平均评分。
+  - cue_id: unnamed_grouping
+    phrases: ["最高", "最低", "最多", "最少"]
+    resolves_with:
+      - sales_month
+      - customer_state
+      - customer_city
+      - product_category_english
+      - seller_id
+      - seller_state
+      - payment_type
+      - delivery_status
+      - order_status
+    question: 请重新确认分组维度。问题在比较高低或多少，但没有点名目录中的维度名称。
+  - cue_id: underspecified_ranking
+    pattern: "又.+又"
+    question: 多个比较标准没有综合规则。请说明按哪个指标排序、如何综合，以及需要前多少名。
+  - cue_id: dependent_steps
+    pattern: "先.+再"
+    question: 这个问题包含前后依赖的两个步骤，请拆成两个独立问题分别提问。

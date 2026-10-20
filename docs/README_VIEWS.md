@@ -112,13 +112,9 @@ SELECT * FROM mv_monthly_sales ORDER BY sales_month DESC;
 
 旧名 `year_month` 已废弃；若仍按旧名查询会报未知列。
 
-### 2. 订单状态过滤
+### 2. 订单状态范围
 
-所有视图已自动过滤掉以下状态的订单：
-- `canceled` - 已取消
-- `unavailable` - 不可用
-
-**例外**：`mv_delivery_perf` 只包含 `delivered`（已送达）状态的订单。
+销售、订单量、客户、运费、商品金额、支付和评分视图只统计非已取消、非不可用的订单。配送视图只统计已送达且客户签收时间不为空的订单。
 
 ### 3. 视图类型说明
 
