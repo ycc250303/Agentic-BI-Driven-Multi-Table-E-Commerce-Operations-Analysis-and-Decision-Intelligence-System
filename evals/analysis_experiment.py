@@ -22,6 +22,7 @@ from agentic_bi.core.settings import Settings
 from agentic_bi.data.database import ReadOnlyDatabase
 
 _DATASET_PATH = Path(__file__).with_name("datasets") / "analysis_mvp.json"
+_DIFFICULTIES = frozenset({"easy", "mid", "hard"})
 
 
 def load_dataset() -> dict[str, Any]:
@@ -45,6 +46,8 @@ def load_dataset() -> dict[str, Any]:
         case_id = None if not isinstance(metadata, dict) else metadata.get("case_id")
         if not isinstance(case_id, str) or not case_id:
             raise ValueError("每条评估样本必须提供 metadata.case_id")
+        if metadata.get("difficulty") not in _DIFFICULTIES:
+            raise ValueError(f"样本 {case_id} 的 difficulty 必须是 easy、mid 或 hard")
         if not isinstance(example.get("split"), str) or not example["split"]:
             raise ValueError(f"样本 {case_id} 必须使用 LangSmith 原生 split")
         case_ids.append(case_id)
@@ -146,18 +149,20 @@ def target(inputs: dict[str, Any]) -> dict[str, Any]:
     result = run_analysis(AnalysisRequest.model_validate(inputs))
     value = result.value
     evidence = None if value is None else value.evidence
-    intent = None if value is None else value.intent
+    clarification = None if value is None else value.clarification
     return {
         "status": result.status.value,
         "error_code": None if result.error is None else result.error.code.value,
-        "intent": _core_intent(evidence=evidence, intent=intent),
+        "intent": _core_intent(evidence=evidence),
         "rows": _read_csv_rows(evidence),
+        "has_evidence": evidence is not None,
         "returned_row_count": None if evidence is None else evidence.returned_row_count,
-        "clarification_questions": ([] if intent is None else list(intent.clarification_questions)),
+        "clarification_code": None if clarification is None else clarification.code.value,
+        "clarification_questions": ([] if clarification is None else list(clarification.questions)),
     }
 
 
-def _core_intent(*, evidence: Any, intent: Any) -> dict[str, Any]:
+def _core_intent(*, evidence: Any) -> dict[str, Any]:
     """提取会直接改变查询结果的四组业务语义。"""
     if evidence is not None:
         return {
@@ -165,15 +170,6 @@ def _core_intent(*, evidence: Any, intent: Any) -> dict[str, Any]:
             "dimensions": list(evidence.grain),
             "filters": evidence.scope.get("filters", []),
             "time_range": evidence.scope.get("time_range"),
-        }
-    if intent is not None:
-        return {
-            "metric_ids": list(intent.metric_ids),
-            "dimensions": list(intent.dimensions),
-            "filters": [item.model_dump(mode="json") for item in intent.filters],
-            "time_range": (
-                None if intent.time_range is None else intent.time_range.model_dump(mode="json")
-            ),
         }
     return {"metric_ids": [], "dimensions": [], "filters": [], "time_range": None}
 
@@ -196,7 +192,7 @@ def analysis_evaluators(
     outputs: dict[str, Any],
     reference_outputs: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    """比较终态、规范化核心语义和完整查数结果。"""
+    """按参考终态选择查数评分或澄清评分。"""
     expected_status = reference_outputs["expected_status"]
     status_ok = outputs["status"] == expected_status
     if expected_status == "success":
@@ -204,13 +200,26 @@ def analysis_evaluators(
             reference_outputs["intent"]
         )
         execution_ok = _execution_matches(outputs["rows"], reference_outputs["gold_sql"])
-    else:
-        semantic_ok = len(outputs["clarification_questions"]) > 0
-        execution_ok = outputs["returned_row_count"] is None and not outputs["rows"]
+        return [
+            {"key": "status_match", "score": status_ok},
+            {"key": "semantic_match", "score": semantic_ok},
+            {"key": "execution_accuracy", "score": execution_ok},
+        ]
+
+    clarification_code_ok = (
+        outputs["clarification_code"] == reference_outputs["expected_clarification_code"]
+    )
+    clarification_has_question = len(outputs["clarification_questions"]) > 0
+    clarification_has_no_evidence = (
+        not outputs["has_evidence"]
+        and outputs["returned_row_count"] is None
+        and not outputs["rows"]
+    )
     return [
         {"key": "status_match", "score": status_ok},
-        {"key": "semantic_match", "score": semantic_ok},
-        {"key": "execution_accuracy", "score": execution_ok},
+        {"key": "semantic_match", "score": clarification_code_ok},
+        {"key": "clarification_has_question", "score": clarification_has_question},
+        {"key": "clarification_has_no_evidence", "score": clarification_has_no_evidence},
     ]
 
 

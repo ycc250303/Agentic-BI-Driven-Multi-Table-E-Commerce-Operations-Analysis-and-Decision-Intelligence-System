@@ -1,7 +1,661 @@
 {
   "dataset_name": "agentic-bi-analysis",
-  "description": "数据分析 Agent 的查数与待澄清 MVP 样本；本地 JSON 是唯一维护来源。",
+  "description": "数据分析 Agent 的查数与待澄清样本。查数题按 easy、mid、hard 各 8 条，澄清题 6 条。本地 JSON 是维护来源。",
   "examples": [
+    {
+      "inputs": {
+        "task_id": "analysis-single-direct-001",
+        "question": "订单一共有多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "total_orders"
+          ],
+          "dimensions": [],
+          "filters": [],
+          "time_range": null
+        },
+        "gold_sql": "SELECT COUNT(DISTINCT order_id) AS total_orders FROM orders WHERE order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')"
+      },
+      "metadata": {
+        "case_id": "analysis-single-direct-001",
+        "question_family": "total_orders_scalar",
+        "tables": [
+          "orders"
+        ],
+        "difficulty": "easy"
+      },
+      "split": "easy"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-single-direct-002",
+        "question": "全部评论的平均评分是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "avg_review_score"
+          ],
+          "dimensions": [],
+          "filters": [],
+          "time_range": null
+        },
+        "gold_sql": "SELECT AVG(r.review_score) AS avg_review_score FROM order_reviews r INNER JOIN orders o ON r.order_id = o.order_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced')"
+      },
+      "metadata": {
+        "case_id": "analysis-single-direct-002",
+        "question_family": "avg_review_score_scalar",
+        "tables": [
+          "order_reviews",
+          "orders"
+        ],
+        "difficulty": "mid"
+      },
+      "split": "mid"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-single-direct-003",
+        "question": "每种支付方式的支付总额分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "total_payment_value"
+          ],
+          "dimensions": [
+            "payment_type"
+          ],
+          "filters": [],
+          "time_range": null
+        },
+        "gold_sql": "SELECT p.payment_type, SUM(p.payment_value) AS total_payment_value FROM payments p INNER JOIN orders o ON p.order_id = o.order_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') GROUP BY p.payment_type"
+      },
+      "metadata": {
+        "case_id": "analysis-single-direct-003",
+        "question_family": "payment_value_by_type",
+        "tables": [
+          "payments",
+          "orders"
+        ],
+        "difficulty": "mid"
+      },
+      "split": "mid"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-single-direct-004",
+        "question": "每种支付方式的平均分期数分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "avg_installments"
+          ],
+          "dimensions": [
+            "payment_type"
+          ],
+          "filters": [],
+          "time_range": null
+        },
+        "gold_sql": "SELECT p.payment_type, AVG(p.payment_installments) AS avg_installments FROM payments p INNER JOIN orders o ON p.order_id = o.order_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') GROUP BY p.payment_type"
+      },
+      "metadata": {
+        "case_id": "analysis-single-direct-004",
+        "question_family": "avg_installments_by_type",
+        "tables": [
+          "payments",
+          "orders"
+        ],
+        "difficulty": "mid"
+      },
+      "split": "mid"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-single-function-001",
+        "question": "2017 年每个月有多少订单？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "total_orders"
+          ],
+          "dimensions": [
+            "sales_month"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT DATE_FORMAT(order_purchase_timestamp, '%Y-%m') AS sales_month, COUNT(DISTINCT order_id) AS total_orders FROM orders WHERE order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND order_purchase_timestamp >= '2017-01-01' AND order_purchase_timestamp < '2018-01-01' GROUP BY DATE_FORMAT(order_purchase_timestamp, '%Y-%m')"
+      },
+      "metadata": {
+        "case_id": "analysis-single-function-001",
+        "question_family": "monthly_orders",
+        "tables": [
+          "orders"
+        ],
+        "difficulty": "easy"
+      },
+      "split": "easy"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-single-function-002",
+        "question": "2017 年的平均配送天数是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "avg_delivery_days"
+          ],
+          "dimensions": [],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT AVG(DATEDIFF(order_delivered_customer_date, order_purchase_timestamp)) AS avg_delivery_days FROM orders WHERE order_status = 'delivered' AND order_delivered_customer_date IS NOT NULL AND order_purchase_timestamp >= '2017-01-01' AND order_purchase_timestamp < '2018-01-01'"
+      },
+      "metadata": {
+        "case_id": "analysis-single-function-002",
+        "question_family": "avg_delivery_days_scalar",
+        "tables": [
+          "orders"
+        ],
+        "difficulty": "easy"
+      },
+      "split": "easy"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-single-function-003",
+        "question": "2017 年的准时交付率是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "on_time_rate"
+          ],
+          "dimensions": [],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT SUM(CASE WHEN order_delivered_customer_date <= order_estimated_delivery_date THEN 1 ELSE 0 END) / COUNT(*) AS on_time_rate FROM orders WHERE order_status = 'delivered' AND order_delivered_customer_date IS NOT NULL AND order_purchase_timestamp >= '2017-01-01' AND order_purchase_timestamp < '2018-01-01'"
+      },
+      "metadata": {
+        "case_id": "analysis-single-function-003",
+        "question_family": "on_time_rate_scalar",
+        "tables": [
+          "orders"
+        ],
+        "difficulty": "easy"
+      },
+      "split": "easy"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-single-function-004",
+        "question": "2017 年每个月有多少延迟订单？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "delayed_orders"
+          ],
+          "dimensions": [
+            "sales_month"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT DATE_FORMAT(order_purchase_timestamp, '%Y-%m') AS sales_month, SUM(CASE WHEN order_delivered_customer_date > order_estimated_delivery_date THEN 1 ELSE 0 END) AS delayed_orders FROM orders WHERE order_status = 'delivered' AND order_delivered_customer_date IS NOT NULL AND order_purchase_timestamp >= '2017-01-01' AND order_purchase_timestamp < '2018-01-01' GROUP BY DATE_FORMAT(order_purchase_timestamp, '%Y-%m')"
+      },
+      "metadata": {
+        "case_id": "analysis-single-function-004",
+        "question_family": "monthly_delayed_orders",
+        "tables": [
+          "orders"
+        ],
+        "difficulty": "easy"
+      },
+      "split": "easy"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-single-direct-005",
+        "question": "2018 年一共有多少订单？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "total_orders"
+          ],
+          "dimensions": [],
+          "filters": [],
+          "time_range": {
+            "start": "2018-01-01",
+            "end": "2019-01-01"
+          }
+        },
+        "gold_sql": "SELECT COUNT(DISTINCT order_id) AS total_orders FROM orders WHERE order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND order_purchase_timestamp >= '2018-01-01' AND order_purchase_timestamp < '2019-01-01'"
+      },
+      "metadata": {
+        "case_id": "analysis-single-direct-005",
+        "question_family": "total_orders_2018",
+        "tables": [
+          "orders"
+        ],
+        "difficulty": "easy"
+      },
+      "split": "easy"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-single-function-005",
+        "question": "2017 年的延迟交付率是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "delay_rate"
+          ],
+          "dimensions": [],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT SUM(CASE WHEN order_delivered_customer_date > order_estimated_delivery_date THEN 1 ELSE 0 END) / COUNT(*) AS delay_rate FROM orders WHERE order_status = 'delivered' AND order_delivered_customer_date IS NOT NULL AND order_purchase_timestamp >= '2017-01-01' AND order_purchase_timestamp < '2018-01-01'"
+      },
+      "metadata": {
+        "case_id": "analysis-single-function-005",
+        "question_family": "delay_rate_scalar",
+        "tables": [
+          "orders"
+        ],
+        "difficulty": "easy"
+      },
+      "split": "easy"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-single-function-006",
+        "question": "2018 年有多少延迟订单？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "delayed_orders"
+          ],
+          "dimensions": [],
+          "filters": [],
+          "time_range": {
+            "start": "2018-01-01",
+            "end": "2019-01-01"
+          }
+        },
+        "gold_sql": "SELECT SUM(CASE WHEN order_delivered_customer_date > order_estimated_delivery_date THEN 1 ELSE 0 END) AS delayed_orders FROM orders WHERE order_status = 'delivered' AND order_delivered_customer_date IS NOT NULL AND order_purchase_timestamp >= '2018-01-01' AND order_purchase_timestamp < '2019-01-01'"
+      },
+      "metadata": {
+        "case_id": "analysis-single-function-006",
+        "question_family": "delayed_orders_2018",
+        "tables": [
+          "orders"
+        ],
+        "difficulty": "easy"
+      },
+      "split": "easy"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-simple-direct-002",
+        "question": "2017 年 SP 州各客户城市的独立客户数分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "unique_customers"
+          ],
+          "dimensions": [
+            "customer_city"
+          ],
+          "filters": [
+            {
+              "field": "customer_state",
+              "operator": "eq",
+              "value": "SP"
+            }
+          ],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT c.customer_city, COUNT(DISTINCT c.customer_unique_id) AS unique_customers FROM orders o INNER JOIN customers c ON o.customer_id = c.customer_id WHERE c.customer_state = 'SP' AND o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2017-01-01' AND o.order_purchase_timestamp < '2018-01-01' GROUP BY c.customer_city"
+      },
+      "metadata": {
+        "case_id": "analysis-simple-direct-002",
+        "question_family": "unique_customers_by_city_in_state",
+        "tables": [
+          "orders",
+          "customers"
+        ],
+        "difficulty": "mid"
+      },
+      "split": "mid"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-simple-function-001",
+        "question": "2017 年每个月的成交额分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "total_gmv"
+          ],
+          "dimensions": [
+            "sales_month"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month, SUM(oi.price + oi.freight_value) AS total_gmv FROM orders o INNER JOIN order_items oi ON o.order_id = oi.order_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2017-01-01' AND o.order_purchase_timestamp < '2018-01-01' GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m')"
+      },
+      "metadata": {
+        "case_id": "analysis-simple-function-001",
+        "question_family": "monthly_gmv",
+        "tables": [
+          "orders",
+          "order_items"
+        ],
+        "difficulty": "mid"
+      },
+      "split": "mid"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-simple-function-002",
+        "question": "2018 年的平均客单价是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "avg_basket"
+          ],
+          "dimensions": [],
+          "filters": [],
+          "time_range": {
+            "start": "2018-01-01",
+            "end": "2019-01-01"
+          }
+        },
+        "gold_sql": "SELECT SUM(oi.price + oi.freight_value) / COUNT(DISTINCT o.order_id) AS avg_basket FROM orders o INNER JOIN order_items oi ON o.order_id = oi.order_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2018-01-01' AND o.order_purchase_timestamp < '2019-01-01'"
+      },
+      "metadata": {
+        "case_id": "analysis-simple-function-002",
+        "question_family": "avg_basket_scalar",
+        "tables": [
+          "orders",
+          "order_items"
+        ],
+        "difficulty": "mid"
+      },
+      "split": "mid"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-simple-function-003",
+        "question": "2017 年各客户州的平均配送天数分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "avg_delivery_days"
+          ],
+          "dimensions": [
+            "customer_state"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT c.customer_state, AVG(DATEDIFF(o.order_delivered_customer_date, o.order_purchase_timestamp)) AS avg_delivery_days FROM orders o INNER JOIN customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL AND o.order_purchase_timestamp >= '2017-01-01' AND o.order_purchase_timestamp < '2018-01-01' GROUP BY c.customer_state"
+      },
+      "metadata": {
+        "case_id": "analysis-simple-function-003",
+        "question_family": "avg_delivery_days_by_customer_state",
+        "tables": [
+          "orders",
+          "customers"
+        ],
+        "difficulty": "mid"
+      },
+      "split": "mid"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-simple-function-004",
+        "question": "2017 年每个月的总运费分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "total_freight"
+          ],
+          "dimensions": [
+            "sales_month"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS sales_month, SUM(oi.freight_value) AS total_freight FROM orders o INNER JOIN order_items oi ON o.order_id = oi.order_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2017-01-01' AND o.order_purchase_timestamp < '2018-01-01' GROUP BY DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m')"
+      },
+      "metadata": {
+        "case_id": "analysis-simple-function-004",
+        "question_family": "monthly_freight",
+        "tables": [
+          "orders",
+          "order_items"
+        ],
+        "difficulty": "mid"
+      },
+      "split": "mid"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-complex-direct-001",
+        "question": "2017 年各卖家州的订单数分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "total_orders"
+          ],
+          "dimensions": [
+            "seller_state"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT s.seller_state, COUNT(DISTINCT o.order_id) AS total_orders FROM orders o INNER JOIN order_items oi ON o.order_id = oi.order_id INNER JOIN sellers s ON oi.seller_id = s.seller_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2017-01-01' AND o.order_purchase_timestamp < '2018-01-01' GROUP BY s.seller_state"
+      },
+      "metadata": {
+        "case_id": "analysis-complex-direct-001",
+        "question_family": "orders_by_seller_state",
+        "tables": [
+          "orders",
+          "order_items",
+          "sellers"
+        ],
+        "difficulty": "hard"
+      },
+      "split": "hard"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-complex-direct-002",
+        "question": "2018 年各客户州的支付总额分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "total_payment_value"
+          ],
+          "dimensions": [
+            "customer_state"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2018-01-01",
+            "end": "2019-01-01"
+          }
+        },
+        "gold_sql": "SELECT c.customer_state, SUM(p.payment_value) AS total_payment_value FROM orders o INNER JOIN payments p ON o.order_id = p.order_id INNER JOIN customers c ON o.customer_id = c.customer_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2018-01-01' AND o.order_purchase_timestamp < '2019-01-01' GROUP BY c.customer_state"
+      },
+      "metadata": {
+        "case_id": "analysis-complex-direct-002",
+        "question_family": "payment_value_by_customer_state",
+        "tables": [
+          "orders",
+          "payments",
+          "customers"
+        ],
+        "difficulty": "hard"
+      },
+      "split": "hard"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-complex-direct-003",
+        "question": "2018 年各客户州的平均评分分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "avg_review_score"
+          ],
+          "dimensions": [
+            "customer_state"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2018-01-01",
+            "end": "2019-01-01"
+          }
+        },
+        "gold_sql": "SELECT c.customer_state, AVG(r.review_score) AS avg_review_score FROM orders o INNER JOIN customers c ON o.customer_id = c.customer_id INNER JOIN order_reviews r ON o.order_id = r.order_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2018-01-01' AND o.order_purchase_timestamp < '2019-01-01' GROUP BY c.customer_state"
+      },
+      "metadata": {
+        "case_id": "analysis-complex-direct-003",
+        "question_family": "avg_review_by_customer_state",
+        "tables": [
+          "orders",
+          "customers",
+          "order_reviews"
+        ],
+        "difficulty": "hard"
+      },
+      "split": "hard"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-complex-direct-004",
+        "question": "2017 年订单数最多的 10 个卖家是哪些？订单数相同则按卖家标识从小到大取前 10 名。",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "total_orders"
+          ],
+          "dimensions": [
+            "seller_id"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT s.seller_id, COUNT(DISTINCT o.order_id) AS total_orders FROM orders o INNER JOIN order_items oi ON o.order_id = oi.order_id INNER JOIN sellers s ON oi.seller_id = s.seller_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2017-01-01' AND o.order_purchase_timestamp < '2018-01-01' GROUP BY s.seller_id ORDER BY total_orders DESC, s.seller_id ASC LIMIT 10"
+      },
+      "metadata": {
+        "case_id": "analysis-complex-direct-004",
+        "question_family": "top_sellers_by_orders",
+        "tables": [
+          "orders",
+          "order_items",
+          "sellers"
+        ],
+        "difficulty": "hard"
+      },
+      "split": "hard"
+    },
     {
       "inputs": {
         "task_id": "2017-state-gmv",
@@ -11,21 +665,143 @@
       "outputs": {
         "expected_status": "success",
         "intent": {
-          "metric_ids": ["total_gmv"],
-          "dimensions": ["customer_state"],
+          "metric_ids": [
+            "total_gmv"
+          ],
+          "dimensions": [
+            "customer_state"
+          ],
           "filters": [],
           "time_range": {
             "start": "2017-01-01",
             "end": "2018-01-01"
           }
         },
-        "gold_sql": "SELECT customer_state, SUM(total_gmv) AS total_gmv FROM mv_state_sales WHERE sales_month >= '2017-01' AND sales_month < '2018-01' GROUP BY customer_state ORDER BY total_gmv DESC LIMIT 1"
+        "gold_sql": "SELECT c.customer_state, SUM(oi.price + oi.freight_value) AS total_gmv FROM orders o INNER JOIN order_items oi ON o.order_id = oi.order_id INNER JOIN customers c ON o.customer_id = c.customer_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2017-01-01' AND o.order_purchase_timestamp < '2018-01-01' GROUP BY c.customer_state ORDER BY total_gmv DESC LIMIT 1"
       },
       "metadata": {
         "case_id": "analysis-ranking-001",
-        "question_family": "top_customer_state_by_gmv"
+        "question_family": "top_customer_state_by_gmv",
+        "tables": [
+          "orders",
+          "order_items",
+          "customers"
+        ],
+        "difficulty": "hard"
       },
-      "split": "smoke"
+      "split": "hard"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-complex-function-002",
+        "question": "2017 年各英文品类的成交额分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "total_gmv"
+          ],
+          "dimensions": [
+            "product_category_english"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT COALESCE(pct.product_category_name_english, p.product_category_name) AS product_category_english, SUM(oi.price + oi.freight_value) AS total_gmv FROM orders o INNER JOIN order_items oi ON o.order_id = oi.order_id INNER JOIN products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation pct ON p.product_category_name = pct.product_category_name WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2017-01-01' AND o.order_purchase_timestamp < '2018-01-01' GROUP BY COALESCE(pct.product_category_name_english, p.product_category_name)"
+      },
+      "metadata": {
+        "case_id": "analysis-complex-function-002",
+        "question_family": "gmv_by_category",
+        "tables": [
+          "orders",
+          "order_items",
+          "products",
+          "product_category_name_translation"
+        ],
+        "difficulty": "hard"
+      },
+      "split": "hard"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-complex-function-003",
+        "question": "2017 年卖家州为 SP 的平均客单价是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "avg_basket"
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "seller_state",
+              "operator": "eq",
+              "value": "SP"
+            }
+          ],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT SUM(oi.price + oi.freight_value) / COUNT(DISTINCT o.order_id) AS avg_basket FROM orders o INNER JOIN order_items oi ON o.order_id = oi.order_id INNER JOIN sellers s ON oi.seller_id = s.seller_id WHERE s.seller_state = 'SP' AND o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2017-01-01' AND o.order_purchase_timestamp < '2018-01-01'"
+      },
+      "metadata": {
+        "case_id": "analysis-complex-function-003",
+        "question_family": "avg_basket_seller_state_sp",
+        "tables": [
+          "orders",
+          "order_items",
+          "sellers"
+        ],
+        "difficulty": "hard"
+      },
+      "split": "hard"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-complex-function-004",
+        "question": "2017 年各英文品类的差评率分别是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "success",
+        "intent": {
+          "metric_ids": [
+            "bad_review_rate"
+          ],
+          "dimensions": [
+            "product_category_english"
+          ],
+          "filters": [],
+          "time_range": {
+            "start": "2017-01-01",
+            "end": "2018-01-01"
+          }
+        },
+        "gold_sql": "SELECT COALESCE(pct.product_category_name_english, p.product_category_name) AS product_category_english, COUNT(DISTINCT CASE WHEN r.review_score <= 2 THEN o.order_id END) / COUNT(DISTINCT o.order_id) AS bad_review_rate FROM orders o INNER JOIN order_items oi ON o.order_id = oi.order_id INNER JOIN products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation pct ON p.product_category_name = pct.product_category_name INNER JOIN order_reviews r ON o.order_id = r.order_id WHERE o.order_status IN ('delivered', 'shipped', 'created', 'approved', 'processing', 'invoiced') AND o.order_purchase_timestamp >= '2017-01-01' AND o.order_purchase_timestamp < '2018-01-01' GROUP BY COALESCE(pct.product_category_name_english, p.product_category_name)"
+      },
+      "metadata": {
+        "case_id": "analysis-complex-function-004",
+        "question_family": "bad_review_rate_by_category",
+        "tables": [
+          "orders",
+          "order_items",
+          "products",
+          "product_category_name_translation",
+          "order_reviews"
+        ],
+        "difficulty": "hard"
+      },
+      "split": "hard"
     },
     {
       "inputs": {
@@ -35,11 +811,103 @@
       },
       "outputs": {
         "expected_status": "needs_input",
+        "expected_clarification_code": "missing_context",
         "gold_sql": null
       },
       "metadata": {
         "case_id": "analysis-clarification-001",
-        "question_family": "missing_conversation_context"
+        "question_family": "missing_conversation_context",
+        "difficulty": "easy"
+      },
+      "split": "clarification"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-clarification-002",
+        "question": "最近的准时交付率是多少？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "needs_input",
+        "expected_clarification_code": "ambiguous_time",
+        "gold_sql": null
+      },
+      "metadata": {
+        "case_id": "analysis-clarification-002",
+        "question_family": "ambiguous_time",
+        "difficulty": "easy"
+      },
+      "split": "clarification"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-clarification-003",
+        "question": "2017 年哪个客户州表现最好？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "needs_input",
+        "expected_clarification_code": "missing_metric",
+        "gold_sql": null
+      },
+      "metadata": {
+        "case_id": "analysis-clarification-003",
+        "question_family": "missing_metric",
+        "difficulty": "mid"
+      },
+      "split": "clarification"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-clarification-004",
+        "question": "2017 年哪里的成交额最高？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "needs_input",
+        "expected_clarification_code": "unnamed_grouping",
+        "gold_sql": null
+      },
+      "metadata": {
+        "case_id": "analysis-clarification-004",
+        "question_family": "ambiguous_dimension",
+        "difficulty": "mid"
+      },
+      "split": "clarification"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-clarification-005",
+        "question": "2017 年哪些卖家又卖得多、送得快、评分又高？",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "needs_input",
+        "expected_clarification_code": "underspecified_ranking",
+        "gold_sql": null
+      },
+      "metadata": {
+        "case_id": "analysis-clarification-005",
+        "question_family": "underspecified_multi_metric",
+        "difficulty": "hard"
+      },
+      "split": "clarification"
+    },
+    {
+      "inputs": {
+        "task_id": "analysis-clarification-006",
+        "question": "先找出 2017 年 GMV 最高的客户州，再告诉我该州的准时率。",
+        "locale": "zh-CN"
+      },
+      "outputs": {
+        "expected_status": "needs_input",
+        "expected_clarification_code": "dependent_steps",
+        "gold_sql": null
+      },
+      "metadata": {
+        "case_id": "analysis-clarification-006",
+        "question_family": "dependent_task_chain",
+        "difficulty": "hard"
       },
       "split": "clarification"
     }
