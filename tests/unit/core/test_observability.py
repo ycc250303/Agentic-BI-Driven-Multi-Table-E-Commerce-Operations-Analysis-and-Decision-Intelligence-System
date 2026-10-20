@@ -1,3 +1,5 @@
+import os
+
 from pydantic import SecretStr
 
 from agentic_bi.core.observability import (
@@ -56,4 +58,6 @@ def test_configure_langsmith_sets_official_environment_variables(
     )
     configure_langsmith(settings)
 
-    assert settings.langsmith_project == "analysis-test"
+    assert os.environ["LANGSMITH_TRACING"] == "true"
+    assert os.environ["LANGSMITH_PROJECT"] == "analysis-test"
+    assert os.environ["LANGSMITH_API_KEY"] == "test-key"
