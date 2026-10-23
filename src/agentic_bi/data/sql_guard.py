@@ -312,12 +312,16 @@ class SqlGuard:
         - 配置了允许列表时，列表外的函数允许修复后再生成
         - 允许列表为空：只拦截禁止函数
         - AND、OR、XOR 是逻辑连接，不按函数白名单检查
+        - CASE WHEN 是条件表达式，不按函数白名单检查；其内部分支节点同样跳过
+        - 独立的 IF 函数调用仍按白名单检查
 
         输出：
         - 无：违反时抛 ``SqlPolicyError``
         """
         for function in statement.find_all(exp.Func):
-            if isinstance(function, exp.Connector):
+            if isinstance(function, exp.Connector | exp.Case):
+                continue
+            if isinstance(function, exp.If) and isinstance(function.parent, exp.Case):
                 continue
             name = str(function.sql_name()).lower()  # type: ignore[no-untyped-call]
             if name in self._denied_functions:

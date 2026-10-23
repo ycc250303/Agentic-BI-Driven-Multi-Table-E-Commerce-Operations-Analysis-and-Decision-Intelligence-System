@@ -216,6 +216,39 @@ def test_guard_rejects_select_star() -> None:
         )
 
 
+def test_guard_allows_case_expression() -> None:
+    guard, sources = _guard_and_sources()
+
+    validated = guard.validate(
+        """
+        SELECT SUM(
+            CASE
+                WHEN order_delivered_customer_date <= order_estimated_delivery_date THEN 1
+                ELSE 0
+            END
+        ) * 1.0 / COUNT(*) AS on_time_rate
+        FROM orders
+        WHERE order_status = 'delivered'
+          AND order_delivered_customer_date IS NOT NULL
+        """,
+        allowed_sources=sources,
+        maximum_rows=5000,
+    )
+
+    assert "CASE" in validated.sql.upper()
+
+
+def test_guard_rejects_if_function() -> None:
+    guard, sources = _guard_and_sources()
+
+    with pytest.raises(SqlPolicyError, match="函数 if"):
+        guard.validate(
+            "SELECT IF(order_status = 'delivered', 1, 0) AS delivered_flag FROM orders",
+            allowed_sources=sources,
+            maximum_rows=5000,
+        )
+
+
 def test_guard_allows_count_star() -> None:
     guard, sources = _guard_and_sources()
 

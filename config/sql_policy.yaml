@@ -15,7 +15,8 @@ source_max_estimated_rows:
   order_reviews: 800000
   mv_seller_perf: 200000
 
-# 允许的函数
+# 允许的函数。CASE WHEN 是条件表达式，不写入此列表，校验时直接放行。
+# 配送天数与 utils/schema.sql 的 mv_delivery_perf 一致，使用 datediff。
 allowed_functions:
   - abs
   - avg
@@ -25,6 +26,7 @@ allowed_functions:
   - count
   - date
   - date_format
+  - time_to_str  # SQLGlot 对 MySQL DATE_FORMAT 的内部函数名称
   - datediff
   - day
   - extract
