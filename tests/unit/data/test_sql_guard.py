@@ -89,10 +89,7 @@ def test_guard_rejects_unknown_column() -> None:
 def test_guard_checks_unqualified_column_against_actual_source() -> None:
     catalog = MetricCatalog.load(Path("config/metrics.yaml"))
     guard = SqlGuard(load_sql_policy(Path("config/sql_policy.yaml")))
-    sources = catalog.allowed_sources(
-        metric_ids=("total_orders",),
-        dimensions=("seller_state",),
-    )
+    sources = {"mv_seller_perf": frozenset(catalog.all_sources()["mv_seller_perf"].columns)}
 
     with pytest.raises(SqlPolicyError) as captured:
         guard.validate(
