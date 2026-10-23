@@ -367,6 +367,7 @@ def _generate_sql(
                 "schema_context": runtime.context.metrics.render_schema_context(
                     metric_ids=semantic_spec.metric_ids,
                     dimensions=semantic_spec.dimensions,
+                    filter_fields=(item.field for item in semantic_spec.filters),
                 ),
                 "repair_feedback": repair.feedback or "首次生成，无反馈。",
             },
@@ -442,6 +443,7 @@ def _validate_and_execute(
     allowed_sources = deps.metrics.allowed_sources(
         metric_ids=semantic_spec.metric_ids,
         dimensions=semantic_spec.dimensions,
+        filter_fields=(item.field for item in semantic_spec.filters),
     )
 
     try:

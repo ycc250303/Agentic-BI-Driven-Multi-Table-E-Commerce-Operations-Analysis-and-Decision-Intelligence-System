@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any, cast
+from unittest.mock import Mock
 
 import pytest
 
@@ -122,13 +123,17 @@ def test_success_path_returns_one_evidence_and_projects_summary_input(
         question="哪个客户州的 GMV 最高？",
         semantic_spec=_semantic_spec(),
     )
+    context = _context(tmp_path)
+    validate_intent = Mock(wraps=context.metrics.validate_intent)
+    monkeypatch.setattr(context.metrics, "validate_intent", validate_intent)
 
     output = compiled.invoke(
         AnalysisInput(request=request),
-        context=_context(tmp_path),
+        context=context,
     )
     result = output["result"]
 
+    validate_intent.assert_called_once()
     assert result.status == AgentStatus.SUCCESS
     assert result.value is not None
     assert result.value.clarification is None
@@ -261,6 +266,58 @@ def test_unsupported_dimension_fails_without_clarification(tmp_path: Path) -> No
     assert result.error.code == ErrorCode.STRUCTURED_OUTPUT_INVALID
 
 
+@pytest.mark.parametrize("provided", [False, True], ids=["model", "caller"])
+@pytest.mark.parametrize(
+    "spec_data",
+    [
+        {"metric_ids": ("unknown",)},
+        {"metric_ids": ("total_gmv",), "dimensions": ("unknown",)},
+        {"metric_ids": ("on_time_rate",), "dimensions": ("seller_id",)},
+        {
+            "metric_ids": ("total_gmv",),
+            "filters": ({"field": "unknown", "operator": "eq", "value": "SP"},),
+        },
+        {
+            "metric_ids": ("on_time_rate",),
+            "filters": ({"field": "seller_id", "operator": "eq", "value": "seller"},),
+        },
+        {"metric_ids": ("total_gmv",), "sort_by": "total_orders"},
+    ],
+    ids=["metric", "dimension", "incompatible_dimension", "filter", "incompatible_filter", "sort"],
+)
+def test_invalid_semantics_stop_at_entry(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    spec_data: dict[str, Any],
+    provided: bool,
+) -> None:
+    spec = AnalysisSemanticSpec(operation=OutputMode.TABLE, **spec_data)
+    interpretation = AnalysisInterpretation(interpretation=spec)
+
+    def invoke_stub(_runtime: Any, *, prompt_name: str, **_kwargs: Any) -> AnalysisInterpretation:
+        assert prompt_name == "analysis/interpret"
+        return interpretation
+
+    monkeypatch.setattr(analysis_graph, "_invoke", invoke_stub)
+    context = _context(tmp_path)
+    validate_intent = Mock(wraps=context.metrics.validate_intent)
+    monkeypatch.setattr(context.metrics, "validate_intent", validate_intent)
+    request = AnalysisRequest(
+        task_id="task-invalid-semantics",
+        question="查询业务指标",
+        semantic_spec=spec if provided else None,
+    )
+
+    output = build_analysis_graph().invoke(AnalysisInput(request=request), context=context)
+    result = output["result"]
+
+    validate_intent.assert_called_once()
+    assert result.status == AgentStatus.FAILED
+    assert result.error is not None
+    assert result.error.code == ErrorCode.STRUCTURED_OUTPUT_INVALID
+    assert result.error.stage == "interpret_request"
+
+
 def test_retry_command_returns_to_sql_generation(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -295,12 +352,16 @@ def test_retry_command_returns_to_sql_generation(
         question="哪个客户州的 GMV 最高？",
         semantic_spec=_semantic_spec(),
     )
+    context = _context(tmp_path)
+    validate_intent = Mock(wraps=context.metrics.validate_intent)
+    monkeypatch.setattr(context.metrics, "validate_intent", validate_intent)
 
     output = build_analysis_graph().invoke(
         AnalysisInput(request=request),
-        context=_context(tmp_path),
+        context=context,
     )
 
+    validate_intent.assert_called_once()
     assert output["result"].status == AgentStatus.SUCCESS
     assert repair_feedback[0] == "首次生成，无反馈。"
     assert "第 1 次校验失败" in repair_feedback[1]

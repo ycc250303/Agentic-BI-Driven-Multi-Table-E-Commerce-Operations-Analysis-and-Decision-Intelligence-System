@@ -128,7 +128,7 @@ class AnalysisSemanticSpec(StrictModel):
         min_length=1,
         description=(
             "需要计算的标准业务指标标识，例如 total_gmv 或 total_orders；"
-            "必须来自指标目录，可以同时包含共享同一分析粒度的多个指标。"
+            "可以同时包含共享同一分析粒度的多个指标。"
         ),
     )
     dimensions: tuple[str, ...] = Field(
